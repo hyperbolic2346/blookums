@@ -1,0 +1,3 @@
+---
+providerRegex: ^(nuc0|nuc1|nuc2|thing2|dogbert|catbert|alice|wally|phil)$
+bypassDnsResolution: true

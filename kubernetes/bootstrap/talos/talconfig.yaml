@@ -1,0 +1,300 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/budimanjojo/talhelper/master/pkg/config/schemas/talconfig.json
+---
+# renovate: datasource=docker depName=ghcr.io/siderolabs/installer
+talosVersion: v1.7.0
+# renovate: datasource=docker depName=ghcr.io/siderolabs/kubelet
+kubernetesVersion: v1.30.0
+
+clusterName: &cluster Blookums
+endpoint: https://10.0.14.5:6443
+clusterPodNets:
+  - "10.69.0.0/16"
+clusterSvcNets:
+  - "10.96.0.0/16"
+additionalApiServerCertSans: &sans
+  - "10.0.14.5"
+  - 127.0.0.1 # KubePrism
+  - "k8s.burntsheep.com"
+additionalMachineCertSans: *sans
+cniConfig:
+  name: none
+
+nodes:
+  - hostname: "nuc0"
+    ipAddress: "10.0.14.7"
+    installDisk: "/dev/sda"
+    talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
+    controlPlane: true
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "88:ae:dd:08:ec:43"
+        dhcp: false
+        vlans:
+          - vlanId: 14
+            addresses:
+              - "10.0.14.7/24"
+            mtu: 1500
+            routes:
+              - network: 0.0.0.0/0
+                gateway: "10.0.14.1"
+            vip:
+              ip: "10.0.14.5"
+  - hostname: "nuc1"
+    ipAddress: "10.0.14.8"
+    installDiskSelector:
+      serial: "NF9447R007231P1110"
+    talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
+    controlPlane: true
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "88:ae:dd:0e:5b:a8"
+        dhcp: false
+        vlans:
+          - vlanId: 14
+            addresses:
+              - "10.0.14.8/24"
+            mtu: 1500
+            routes:
+              - network: 0.0.0.0/0
+                gateway: "10.0.14.1"
+            vip:
+              ip: "10.0.14.5"
+  - hostname: "nuc2"
+    ipAddress: "10.0.14.9"
+    installDiskSelector:
+      serial: "240746EBC70C"
+    talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
+    controlPlane: true
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "88:ae:dd:60:06:81"
+        dhcp: false
+        vlans:
+          - vlanId: 14
+            addresses:
+              - "10.0.14.9/24"
+            mtu: 1500
+            routes:
+              - network: 0.0.0.0/0
+                gateway: "10.0.14.1"
+            vip:
+              ip: "10.0.14.5"
+  - hostname: "thing2"
+    ipAddress: "10.0.14.11"
+    installDisk: "/dev/sda"
+    talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
+    controlPlane: false
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "e4:1d:2d:2b:61:30"
+        dhcp: false
+        vlans:
+          - vlanId: 14
+            addresses:
+              - "10.0.14.11/24"
+            mtu: 1500
+            routes:
+              - network: 0.0.0.0/0
+                gateway: "10.0.14.1"
+  - hostname: "dogbert"
+    ipAddress: "10.0.14.13"
+    installDisk: "/dev/sdb"
+    talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
+    controlPlane: false
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "ac:1f:6b:0a:4b:72"
+        dhcp: false
+        vlans:
+          - vlanId: 14
+            addresses:
+              - "10.0.14.13/24"
+            mtu: 1500
+            routes:
+              - network: 0.0.0.0/0
+                gateway: "10.0.14.1"
+  - hostname: "catbert"
+    ipAddress: "10.0.14.14"
+    installDisk: "/dev/sdc"
+    talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
+    controlPlane: false
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "e4:1d:2d:22:b8:d0"
+        dhcp: false
+        vlans:
+          - vlanId: 14
+            addresses:
+              - "10.0.14.14/24"
+            mtu: 1500
+            routes:
+              - network: 0.0.0.0/0
+                gateway: "10.0.14.1"
+  - hostname: "alice"
+    ipAddress: "10.0.14.15"
+    installDisk: "/dev/sdb"
+    talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
+    controlPlane: false
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "e4:1d:2d:7e:af:f0"
+        dhcp: false
+        vlans:
+          - vlanId: 14
+            addresses:
+              - "10.0.14.15/24"
+            mtu: 1500
+            routes:
+              - network: 0.0.0.0/0
+                gateway: "10.0.14.1"
+  - hostname: "wally"
+    ipAddress: "10.0.14.16"
+    installDisk: "/dev/sdf"
+    talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
+    controlPlane: false
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "e4:1d:2d:2c:84:e0"
+        dhcp: false
+        vlans:
+          - vlanId: 14
+            addresses:
+              - "10.0.14.16/24"
+            mtu: 1500
+            routes:
+              - network: 0.0.0.0/0
+                gateway: "10.0.14.1"
+  - hostname: "phil"
+    ipAddress: "10.0.14.17"
+    installDisk: "/dev/sdd"
+    talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
+    controlPlane: false
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "e4:1d:2d:7f:9f:e0"
+        dhcp: false
+        vlans:
+          - vlanId: 14
+            addresses:
+              - "10.0.14.17/24"
+            mtu: 1500
+            routes:
+              - network: 0.0.0.0/0
+                gateway: "10.0.14.1"
+
+patches:
+  # Configure containerd
+  - |-
+    machine:
+      files:
+        - op: create
+          path: /etc/cri/conf.d/20-customization.part
+          content: |-
+            [plugins."io.containerd.grpc.v1.cri"]
+              enable_unprivileged_ports = true
+              enable_unprivileged_icmp = true
+            [plugins."io.containerd.grpc.v1.cri".containerd]
+              discard_unpacked_layers = false
+            [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+              discard_unpacked_layers = false
+
+  # Disable search domain everywhere
+  - |-
+    machine:
+      network:
+        disableSearchDomain: true
+
+  # Enable cluster discovery
+  - |-
+    cluster:
+      discovery:
+        registries:
+          kubernetes:
+            disabled: false
+          service:
+            disabled: false
+
+  # Configure kubelet
+  - |-
+    machine:
+      kubelet:
+        extraArgs:
+          rotate-server-certificates: true
+        nodeIP:
+          validSubnets: ["10.0.14.0/24"]
+
+  # Force nameserver
+  - |-
+    machine:
+      network:
+        nameservers:
+          - 10.0.4.1
+
+  # Configure NTP
+  - |-
+    machine:
+      time:
+        disabled: false
+        servers: ["time.cloudflare.com"]
+
+  # Custom sysctl settings
+  - |-
+    machine:
+      sysctls:
+        fs.inotify.max_queued_events: "65536"
+        fs.inotify.max_user_watches: "524288"
+        fs.inotify.max_user_instances: "8192"
+        net.core.rmem_max: "2500000"
+        net.core.wmem_max: "2500000"
+
+  # Mount openebs-hostpath in kubelet
+  - |-
+    machine:
+      kubelet:
+        extraMounts:
+          - destination: /var/openebs/local
+            type: bind
+            source: /var/openebs/local
+            options: ["bind", "rshared", "rw"]
+
+
+
+controlPlane:
+  patches:
+    # Cluster configuration
+    - |-
+      cluster:
+        allowSchedulingOnControlPlanes: true
+        controllerManager:
+          extraArgs:
+            bind-address: 0.0.0.0
+        proxy:
+          disabled: true
+        scheduler:
+          extraArgs:
+            bind-address: 0.0.0.0
+
+    # ETCD configuration
+    - |-
+      cluster:
+        etcd:
+          extraArgs:
+            listen-metrics-urls: http://0.0.0.0:2381
+          advertisedSubnets:
+            - "10.0.14.0/24"
+
+    # Disable default API server admission plugins.
+    - |-
+      - op: remove
+        path: /cluster/apiServer/admissionControl
+
+    # Enable K8s Talos API Access
+    - |-
+      machine:
+        features:
+          kubernetesTalosAPIAccess:
+            enabled: true
+            allowedRoles: ["os:admin"]
+            allowedKubernetesNamespaces: ["system-upgrade"]
+
+
