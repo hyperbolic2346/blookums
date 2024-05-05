@@ -1,0 +1,109 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta2
+kind: HelmRelease
+metadata:
+  name: frigate
+  namespace: home
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: app-template
+      version: 2.6.0
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+      interval: 30m
+  values:
+    controllers:
+      main:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          main:
+            image:
+              repository: ghcr.io/blakeblackshear/frigate
+              tag: 0.13.2@sha256:2906991ccad85035b176941f9dedfd35088ff710c39d45ef1baa9a49f2b16734
+            env:
+              TZ: ${TIMEZONE}
+            envFrom:
+              - secretRef:
+                  name: frigate-secret
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/version
+                    port: &port 5000
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              readiness: *probes
+              startup:
+                enabled: false
+            securityContext:
+              privileged: true
+            resources:
+              requests:
+                memory: 1000Mi
+                cpu: 500m
+              limits:
+                memory: 6000Mi
+        pod:
+          nodeSelector:
+            google.feature.node.kubernetes.io/coral: "true"
+    ingress:
+      main:
+        enabled: true
+        className: internal
+        annotations:
+          kubernetes.io/ingress.class: nginx
+          hajimari.io/icon: mdi:cctv
+        hosts:
+          - host: frigate.${SECRET_DOMAIN}
+            paths:
+              - path: /
+                service:
+                  name: frigate
+                  port: *port
+    service:
+      main:
+        ports:
+          http:
+            port: *port
+          rtsp:
+            enabled: true
+            port: 8554
+    persistence:
+      config-file:
+        enabled: true
+        type: configMap
+        name: frigate-configmap
+        globalMounts:
+          - path: /config/config.yml
+            subPath: config.yml
+            readOnly: true
+      data:
+        enabled: true
+        existingClaim: frigate-data
+      media:
+        enabled: true
+        existingClaim: frigate-media
+      usb:
+        enabled: true
+        type: hostPath
+        hostPath: /dev/bus/usb
+        hostPathType: Directory
+        globalMounts:
+          - path: /dev/bus/usb
+      cache:
+        enabled: true
+        type: emptyDir
+        medium: Memory
+        sizeLimit: 4Gi
+        globalMounts:
+          - path: /dev/shm
