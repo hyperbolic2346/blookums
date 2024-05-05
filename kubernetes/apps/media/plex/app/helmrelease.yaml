@@ -1,0 +1,94 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta2
+kind: HelmRelease
+metadata:
+  name: plex
+  namespace: media
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: 2.6.0
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    controllers:
+      main:
+        containers:
+          main:
+            image:
+              repository: ghcr.io/onedr0p/plex
+              tag: 1.40.2.8395-c67dce28e@sha256:a2a3149c1326e7777bfe9def135c687d884652f78d34e92264b0dab765908215
+            env:
+              TZ: ${TIMEZONE}
+              ADVERTISE_IP: http://${PLEX_LB_IP}:32400,https://plex.${SECRET_DOMAIN}:443
+              ALLOWED_NETWORKS: '10.0.0.0/8'
+              HOSTNAME: 'plex'
+            resources:
+              requests:
+                cpu: 1000m
+                memory: 2000M
+              limits:
+                memory: 10000M
+        pod:
+          securityContext:
+            runAsUser: 568
+            runAsGroup: 568
+            fsGroup: 568
+            fsGroupChangePolicy: OnRootMismatch
+            supplementalGroups:
+              - 44    # video
+              - 109   # render
+              - 65537 # media ro
+    ingress:
+      main:
+        enabled: true
+        className: external
+        annotations:
+          hajimari.io/icon: mdi:plex
+          nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+          external-dns.alpha.kubernetes.io/target: external.${SECRET_DOMAIN}
+          cert-manager.io/cluster-issuer: letsencrypt-production
+        hosts:
+          - host: &host plex.${SECRET_DOMAIN}
+            paths:
+              - path: /
+                service:
+                  name: main
+                  port: http
+        tls:
+          - hosts:
+              - *host
+            secretName: plex-cert
+    persistence:
+      config:
+        enabled: true
+        existingClaim: plex-config
+      tmp:
+        type: emptyDir
+      transcode:
+        type: emptyDir
+      media:
+        existingClaim: videos
+        globalMounts:
+          - path: /media
+    service:
+      main:
+        type: LoadBalancer
+        externalTrafficPolicy: Local
+        ports:
+          http:
+            port: 32400
