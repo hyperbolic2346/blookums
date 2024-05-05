@@ -22,165 +22,160 @@ cniConfig:
 nodes:
   - hostname: "nuc0"
     ipAddress: "10.0.14.7"
-    installDisk: "/dev/sda"
+    installDisk: "/dev/sdb"
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
     controlPlane: true
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "88:ae:dd:08:ec:43"
         dhcp: false
-        vlans:
-          - vlanId: 14
-            addresses:
-              - "10.0.14.7/24"
-            mtu: 1500
-            routes:
-              - network: 0.0.0.0/0
-                gateway: "10.0.14.1"
-            vip:
-              ip: "10.0.14.5"
+        addresses:
+          - "10.0.14.7/24"
+        mtu: 1500
+        routes:
+          - network: 0.0.0.0/0
+            gateway: "10.0.14.1"
+        vip:
+          ip: "10.0.14.5"
   - hostname: "nuc1"
     ipAddress: "10.0.14.8"
-    installDiskSelector:
-      serial: "NF9447R007231P1110"
+    installDisk: "/dev/nvme0n1"
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
     controlPlane: true
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "88:ae:dd:0e:5b:a8"
         dhcp: false
-        vlans:
-          - vlanId: 14
-            addresses:
-              - "10.0.14.8/24"
-            mtu: 1500
-            routes:
-              - network: 0.0.0.0/0
-                gateway: "10.0.14.1"
-            vip:
-              ip: "10.0.14.5"
+        addresses:
+          - "10.0.14.8/24"
+        mtu: 1500
+        routes:
+          - network: 0.0.0.0/0
+            gateway: "10.0.14.1"
+        vip:
+          ip: "10.0.14.5"
   - hostname: "nuc2"
     ipAddress: "10.0.14.9"
-    installDiskSelector:
-      serial: "240746EBC70C"
+    installDisk: "/dev/nvme0n1"
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
     controlPlane: true
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "88:ae:dd:60:06:81"
         dhcp: false
-        vlans:
-          - vlanId: 14
-            addresses:
-              - "10.0.14.9/24"
-            mtu: 1500
-            routes:
-              - network: 0.0.0.0/0
-                gateway: "10.0.14.1"
-            vip:
-              ip: "10.0.14.5"
+        addresses:
+          - "10.0.14.9/24"
+        mtu: 1500
+        routes:
+          - network: 0.0.0.0/0
+            gateway: "10.0.14.1"
+        vip:
+          ip: "10.0.14.5"
+  - hostname: "thing1"
+    ipAddress: "10.0.14.10"
+    installDisk: "/dev/sdb"
+    talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
+    controlPlane: false
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "e4:1d:2d:2c:8b:30"
+        dhcp: false
+        addresses:
+          - "10.0.14.10/24"
+        mtu: 1500
+        routes:
+          - network: 0.0.0.0/0
+            gateway: "10.0.14.1"
   - hostname: "thing2"
     ipAddress: "10.0.14.11"
-    installDisk: "/dev/sda"
+    installDisk: "/dev/sdb"
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
     controlPlane: false
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "e4:1d:2d:2b:61:30"
         dhcp: false
-        vlans:
-          - vlanId: 14
-            addresses:
-              - "10.0.14.11/24"
-            mtu: 1500
-            routes:
-              - network: 0.0.0.0/0
-                gateway: "10.0.14.1"
+        addresses:
+          - "10.0.14.11/24"
+        mtu: 1500
+        routes:
+          - network: 0.0.0.0/0
+            gateway: "10.0.14.1"
   - hostname: "dogbert"
     ipAddress: "10.0.14.13"
-    installDisk: "/dev/sdb"
+    installDisk: "/dev/sdc"
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
     controlPlane: false
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "ac:1f:6b:0a:4b:72"
         dhcp: false
-        vlans:
-          - vlanId: 14
-            addresses:
-              - "10.0.14.13/24"
-            mtu: 1500
-            routes:
-              - network: 0.0.0.0/0
-                gateway: "10.0.14.1"
+        addresses:
+          - "10.0.14.13/24"
+        mtu: 1500
+        routes:
+          - network: 0.0.0.0/0
+            gateway: "10.0.14.1"
   - hostname: "catbert"
     ipAddress: "10.0.14.14"
-    installDisk: "/dev/sdc"
+    installDisk: "/dev/sdd"
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
     controlPlane: false
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "e4:1d:2d:22:b8:d0"
         dhcp: false
-        vlans:
-          - vlanId: 14
-            addresses:
-              - "10.0.14.14/24"
-            mtu: 1500
-            routes:
-              - network: 0.0.0.0/0
-                gateway: "10.0.14.1"
+        addresses:
+          - "10.0.14.14/24"
+        mtu: 1500
+        routes:
+          - network: 0.0.0.0/0
+            gateway: "10.0.14.1"
   - hostname: "alice"
     ipAddress: "10.0.14.15"
-    installDisk: "/dev/sdb"
+    installDisk: "/dev/sdc"
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
     controlPlane: false
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "e4:1d:2d:7e:af:f0"
         dhcp: false
-        vlans:
-          - vlanId: 14
-            addresses:
-              - "10.0.14.15/24"
-            mtu: 1500
-            routes:
-              - network: 0.0.0.0/0
-                gateway: "10.0.14.1"
+        addresses:
+          - "10.0.14.15/24"
+        mtu: 1500
+        routes:
+          - network: 0.0.0.0/0
+            gateway: "10.0.14.1"
   - hostname: "wally"
     ipAddress: "10.0.14.16"
-    installDisk: "/dev/sdf"
+    installDisk: "/dev/sdg"
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
     controlPlane: false
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "e4:1d:2d:2c:84:e0"
         dhcp: false
-        vlans:
-          - vlanId: 14
-            addresses:
-              - "10.0.14.16/24"
-            mtu: 1500
-            routes:
-              - network: 0.0.0.0/0
-                gateway: "10.0.14.1"
+        addresses:
+          - "10.0.14.16/24"
+        mtu: 1500
+        routes:
+          - network: 0.0.0.0/0
+            gateway: "10.0.14.1"
   - hostname: "phil"
     ipAddress: "10.0.14.17"
-    installDisk: "/dev/sdd"
+    installDisk: "/dev/sde"
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
     controlPlane: false
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "e4:1d:2d:7f:9f:e0"
         dhcp: false
-        vlans:
-          - vlanId: 14
-            addresses:
-              - "10.0.14.17/24"
-            mtu: 1500
-            routes:
-              - network: 0.0.0.0/0
-                gateway: "10.0.14.1"
+        addresses:
+          - "10.0.14.17/24"
+        mtu: 1500
+        routes:
+          - network: 0.0.0.0/0
+            gateway: "10.0.14.1"
 
 patches:
   # Configure containerd
@@ -228,7 +223,7 @@ patches:
     machine:
       network:
         nameservers:
-          - 10.0.4.1
+          - 10.0.14.1
 
   # Configure NTP
   - |-
