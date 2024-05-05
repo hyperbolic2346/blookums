@@ -5,4 +5,3 @@ namespace: home
 resources:
   - ./pvc.yaml
   - ./externalsecret.yaml
-  - ./volsync.yaml

@@ -11,4 +11,3 @@ resources:
   - ./kubelet-csr-approver/ks.yaml
   - ./smarter-device-manager/ks.yaml
   - ./spegel/ks.yaml
-  - ./volsync/ks.yaml
