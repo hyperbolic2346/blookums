@@ -1,0 +1,9 @@
+93636; improved ai
+98145; No Restricted Area
+101966; Join Leave Message
+98373; More Ammo Mutator
+98685; Jump Shoot
+1161703; No Smoke
+164061; COOP-Mayhem
+156146; Round Progress
+125754； Allahu Akbar

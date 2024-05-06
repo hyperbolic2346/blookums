@@ -1,0 +1,148 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s/helm-charts/common-3.1.0/charts/library/common/values.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2beta2
+kind: HelmRelease
+metadata:
+  name: sandstorm
+  namespace: gaming
+spec:
+  interval: 60m
+  chart:
+    spec:
+      chart: app-template
+      version: 3.1.0
+      sourceRef:
+        name: bjw-s
+        kind: HelmRepository
+        namespace: flux-system
+  values:
+    controllers:
+      main:
+        replicas: 0
+        pod:
+          securityContext:
+            runAsUser: &uid 1000
+            runAsGroup: *uid
+            fsGroup: *uid
+            fsGroupChangePolicy: "Always"
+        containers:
+          main:
+            image:
+              repository: "docker.io/andrewmhub/insurgency-sandstorm"
+              tag: lite # I wish this wasn't how it's tagged, but alas
+            resources:
+              requests:
+                cpu: 1000m
+                memory: 2Gi
+              limits:
+                cpu: 3000m
+                memory: 6Gi
+            env:
+              TZ: ${TIMEZONE}
+              HOSTNAME: "${SECRET_SANDSTORM_NAME}"
+              PORT: &port "27102"
+              QUERYPORT: &query "27131"
+              LAUNCH_SERVER_ENV: "-hostname=\"${SECRET_SANDSTORM_NAME}\" -Log -Port=${SECRET_SANDSTORM_PORT} -QueryPort=${SECRET_SANDSTORM_QUERYPORT} -MapCycle=MapCycle -NoEAC -GameStatsToken=${SECRET_SANDSTORM_STATSTOKEN} -Mods -ModList=Mods -mutators=${SECRET_SANDSTORM_MUTATORS} -ModDownloadTravelTo=${SECRET_SANDSTORM_INIT_MAP}?Scenario=Scenario_${SECRET_SANDSTORM_INIT_MAP}_${SECRET_SANDSTORM_INIT_SCENARIO}?mutators=${SECRET_SANDSTORM_MUTATORS}"
+            probes:
+              startup:
+                enabled: false
+              liveness:
+                enabled: false
+              readiness:
+                enabled: false
+            args: ["-hostname=\"${SECRET_SANDSTORM_NAME}\"", "-Log", "-Port=${SECRET_SANDSTORM_PORT}", "-QueryPort=${SECRET_SANDSTORM_QUERYPORT}", "-MapCycle=MapCycle", "-NoEAC", "-GameStatsToken=${SECRET_SANDSTORM_STATSTOKEN}", "-Mods", "-ModList=Mods", "-CmdModList=\"${SECRET_SANDSTORM_MODS}\"", "-mutators=${SECRET_SANDSTORM_MUTATORS}", "-ModDownloadTravelTo=${SECRET_SANDSTORM_INIT_MAP}?Scenario=Scenario_${SECRET_SANDSTORM_INIT_MAP}_${SECRET_SANDSTORM_INIT_SCENARIO}?mutators=${SECRET_SANDSTORM_MUTATORS}"]
+    service:
+      main:
+        enabled: true
+        type: LoadBalancer
+        externalTrafficPolicy: Cluster
+        ports:
+          http:
+            enabled: false
+            primary: false
+          gameudp:
+            enabled: true
+            port: *port
+            protocol: UDP
+          queryudp:
+            enabled: true
+            port: *query
+            protocol: UDP
+    persistence:
+      game:
+        enabled: true
+        advancedMounts:
+          main:
+            main:
+              - path: /home/steam/steamcmd/sandstorm
+        accessMode: ReadWriteOnce
+        storageClass: nfs-fileserv
+        size: 100Gi
+        retain: true
+        readOnly: false
+      gameini:
+        enabled: true
+        type: configMap
+        name: insurgency-sandstorm-gameini
+        advancedMounts:
+          main:
+            main:
+              - subPath: Game.ini
+                path: /home/steam/steamcmd/sandstorm/Insurgency/Saved/Config/LinuxServer/Game.ini
+        defaultMode: 0777
+        readOnly: true
+      engineini:
+        enabled: true
+        type: configMap
+        name: insurgency-sandstorm-engineini
+        advancedMounts:
+          main:
+            main:
+              - subPath: Engine.ini
+                path: /home/steam/steamcmd/sandstorm/Insurgency/Saved/Config/LinuxServer/Engine.ini
+        defaultMode: 0777
+        readOnly: true
+      gameusersettingsini:
+        enabled: true
+        type: secret
+        name: insurgency-sandstorm-gameusersettingsini
+        advancedMounts:
+          main:
+            main:
+              - subPath: GameUserSettings.ini
+                path: /home/steam/steamcmd/sandstorm/Insurgency/Saved/Config/LinuxServer/GameUserSettings.ini
+        defaultMode: 0777
+        readOnly: true
+      adminstxt:
+        enabled: true
+        type: secret
+        name: insurgency-sandstorm-adminstxt
+        advancedMounts:
+          main:
+            main:
+              - subPath: Admins.txt
+                path: /home/steam/steamcmd/sandstorm/Insurgency/Config/Server/Admins.txt
+        defaultMode: 0777
+        readOnly: true
+      mapcycletxt:
+        enabled: true
+        type: configMap
+        name: insurgency-sandstorm-mapcycletxt
+        advancedMounts:
+          main:
+            main:
+              - subPath: MapCycle.txt
+                path: /home/steam/steamcmd/sandstorm/Insurgency/Config/Server/MapCycle.txt
+        defaultMode: 0777
+        readOnly: true
+      modstxt:
+        enabled: true
+        type: configMap
+        name: insurgency-sandstorm-modstxt
+        advancedMounts:
+          main:
+            main:
+              - subPath: Mods.txt
+                path: /home/steam/steamcmd/sandstorm/Insurgency/Config/Server/Mods.txt
+        defaultMode: 0777
+        readOnly: true
