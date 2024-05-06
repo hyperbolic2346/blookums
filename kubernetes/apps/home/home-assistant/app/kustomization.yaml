@@ -5,3 +5,4 @@ namespace: home
 resources:
   - ./pvc.yaml
   - ./externalsecret.yaml
+  - ./helmrelease.yaml
