@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: app-template
-      version: 2.0.3
+      version: 3.1.0
       sourceRef:
         kind: HelmRepository
         name: bjw-s
@@ -26,31 +26,28 @@ spec:
     keepHistory: false
   values:
     controllers:
-      main:
+      smarter-device-manager:
         type: daemonset
         annotations:
           reloader.stakater.com/auto: "true"
         containers:
-          main:
+          app:
             image:
               repository: registry.gitlab.com/arm-research/smarter/smarter-device-manager
-              tag: v1.20.11
+              tag: v1.20.12@sha256:228f7f44594a3182571559e62f2e3fe8a3f26180fb5dd7fc0cb7bf7d22a5bbcd
             resources:
               requests:
                 cpu: 10m
                 memory: 15M
               limits:
-                cpu: 100m
                 memory: 50M
             securityContext:
               allowPrivilegeEscalation: false
               capabilities:
                 drop:
                   - ALL
-        pod:
-          dnsPolicy: ClusterFirstWithHostNet
-          hostNetwork: true
-          priorityClassName: system-node-critical
+    defaultPodOptions:
+      priorityClassName: system-node-critical
     persistence:
       config:
         enabled: true
@@ -58,6 +55,7 @@ spec:
         name: smarter-device-manager-configmap
         globalMounts:
           - path: /root/config
+            readOnly: true
       dev:
         type: hostPath
         hostPath: /dev
@@ -71,8 +69,3 @@ spec:
       var-lib-kubelet-device-plugins:
         type: hostPath
         hostPath: /var/lib/kubelet/device-plugins
-        globalMounts:
-          - path: /var/lib/kubelet/device-plugins
-    service:
-      main:
-        enabled: false
