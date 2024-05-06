@@ -33,7 +33,7 @@ spec:
         containers:
           app:
             image:
-              repository: registry.gitlab.com/arm-research/smarter/smarter-device-manager
+              repository: ghcr.io/smarter-project/smarter-device-manager
               tag: v1.20.12@sha256:228f7f44594a3182571559e62f2e3fe8a3f26180fb5dd7fc0cb7bf7d22a5bbcd
             resources:
               requests:
