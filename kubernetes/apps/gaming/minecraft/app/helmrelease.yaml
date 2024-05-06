@@ -19,7 +19,7 @@ spec:
   - name: csi-driver-nfs
     namespace: storage
   values:
-    replicaCount: 0
+    replicaCount: 1
     image:
       repository: itzg/minecraft-server
       tag: latest
