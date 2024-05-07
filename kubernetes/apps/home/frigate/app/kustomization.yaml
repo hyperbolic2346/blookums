@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: home
 resources:
   - ./externalsecret.yaml
+  - ./helmrelease.yaml
   - ./pvc.yaml
 configMapGenerator:
   - name: frigate-configmap
