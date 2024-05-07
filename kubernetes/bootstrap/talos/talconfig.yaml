@@ -23,7 +23,7 @@ nodes:
   - hostname: "nuc0"
     ipAddress: "10.0.14.7"
     installDisk: "/dev/sdb"
-    talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
+    talosImageURL: factory.talos.dev/installer/613e1592b2da41ae5e265e8789429f22e121aab91cb4deb6bc3c0b6262961245
     controlPlane: true
     networkInterfaces:
       - deviceSelector:
@@ -37,10 +37,12 @@ nodes:
             gateway: "10.0.14.1"
         vip:
           ip: "10.0.14.5"
+    patches:
+      - "@./patches/node_nuc0.yaml"
   - hostname: "nuc1"
     ipAddress: "10.0.14.8"
     installDisk: "/dev/nvme0n1"
-    talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
+    talosImageURL: factory.talos.dev/installer/613e1592b2da41ae5e265e8789429f22e121aab91cb4deb6bc3c0b6262961245
     controlPlane: true
     networkInterfaces:
       - deviceSelector:
@@ -54,10 +56,12 @@ nodes:
             gateway: "10.0.14.1"
         vip:
           ip: "10.0.14.5"
+    patches:
+      - "@./patches/node_nuc1.yaml"
   - hostname: "nuc2"
     ipAddress: "10.0.14.9"
     installDisk: "/dev/nvme0n1"
-    talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
+    talosImageURL: factory.talos.dev/installer/613e1592b2da41ae5e265e8789429f22e121aab91cb4deb6bc3c0b6262961245
     controlPlane: true
     networkInterfaces:
       - deviceSelector:
@@ -71,10 +75,12 @@ nodes:
             gateway: "10.0.14.1"
         vip:
           ip: "10.0.14.5"
+    patches:
+      - "@./patches/node_nuc2.yaml"
   - hostname: "thing1"
     ipAddress: "10.0.14.10"
     installDisk: "/dev/sdb"
-    talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
+    talosImageURL: factory.talos.dev/installer/613e1592b2da41ae5e265e8789429f22e121aab91cb4deb6bc3c0b6262961245
     controlPlane: false
     networkInterfaces:
       - deviceSelector:
@@ -86,10 +92,12 @@ nodes:
         routes:
           - network: 0.0.0.0/0
             gateway: "10.0.14.1"
+    patches:
+      - "@./patches/node_thing1.yaml"
   - hostname: "thing2"
     ipAddress: "10.0.14.11"
     installDisk: "/dev/sdb"
-    talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
+    talosImageURL: factory.talos.dev/installer/613e1592b2da41ae5e265e8789429f22e121aab91cb4deb6bc3c0b6262961245
     controlPlane: false
     networkInterfaces:
       - deviceSelector:
@@ -101,10 +109,12 @@ nodes:
         routes:
           - network: 0.0.0.0/0
             gateway: "10.0.14.1"
+    patches:
+      - "@./patches/node_thing2.yaml"
   - hostname: "dogbert"
     ipAddress: "10.0.14.13"
     installDisk: "/dev/sdc"
-    talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
+    talosImageURL: factory.talos.dev/installer/613e1592b2da41ae5e265e8789429f22e121aab91cb4deb6bc3c0b6262961245
     controlPlane: false
     networkInterfaces:
       - deviceSelector:
@@ -116,10 +126,12 @@ nodes:
         routes:
           - network: 0.0.0.0/0
             gateway: "10.0.14.1"
+    patches:
+      - "@./patches/node_dogbert.yaml"
   - hostname: "catbert"
     ipAddress: "10.0.14.14"
     installDisk: "/dev/sdd"
-    talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
+    talosImageURL: factory.talos.dev/installer/613e1592b2da41ae5e265e8789429f22e121aab91cb4deb6bc3c0b6262961245
     controlPlane: false
     networkInterfaces:
       - deviceSelector:
@@ -131,10 +143,12 @@ nodes:
         routes:
           - network: 0.0.0.0/0
             gateway: "10.0.14.1"
+    patches:
+      - "@./patches/node_catbert.yaml"
   - hostname: "alice"
     ipAddress: "10.0.14.15"
     installDisk: "/dev/sdc"
-    talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
+    talosImageURL: factory.talos.dev/installer/613e1592b2da41ae5e265e8789429f22e121aab91cb4deb6bc3c0b6262961245
     controlPlane: false
     networkInterfaces:
       - deviceSelector:
@@ -146,10 +160,12 @@ nodes:
         routes:
           - network: 0.0.0.0/0
             gateway: "10.0.14.1"
+    patches:
+      - "@./patches/node_alice.yaml"
   - hostname: "wally"
     ipAddress: "10.0.14.16"
     installDisk: "/dev/sdg"
-    talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
+    talosImageURL: factory.talos.dev/installer/613e1592b2da41ae5e265e8789429f22e121aab91cb4deb6bc3c0b6262961245
     controlPlane: false
     networkInterfaces:
       - deviceSelector:
@@ -161,10 +177,12 @@ nodes:
         routes:
           - network: 0.0.0.0/0
             gateway: "10.0.14.1"
+    patches:
+      - "@./patches/node_wally.yaml"
   - hostname: "phil"
     ipAddress: "10.0.14.17"
     installDisk: "/dev/sde"
-    talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
+    talosImageURL: factory.talos.dev/installer/613e1592b2da41ae5e265e8789429f22e121aab91cb4deb6bc3c0b6262961245
     controlPlane: false
     networkInterfaces:
       - deviceSelector:
@@ -176,6 +194,8 @@ nodes:
         routes:
           - network: 0.0.0.0/0
             gateway: "10.0.14.1"
+    patches:
+      - "@./patches/node_phil.yaml"
 
 patches:
   # Configure containerd
@@ -253,6 +273,8 @@ patches:
             options: ["bind", "rshared", "rw"]
 
 
+  # User specified global patches
+  - "@./patches/global.yaml"
 
 controlPlane:
   patches:
@@ -292,4 +314,10 @@ controlPlane:
             allowedRoles: ["os:admin"]
             allowedKubernetesNamespaces: ["system-upgrade"]
 
+    # User specified controlPlane patches
+    - "@./patches/controlPlane.yaml"
 
+worker:
+  patches:
+    # User specified worker patches
+    - "@./patches/worker.yaml"

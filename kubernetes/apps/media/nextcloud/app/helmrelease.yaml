@@ -74,9 +74,11 @@ spec:
               requests:
                 cpu: 500m
                 memory: 512Mi
+                hugepages-2Mi: 250Mi
               limits:
                 cpu: 4000m
                 memory: 6000Mi
+                hugepages-2Mi: 250Mi
     service:
       main:
         ports:
