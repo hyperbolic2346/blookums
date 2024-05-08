@@ -5,6 +5,7 @@ metadata:
   name: clean-slate
   namespace: gaming
 spec:
+  replicaCount: 0
   releaseName: clean-slate
   interval: 60m
   chart:
@@ -50,6 +51,16 @@ spec:
     # Tolerations for pod assignment
     tolerations: []
 
+    mods:
+      enabled: true
+      portal:
+        - LogisticTrainNetwork
+        - AutoDeconstruct
+        - Waterfill_v17
+      unofficial:
+        - url: "https://github.com/Suprcheese/Squeak-Through/archive/refs/tags/1.8.2.zip"
+          name: "Squeak Through_1.8.2.zip"
+  
     # Sets the data persistence volume configuration
     persistence:
       enabled: true
@@ -176,35 +187,35 @@ spec:
       autoplace_controls:
         coal:
           frequency: 0.7
-          size: 1
-          richness: 2
+          size: 2
+          richness: 4
         stone:
           frequency: 0.5
-          size: 1
-          richness: 2
+          size: 2
+          richness: 4
         copper-ore:
           frequency: 0.5
           size: 1.4
-          richness: 2
+          richness: 5
         iron-ore:
           frequency: 0.5
           size: 1.4
-          richness: 2
+          richness: 5
         uranium-ore:
           frequency: 0.5
           size: 1.4
-          richness: 2
+          richness: 5
         crude-oil:
           frequency: 0.5
-          size: 1
-          richness: 2
+          size: 1.2
+          richness: 3
         trees:
           frequency: 1
           size: 1
           richness: 1
         enemy-base:
           frequency: 0.5
-          size: 0.5
+          size: 0.75
           richness: 1
       cliff_settings:
         # Name of the cliff prototype
