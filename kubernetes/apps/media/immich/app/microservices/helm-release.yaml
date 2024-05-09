@@ -67,6 +67,7 @@ spec:
                 memory: 8Gi
     service:
       main:
+        controller: main
         enabled: false
     persistence:
       library:
