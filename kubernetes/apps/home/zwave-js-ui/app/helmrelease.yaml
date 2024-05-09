@@ -49,13 +49,13 @@ spec:
           nodeSelector:
             aeotec.feature.node.kubernetes.io/zwave: "true"
     service:
-      main:
+      zwavejs:
         controller: main
         ports:
           http:
             port: &port 8091
     ingress:
-      main:
+      zwavejs:
         enabled: true
         className: internal
         annotations:
@@ -66,7 +66,7 @@ spec:
             paths:
               - path: /
                 service:
-                  name: main
+                  name: zwavejs
                   port: *port
         tls:
           - hosts:

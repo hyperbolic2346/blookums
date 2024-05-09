@@ -72,13 +72,13 @@ spec:
               limits:
                 memory: 2Gi
     service:
-      main:
+      immich-server:
         controller: main
         ports:
           http:
             port: &port 3001
     ingress:
-      main:
+      immich-server:
         enabled: true
         className: external
         annotations:
@@ -90,7 +90,7 @@ spec:
               - path: /
                 pathType: Prefix
                 service:
-                  name: main
+                  name: immich-server
                   port: *port
         tls:
           - hosts:

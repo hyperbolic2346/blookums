@@ -80,13 +80,13 @@ spec:
                 memory: 6000Mi
                 hugepages-2Mi: 250Mi
     service:
-      main:
+      nextcloud:
         controller: main
         ports:
           http:
             port: &port 80
     ingress:
-      main:
+      nextcloud:
         enabled: true
         className: external
         annotations:
@@ -98,7 +98,7 @@ spec:
               - path: /
                 pathType: Prefix
                 service:
-                  name: main
+                  name: nextcloud
                   port: *port
         tls:
           - hosts:
