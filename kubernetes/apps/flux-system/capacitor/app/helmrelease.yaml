@@ -40,7 +40,7 @@ spec:
           http:
             port: &port 9000
     ingress:
-      main:
+      capacitor:
         enabled: true
         className: internal
         hosts:
@@ -49,6 +49,6 @@ spec:
               - path: /
                 pathType: Prefix
                 service:
-                  name: main
+                  name: capacitor
                   port: *port
 
