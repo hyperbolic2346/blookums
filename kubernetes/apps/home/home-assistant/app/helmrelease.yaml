@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: app-template
-      version: 2.0.3
+      version: 3.1.0
       sourceRef:
         kind: HelmRepository
         name: bjw-s
@@ -71,6 +71,11 @@ spec:
             runAsGroup: 568
             fsGroup: 568
             fsGroupChangePolicy: OnRootMismatch
+    service:
+      main:
+        ports:
+          http:
+            port: &port 8123
     ingress:
       main:
         enabled: true
@@ -85,7 +90,7 @@ spec:
               - path: /
                 service:
                   name: main
-                  port: http
+                  port: *port
         tls:
           - hosts:
               - *host
@@ -94,8 +99,3 @@ spec:
       config:
         enabled: true
         existingClaim: home-assistant-config
-    service:
-      main:
-        ports:
-          http:
-            port: 8123
