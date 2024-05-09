@@ -7,7 +7,6 @@ metadata:
 data:
   TIMEZONE: "America/New_York"
   CLUSTER_CIDR: "10.69.0.0/16"
-  NODE_CIDR: "10.0.14.0/24"
   CLUSTER_STORAGE_NFS: nfs-fileserv
 
   K8S_GATEWAY_LB_IP: 192.168.14.53
