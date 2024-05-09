@@ -56,9 +56,7 @@ spec:
         - LogisticTrainNetwork
         - AutoDeconstruct
         - Waterfill_v17
-      unofficial:
-        - url: "https://github.com/Suprcheese/Squeak-Through/archive/refs/tags/1.8.2.zip"
-          name: "Squeak Through_1.8.2.zip"
+        - Squeak%20Through
   
     # Sets the data persistence volume configuration
     persistence:
