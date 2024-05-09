@@ -73,6 +73,7 @@ spec:
                 memory: 2Gi
     service:
       main:
+        controller: main
         ports:
           http:
             port: &port 3001

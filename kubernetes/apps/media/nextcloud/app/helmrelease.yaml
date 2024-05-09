@@ -81,6 +81,7 @@ spec:
                 hugepages-2Mi: 250Mi
     service:
       main:
+        controller: main
         ports:
           http:
             port: &port 80

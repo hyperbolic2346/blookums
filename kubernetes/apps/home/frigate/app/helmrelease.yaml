@@ -72,6 +72,7 @@ spec:
                   port: *port
     service:
       main:
+        controller: main
         ports:
           http:
             port: *port
