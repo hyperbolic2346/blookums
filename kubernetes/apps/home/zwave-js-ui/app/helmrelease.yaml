@@ -50,6 +50,7 @@ spec:
             aeotec.feature.node.kubernetes.io/zwave: "true"
     service:
       main:
+        controller: main
         ports:
           http:
             port: &port 8091
