@@ -1,3 +1,3 @@
 ---
-- devicematch: ^serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_4484c3960755ed11818d91131d62bc44-if00-port0$
+- devicematch: ^serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller.*
   nummaxdevices: 1
