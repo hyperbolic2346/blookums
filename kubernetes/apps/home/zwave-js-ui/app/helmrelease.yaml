@@ -39,15 +39,13 @@ spec:
               TZ: ${TIMEZONE}
             resources:
               requests:
-                smarter-devices/serial_by-id_usb-0658_0200-if00: 1
                 cpu: 10m
                 memory: 100M
               limits:
-                smarter-devices/serial_by-id_usb-0658_0200-if00: 1
                 memory: 256M
         pod:
           nodeSelector:
-            aeotec.feature.node.kubernetes.io/zwave: "true"
+            kubernetes.io/hostname: "phil"
     service:
       zwavejs:
         controller: main
