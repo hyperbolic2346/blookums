@@ -26,11 +26,11 @@ spec:
     keepHistory: false
   values:
     controllers:
-      main:
+      zwave-js-ui:
         annotations:
           reloader.stakater.com/auto: "true"
         containers:
-          main:
+          app:
             image:
               repository: zwavejs/zwave-js-ui
               tag: 9.12.0
@@ -47,13 +47,14 @@ spec:
           nodeSelector:
             kubernetes.io/hostname: "phil"
     service:
-      zwavejs:
-        controller: main
+      app:
+        controller: app
         ports:
           http:
             port: &port 8091
+          websocket: 3000
     ingress:
-      zwavejs:
+      app:
         enabled: true
         className: internal
         annotations:
@@ -64,7 +65,7 @@ spec:
             paths:
               - path: /
                 service:
-                  name: zwavejs
+                  identifier: app
                   port: *port
         tls:
           - hosts:
