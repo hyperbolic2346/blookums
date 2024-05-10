@@ -48,7 +48,7 @@ spec:
             kubernetes.io/hostname: "phil"
     service:
       app:
-        controller: app
+        controller: zwave-js-ui
         ports:
           http:
             port: &port 8091
