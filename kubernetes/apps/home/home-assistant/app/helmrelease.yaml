@@ -95,7 +95,7 @@ spec:
           http:
             port: &port 8123
           code-server:
-            port: 8080
+            port: &code 8080
     ingress:
       main:
         enabled: true
@@ -124,7 +124,7 @@ spec:
               - path: /
                 service:
                   name: main
-                  port: code_server
+                  port: *code
     persistence:
       config:
         enabled: true
