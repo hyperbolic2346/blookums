@@ -43,6 +43,8 @@ spec:
                 memory: 100M
               limits:
                 memory: 256M
+            securityContext:
+              privileged: true
         pod:
           nodeSelector:
             kubernetes.io/hostname: "phil"
