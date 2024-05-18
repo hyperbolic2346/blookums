@@ -16,3 +16,9 @@ spec:
                 name: webhook-receiver
                 port:
                   number: 80
+  tls:
+  - hosts:
+    - flux-webhook.${SECRET_DOMAIN}
+    secretName: flux-webhook-cert
+
+
