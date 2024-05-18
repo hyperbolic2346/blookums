@@ -31,4 +31,6 @@ spec:
     etcd:
       localpvScConfig:
         basePath: "/var/openebs/local/etcd"
-      
+    loki-stack:
+      localpvScConfig:
+        basePath: "/var/openebs/local/loki"
