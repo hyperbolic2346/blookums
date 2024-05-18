@@ -19,6 +19,7 @@ resources:
   - ./ingress-nginx-charts.yaml
   - ./intel-charts.yaml
   - ./jetstack.yaml
+  - ./longhorn.yaml
   - ./lwolf-charts.yaml
   - ./metrics-server.yaml
   - ./minecraft-server-charts.yaml
