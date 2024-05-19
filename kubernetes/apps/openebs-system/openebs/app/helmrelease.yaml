@@ -28,9 +28,9 @@ spec:
         registry: docker.io
         repo: openebs
         tag: release-2.6
-    etcd:
-      localpvScConfig:
-        basePath: "/var/openebs/local/etcd"
-    loki-stack:
-      localpvScConfig:
-        basePath: "/var/openebs/local/loki"
+      etcd:
+        localpvScConfig:
+          basePath: "/var/openebs/local/etcd"
+      loki-stack:
+        localpvScConfig:
+          basePath: "/var/openebs/local/loki"
