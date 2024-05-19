@@ -34,3 +34,8 @@ spec:
       loki-stack:
         localpvScConfig:
           basePath: "/var/openebs/local/loki"
+      storageClass:
+        nameSuffix: three-replica
+        default: false
+        parameters:
+          repl: 3
