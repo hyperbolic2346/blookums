@@ -42,7 +42,9 @@ spec:
               SONARR__PORT: &port 8989
               SONARR__LOG_LEVEL: info
               SONARR__THEME: dark
-            envFrom: *envFrom
+            envFrom:
+              - secretRef:
+                  name: old-sonarr-secret
             probes:
               liveness: &probes
                 enabled: true
