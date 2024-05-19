@@ -6,3 +6,4 @@ resources:
   - ./minecraft/ks.yaml
   - ./namespace.yaml
   - ./sandstorm/ks.yaml
+  - ./valheim/ks.yaml
