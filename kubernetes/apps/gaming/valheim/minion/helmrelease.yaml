@@ -1,49 +1,82 @@
 ---
-apiVersion: helm.toolkit.fluxcd.io/v2beta1
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2beta2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2beta2
 kind: HelmRelease
 metadata:
-  name: minion-valheim
-  namespace: gaming
+  name: &name minion-valheim
 spec:
-  releaseName: minion-valheim
-  interval: 10m
+  interval: 15m
   chart:
     spec:
-      chart: .
+      chart: app-template
+      version: 3.1.0
       sourceRef:
-        kind: GitRepository
-        name: grownseed
+        kind: HelmRepository
+        name: bjw-s
         namespace: flux-system
+  install:
+    replace: true
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+      strategy: rollback
+    cleanupOnFail: true
+  uninstall:
+    keepHistory: false
+
   values:
-    # Valheim image version
-    # ref: https://github.com/lloesche/valheim-server-docker
-    image: lloesche/valheim-server
-    imageTag: latest
+    controllers:
+      valheim:
+        annotations:
+          reloader.stakater.com/auto: "true"
 
-    replicaCount: 1
+        containers:
+          app:
+            nameOverride: *name
+            image:
+              repository: lloesche/valheim-server
+              tag: latest@sha256:85ab5dbb0e538cd7c711231384a1b78357ac6f85611219022e1be22e856d922f
+              pullPolicy: IfNotPresent
 
-    # Configure resource requests and limits
-    # ref: http://kubernetes.io/docs/user-guide/compute-resources/
-    resources:
-      requests:
-        memory: 1Gi
-        cpu: 1000m
+            env:
+                BACKUPS: "false"
+                CONFIG_DIRECTORY_PERMISSIONS: "755"
+                WORLDS_DIRECTORY_PERMISSIONS: "755"
+                WORLDS_FILE_PERMISSIONS: "644"
+                SERVER_PORT: "2456"
+                SERVER_PUBLIC: "true"
+                STATUS_HTTP: "true"
+                SUPERVISOR_HTTP: "true"
+                SERVER_NAME: "Minion Valheim"
+                WORLD_NAME: "Minion"
+                SERVER_PASS: "${SECRET_VALHEIM_MINION_PW}"
+                ADMINLIST_IDS: ""
+                PERMITTEDLIST_IDS: ""
+                PUID: "1000"
+                PGID: "1000"
+                TZ: ${TIMEZONE}
 
-    valheimServer:
-      serverName: Minion Valheim
-      serverPort: 2466
-      worldName: Minion
-      serverPass: ${SECRET_VALHEIM_MINION_PW}
-      serverPublic: 1
-      updateInterval: 10800 # every 3 hours
-      backupsInterval: 43200 # every 12 hours
-      backupsDirectory: /config/backups
-      backupsMaxAge: 3 # 3 days
-      serviceType: LoadBalancer
-      externalTrafficPolicy: Local
+            resources:
+              requests:
+                memory: 4Gi
+                cpu: 1000m
+              limits:
+                memory: 10Gi
+
+    service:
+      app:
+        controller: *name
+        type: LoadBalancer
+        ports:
+          steam1:
+            port: 2456
+            protocol: UDP
+          steam2:
+            port: 2457
+            protocol: UDP
 
     persistence:
       config:
-        enabled: true
-        size: 10Gi
-        storageClassName: nfs-fileserv
+        existingClaim: *name
