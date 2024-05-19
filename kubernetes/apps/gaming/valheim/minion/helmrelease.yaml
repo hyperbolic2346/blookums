@@ -28,7 +28,7 @@ spec:
 
   values:
     controllers:
-      valheim:
+      minion-valheim:
         annotations:
           reloader.stakater.com/auto: "true"
 
