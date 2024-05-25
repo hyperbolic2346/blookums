@@ -17,6 +17,10 @@ spec:
     zfs-localpv:
       enabled: false
     mayastor:
+      csi:
+        node:
+          initContainers:
+            enabled: false
       image:
         registry: docker.io
         repo: openebs
