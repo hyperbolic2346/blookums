@@ -2,8 +2,53 @@
 apiVersion: "openebs.io/v1beta2"
 kind: DiskPool
 metadata:
-  name: thing1
+  name: thing1-disk0
   namespace: openebs-system
 spec:
   node: thing1
-  disks: ["/dev/disk/by-id/ata-CT1000MX500SSD1_2336E8746026", "/dev/disk/by-id/ata-WDC_WD40EFZX-68AWUN0_WD-WX32DC02VFAD", "/dev/disk/by-id/ata-ST3000DM001-1CH166_Z1F50MC6", "/dev/disk/by-id/ata-ST3000DM001-1CH166_Z1F512QF", "/dev/disk/by-id/ata-SanDisk_SDSSDH3_1T02_20347B800262", "/dev/disk/by-id/ata-WDC_WDBNCE0010PNC_214026800890"]
+  disks: ["/dev/disk/by-id/ata-CT1000MX500SSD1_2336E8746026"]
+---
+apiVersion: "openebs.io/v1beta2"
+kind: DiskPool
+metadata:
+  name: thing1-disk1
+  namespace: openebs-system
+spec:
+  node: thing1
+  disks: ["/dev/disk/by-id/ata-WDC_WD40EFZX-68AWUN0_WD-WX32DC02VFAD"]
+---
+apiVersion: "openebs.io/v1beta2"
+kind: DiskPool
+metadata:
+  name: thing1-disk2
+  namespace: openebs-system
+spec:
+  node: thing1
+  disks: ["/dev/disk/by-id/ata-ST3000DM001-1CH166_Z1F50MC6"]
+---
+apiVersion: "openebs.io/v1beta2"
+kind: DiskPool
+metadata:
+  name: thing1-disk3
+  namespace: openebs-system
+spec:
+  node: thing1
+  disks: ["/dev/disk/by-id/ata-ST3000DM001-1CH166_Z1F512QF"]
+---
+apiVersion: "openebs.io/v1beta2"
+kind: DiskPool
+metadata:
+  name: thing1-disk4
+  namespace: openebs-system
+spec:
+  node: thing1
+  disks: ["/dev/disk/by-id/ata-SanDisk_SDSSDH3_1T02_20347B800262"]
+---
+apiVersion: "openebs.io/v1beta2"
+kind: DiskPool
+metadata:
+  name: thing1-disk5
+  namespace: openebs-system
+spec:
+  node: thing1
+  disks: ["/dev/disk/by-id/ata-WDC_WDBNCE0010PNC_214026800890"]

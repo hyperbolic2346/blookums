@@ -2,8 +2,35 @@
 apiVersion: "openebs.io/v1beta2"
 kind: DiskPool
 metadata:
-  name: alice
+  name: alice-sda
   namespace: openebs-system
 spec:
   node: alice
-  disks: ["/dev/sda", "/dev/sdc", "/dev/sdd", "/dev/sde"]
+  disks: ["/dev/sda"]
+---
+apiVersion: "openebs.io/v1beta2"
+kind: DiskPool
+metadata:
+  name: alice-sdc
+  namespace: openebs-system
+spec:
+  node: alice
+  disks: ["/dev/sdc"]
+---
+apiVersion: "openebs.io/v1beta2"
+kind: DiskPool
+metadata:
+  name: alice-sdd
+  namespace: openebs-system
+spec:
+  node: alice
+  disks: ["/dev/sdd"]
+---
+apiVersion: "openebs.io/v1beta2"
+kind: DiskPool
+metadata:
+  name: alice-sde
+  namespace: openebs-system
+spec:
+  node: alice
+  disks: ["/dev/sde"]

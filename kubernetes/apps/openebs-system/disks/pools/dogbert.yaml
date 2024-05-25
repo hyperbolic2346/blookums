@@ -2,8 +2,17 @@
 apiVersion: "openebs.io/v1beta2"
 kind: DiskPool
 metadata:
-  name: dogbert
+  name: dogbert-disk0
   namespace: openebs-system
 spec:
   node: dogbert
-  disks: ["/dev/disk/by-id/nvme-INTEL_SSDPEKNW010T8_BTNH93860F8J1P0B", "/dev/disk/by-id/ata-WDC_WD30EZRX-00D8PB0_WD-WMC4N1586654"]
+  disks: ["/dev/disk/by-id/nvme-INTEL_SSDPEKNW010T8_BTNH93860F8J1P0B"]
+---
+apiVersion: "openebs.io/v1beta2"
+kind: DiskPool
+metadata:
+  name: dogbert-disk1
+  namespace: openebs-system
+spec:
+  node: dogbert
+  disks: ["/dev/disk/by-id/ata-WDC_WD30EZRX-00D8PB0_WD-WMC4N1586654"]

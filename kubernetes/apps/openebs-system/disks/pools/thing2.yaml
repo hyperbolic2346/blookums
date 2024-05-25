@@ -2,8 +2,44 @@
 apiVersion: "openebs.io/v1beta2"
 kind: DiskPool
 metadata:
-  name: thing2
+  name: thing2-disk0
   namespace: openebs-system
 spec:
   node: thing2
-  disks: ["/dev/disk/by-id/ata-CT1000MX500SSD1_2043E4BD4A65", "/dev/disk/by-id/ata-ST3000DM001-1CH166_Z1F2YREM", "/dev/disk/by-id/ata-ST3000DM001-1CH166_Z1F41SSP", "/dev/disk/by-id/ata-ST3000DM001-1CH166_Z1F50T7F", "/dev/disk/by-id/ata-PNY_2TB_SATA_SSD_PNF40232357121201671"]
+  disks: ["/dev/disk/by-id/ata-CT1000MX500SSD1_2043E4BD4A65"]
+---
+apiVersion: "openebs.io/v1beta2"
+kind: DiskPool
+metadata:
+  name: thing2-disk1
+  namespace: openebs-system
+spec:
+  node: thing2
+  disks: ["/dev/disk/by-id/ata-ST3000DM001-1CH166_Z1F2YREM"]
+---
+apiVersion: "openebs.io/v1beta2"
+kind: DiskPool
+metadata:
+  name: thing2-disk2
+  namespace: openebs-system
+spec:
+  node: thing2
+  disks: ["/dev/disk/by-id/ata-ST3000DM001-1CH166_Z1F41SSP"]
+---
+apiVersion: "openebs.io/v1beta2"
+kind: DiskPool
+metadata:
+  name: thing2-disk3
+  namespace: openebs-system
+spec:
+  node: thing2
+  disks: ["/dev/disk/by-id/ata-ST3000DM001-1CH166_Z1F50T7F"]
+---
+apiVersion: "openebs.io/v1beta2"
+kind: DiskPool
+metadata:
+  name: thing2-disk4
+  namespace: openebs-system
+spec:
+  node: thing2
+  disks: ["/dev/disk/by-id/ata-PNY_2TB_SATA_SSD_PNF40232357121201671"]
