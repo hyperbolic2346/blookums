@@ -1,0 +1,9 @@
+---
+apiVersion: "openebs.io/v1beta1"
+kind: DiskPool
+metadata:
+  name: phil
+  namespace: openebs-system
+spec:
+  node: phil
+  disks: ["/dev/disk/by-id/ata-Samsung_SSD_870_EVO_2TB_S753NS0W927885N", "/dev/disk/by-id/ata-Hitachi_HUA723020ALA640_MK0271YGKKWN0G", "/dev/disk/by-id/ata-CT1000MX500SSD1_2132E5BF1E79", "/dev/disk/by-id/ata-ST3000DM001-1ER166_Z502337B", "/dev/disk/by-id/ata-PNY_CS900_500GB_SSD_PNY2119210513010C4C8", "/dev/disk/by-id/ata-TOSHIBA_DT01ACA300_X4FNK8BGS", "/dev/disk/by-id/ata-SanDisk_SDSSDH3_512G_21120U804005"]

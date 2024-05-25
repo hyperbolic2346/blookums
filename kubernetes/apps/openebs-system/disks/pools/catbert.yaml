@@ -1,0 +1,9 @@
+---
+apiVersion: "openebs.io/v1beta1"
+kind: DiskPool
+metadata:
+  name: catbert
+  namespace: openebs-system
+spec:
+  node: catbert
+  disks: ["/dev/disk/by-id/ata-WDC_WD5003ABYX-18WERA0_WD-WMAYP0P2XV18", "/dev/disk/by-id/ata-SanDisk_SDSSDH3_1T02_21121G800164", "/dev/disk/by-id/ata-Samsung_SSD_860_EVO_500GB_S598NE0M881157F"]

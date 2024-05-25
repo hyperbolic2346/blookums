@@ -1,0 +1,9 @@
+---
+apiVersion: "openebs.io/v1beta1"
+kind: DiskPool
+metadata:
+  name: alice
+  namespace: openebs-system
+spec:
+  node: alice
+  disks: ["/dev/sda", "/dev/sdc", "/dev/sdd", "/dev/sde"]

@@ -1,0 +1,9 @@
+---
+apiVersion: "openebs.io/v1beta1"
+kind: DiskPool
+metadata:
+  name: thing2
+  namespace: openebs-system
+spec:
+  node: thing2
+  disks: ["/dev/disk/by-id/ata-CT1000MX500SSD1_2043E4BD4A65", "/dev/disk/by-id/ata-ST3000DM001-1CH166_Z1F2YREM", "/dev/disk/by-id/ata-ST3000DM001-1CH166_Z1F41SSP", "/dev/disk/by-id/ata-ST3000DM001-1CH166_Z1F50T7F", "/dev/disk/by-id/ata-PNY_2TB_SATA_SSD_PNF40232357121201671"]
