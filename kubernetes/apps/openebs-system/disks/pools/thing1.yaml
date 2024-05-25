@@ -1,5 +1,5 @@
 ---
-apiVersion: "openebs.io/v1beta1"
+apiVersion: "openebs.io/v1beta2"
 kind: DiskPool
 metadata:
   name: thing1
