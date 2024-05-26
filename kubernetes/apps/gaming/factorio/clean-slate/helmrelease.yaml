@@ -57,7 +57,8 @@ spec:
         - AutoDeconstruct
         - Waterfill_v17
         - Squeak%20Through
-  
+        - flib
+
     # Sets the data persistence volume configuration
     persistence:
       enabled: true
