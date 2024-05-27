@@ -18,6 +18,12 @@ spec:
   install:
     remediation:
       retries: 3
+  defaultPodOptions:
+    tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
   upgrade:
     cleanupOnFail: true
     remediation:
