@@ -15,6 +15,12 @@ spec:
         name: bjw-s
         namespace: flux-system
   maxHistory: 2
+  defaultPodOptions:
+    tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
   install:
     remediation:
       retries: 3
