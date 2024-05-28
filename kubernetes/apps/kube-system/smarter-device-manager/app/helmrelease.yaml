@@ -26,6 +26,7 @@ spec:
     keepHistory: false
   values:
     defaultPodOptions:
+      priorityClassName: system-node-critical
       tolerations:
         - key: "node-role.kubernetes.io/control-plane"
           operator: "Exists"
@@ -52,8 +53,6 @@ spec:
               capabilities:
                 drop:
                   - ALL
-    defaultPodOptions:
-      priorityClassName: system-node-critical
     persistence:
       config:
         enabled: true
