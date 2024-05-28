@@ -53,7 +53,7 @@ spec:
               privileged: true
         pod:
           nodeSelector:
-            kubernetes.io/hostname: "phil"
+            kubernetes.io/hostname: "nuc1"
     service:
       app:
         controller: zwave-js-ui
