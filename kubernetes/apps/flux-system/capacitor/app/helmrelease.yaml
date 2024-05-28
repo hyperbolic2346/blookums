@@ -33,6 +33,9 @@ spec:
             image:
               repository: ghcr.io/gimlet-io/capacitor
               tag: v0.4.2
+    serviceAccount:
+      create: true
+      name: capacitor
     service:
       capactitor:
         controller: capacitor
