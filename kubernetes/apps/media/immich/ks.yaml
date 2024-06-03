@@ -22,10 +22,10 @@ metadata:
   namespace: flux-system
 spec:
   dependsOn:
-    - name: cluster-apps-pvc-media
-    - name: cluster-apps-external-secrets-stores
+    - name: pvc-media
+    - name: external-secrets-stores
     - name: immich-redis
-    - name: cluster-apps-cloudnative-pg-cluster
+    - name: cloudnative-pg-cluster
   path: ./kubernetes/apps/media/immich/app
   prune: true
   sourceRef:

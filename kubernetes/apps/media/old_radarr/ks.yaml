@@ -6,9 +6,9 @@ metadata:
   namespace: flux-system
 spec:
   dependsOn:
-    - name: cluster-apps-pvc-media
-    - name: cluster-apps-cloudnative-pg-cluster
-    - name: cluster-apps-external-secrets-stores
+    - name: pvc-media
+    - name: cloudnative-pg-cluster
+    - name: external-secrets-stores
   path: ./kubernetes/apps/media/old_radarr/app
   prune: true
   sourceRef:

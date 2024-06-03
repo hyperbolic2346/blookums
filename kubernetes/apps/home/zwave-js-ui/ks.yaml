@@ -6,7 +6,7 @@ metadata:
   namespace: flux-system
 spec:
   dependsOn:
-    - name: cluster-apps-external-secrets-stores
+    - name: external-secrets-stores
   path: ./kubernetes/apps/home/zwave-js-ui/app
   prune: true
   sourceRef:
