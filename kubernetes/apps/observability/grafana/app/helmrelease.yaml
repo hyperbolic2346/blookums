@@ -176,12 +176,6 @@ spec:
           revision: 1
           datasource:
             - { name: DS_PROMETHEUS, value: Prometheus }
-        unpackerr:
-          # renovate: depName="Unpackerr"
-          gnetId: 18817
-          revision: 1
-          datasource:
-            - { name: DS_PROMETHEUS, value: Prometheus }
         zfs:
           # renovate: depName="ZFS"
           gnetId: 7845
@@ -198,28 +192,6 @@ spec:
           datasource: Prometheus
         miniflux:
           url: https://raw.githubusercontent.com/miniflux/v2/main/contrib/grafana/dashboard.json
-          datasource: Prometheus
-      emqx:
-        emqx-authentication:
-          url: https://raw.githubusercontent.com/emqx/emqx-exporter/main/grafana-dashboard/template/emqx-5/authentication.json
-          datasource: Prometheus
-        emqx-authorization:
-          url: https://raw.githubusercontent.com/emqx/emqx-exporter/main/grafana-dashboard/template/emqx-5/authorization.json
-          datasource: Prometheus
-        emqx-client-events:
-          url: https://raw.githubusercontent.com/emqx/emqx-exporter/main/grafana-dashboard/template/emqx-5/client-events.json
-          datasource: Prometheus
-        emqx-messages:
-          url: https://raw.githubusercontent.com/emqx/emqx-exporter/main/grafana-dashboard/template/emqx-5/messages.json
-          datasource: Prometheus
-        emqx-overview:
-          url: https://raw.githubusercontent.com/emqx/emqx-exporter/main/grafana-dashboard/template/emqx-5/overview.json
-          datasource: Prometheus
-        emqx-rule-engine-count:
-          url: https://raw.githubusercontent.com/emqx/emqx-exporter/main/grafana-dashboard/template/emqx-5/rule-engine-count.json
-          datasource: Prometheus
-        emqx-rule-engine-rate:
-          url: https://raw.githubusercontent.com/emqx/emqx-exporter/main/grafana-dashboard/template/emqx-5/rule-engine-rate.json
           datasource: Prometheus
       flux:
         flux-cluster:
@@ -350,8 +322,6 @@ spec:
       enabled: true
     ingress:
       enabled: true
-      annotations:
-        external-dns.alpha.kubernetes.io/target: internal.devbu.io
       ingressClassName: internal
       hosts: ["grafana.${SECRET_DOMAIN}"]
     persistence:
