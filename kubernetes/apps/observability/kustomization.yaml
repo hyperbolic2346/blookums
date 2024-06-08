@@ -7,4 +7,5 @@ resources:
   - ./loki/ks.yaml
   - ./namespace.yaml
   - ./prometheus-operator-crds/ks.yaml
+  - ./thanos/ks.yaml
   - ./vector/ks.yaml
