@@ -51,7 +51,8 @@ spec:
         s3:
           s3ForcePathStyle: true
           insecure: true
-          bucketnames: loki
+          bucketNames:
+            chunks: loki
           endpoint: minio.storage.svc:9000
       schemaConfig:
         configs:
