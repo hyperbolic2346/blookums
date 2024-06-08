@@ -12,6 +12,7 @@ spec:
       app.kubernetes.io/name: *app
   dependsOn:
     - name: openebs
+    - name: minio
   path: ./kubernetes/apps/observability/thanos/app
   prune: true
   sourceRef:
