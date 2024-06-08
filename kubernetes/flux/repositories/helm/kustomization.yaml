@@ -31,3 +31,4 @@ resources:
   - ./prometheus-community-charts.yaml
   - ./spegel.yaml
   - ./stakater.yaml
+  - ./stevehipwell.yaml
