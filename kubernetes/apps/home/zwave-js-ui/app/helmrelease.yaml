@@ -92,4 +92,4 @@ spec:
         memory: 100M
       limits:
         smarter-devices/ttyACM0: 1
-        memory: 256M
+        memory: 512M
