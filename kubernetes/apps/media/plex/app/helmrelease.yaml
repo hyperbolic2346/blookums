@@ -25,6 +25,11 @@ spec:
   uninstall:
     keepHistory: false
   values:
+    defaultPodOptions:
+      nodeSelector:
+        matchLabels:
+          speed: fast
+
     controllers:
       main:
         containers:
