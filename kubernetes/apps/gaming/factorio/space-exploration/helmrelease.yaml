@@ -1,0 +1,174 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: space-exploration
+  namespace: gaming
+spec:
+  releaseName: space-exploration
+  interval: 60m
+  chart:
+    spec:
+      chart: factorio-server-charts
+      version: 1.2.5
+      sourceRef:
+        kind: HelmRepository
+        name: factorio-charts
+        namespace: flux-system
+  values:
+    # Number of replicas to create (only 1 is supported)
+    replicaCount: 1
+
+    image:
+      repository: factoriotools/factorio
+      # Container image pull policy
+      pullPolicy: IfNotPresent
+      # Overrides the image tag whose default is the chart appVersion.
+      tag: 1.1.107
+    envFrom:
+      - secretRef:
+          name: space-exploration-factorio
+
+    service:
+      type: LoadBalancer
+      port: 34197
+      externalTrafficPolicy: Local
+    # Compute Resources required by the operator container
+    resources: # +doc-gen:break
+      requests:
+        memory: 1Gi
+        cpu: 1000m
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+    # Node labels for pod assignment
+    # Example:
+    # nodeSelector:
+    #  beta.kubernetes.io/os: linux
+    #  beta.kubernetes.io/arch: amd64
+    nodeSelector: {} # +doc-gen:break
+    # Tolerations for pod assignment
+    tolerations: []
+
+    mods:
+      enabled: true
+      portal:
+        - LogisticTrainNetwork
+        - AutoDeconstruct
+        - Waterfill_v17
+        - Squeak%20Through
+        - flib
+        - GhostScanner
+        - bullet-trails
+        - grappling-gun
+        - combat-mechanics-overhaul
+        - Space-Exploration
+
+    # Sets the data persistence volume configuration
+    persistence:
+      enabled: true
+      dataDir:
+        Size: 10Gi
+      storageClassName: openebs-three-replica
+    factorioServer:
+      # specify a save name
+      save_name: space-exploration
+      # Generate a New Save
+      generate_new_save: true
+      # Update mods on start
+      update_mods_on_start: true
+      # lets the game know if you want to load the latest save
+      load_latest_save: true
+      # Location of the configuration files that are generated
+      config_path: /srv
+    ## @param account.accountSecret Existing secret containing a valid factorio.com username and either a password or a token (or both)
+    ## @param account.username Factorio.com username, ignored if `account.accountSecret` is set
+    ## @param account.password Factorio.com password, ignored if `account.accountSecret` is set
+    ## @param account.token Factorio.com token, ignored if `account.accountSecret` is set
+    account:
+      # Existing secret containing a valid factorio.com username and either a password or a token
+      # Example:
+      #
+      # apiVersion: v1
+      # kind: Secret
+      # metadata:
+      #   name: account-secret
+      # data:
+      #   username: <username in base64>
+      #   password: <password in base64>
+      #
+      # accountSecret: account-secret
+      accountSecret: ''
+      # Your factorio.com login credentials. Required for games with visibility public
+      username: ${SECRET_FACTORIO_USER}
+      password: ''
+      # Authentication token. May be used instead of password above.
+      token: ${SECRET_FACTORIO_TOKEN}
+
+    ## @param serverPassword.passwordSecret Existing Secret containing a `game_password` data entry
+    ## @param serverPassword.game_password Password required to log into the factorio server. Ignored if `serverPassword.passwordSecret` is set
+    serverPassword:
+      # password required to log into the factorio server
+      game_password: ${SECRET_FACTORIO_PW}
+      # Existing Secret containing a `game_password` data entry
+      passwordSecret: ''
+    serverSettings:
+      # Your Instance Name
+      name: Space Exploration
+      # Your Instance Description
+      description: Factorio running on Kubernetes
+      tags:
+        - game
+        - tags
+      # Maximum number of players allowed, admins can join even a full server. 0 means unlimited.
+      max_players: 0
+      # Game visibility
+      visibility:
+        # Game will be published on the official Factorio matching server
+        public: false
+        # Game will be broadcast on LAN
+        lan: true
+      # When set to true, the server will only allow clients that have a valid Factorio.com account
+      require_user_verification: false
+      # optional, default value is 0. 0 means unlimited.
+      max_upload_in_kilobytes_per_second: 0
+      # optional, default value is 5. 0 means unlimited.
+      max_upload_slots: 5
+      # optional one tick is 16ms in default speed, default value is 0. 0 means no minimum.
+      minimum_latency_in_ticks: 0
+      # Players that played on this map already can join even when the max player limit was reached.
+      ignore_player_limit_for_returning_players: false
+      # possible values are, true, false and admins-only
+      allow_commands: admins-only
+      # Autosave interval in minutes
+      autosave_interval: 30
+      # server autosave slots, it is cycled through when the server autosaves.
+      autosave_slots: 5
+      # How many minutes until someone is kicked when doing nothing, 0 for never.
+      afk_autokick_interval: 0
+      # Whether should the server be paused when no players are present.
+      auto_pause: true
+      # specifies if anyone can pause or only admins
+      only_admins_can_pause_the_game: true
+      # Whether autosaves should be saved only on server or also on all connected clients. Default is true.
+      autosave_only_on_server: true
+      #  Highly experimental feature, enable only at your own
+      #  risk of losing your saves. On UNIX systems, server will fork itself to create an
+      #  autosave. Autosaving on connected Windows clients will be disabled regardless of
+      #  autosave_only_on_server option.
+      non_blocking_saving: false
+      #  Long network messages are split into segments that are sent
+      #  over multiple ticks. Their size depends on the number of peers currently connected.
+      #  Increasing the segment size will increase upload bandwidth requirement for the server
+      #  and download bandwidth requirement for clients. This setting only affects server
+      #  outbound messages. Changing these settings can have a negative impact on connection
+      #  stability for some clients.
+      minimum_segment_size: 25
+      minimum_segment_size_peer_count: 20
+      maximum_segment_size: 100
+      maximum_segment_size_peer_count: 10
+
+    # Password and port for the rcon service
+    rcon:
+      password: ${SECRET_GAME_SERVER_CONSOLE_LONG_PW}
+      port: 27015
