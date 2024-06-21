@@ -53,7 +53,6 @@ spec:
     mods:
       enabled: true
       portal:
-        - LogisticTrainNetwork
         - AutoDeconstruct
         - Waterfill_v17
         - Squeak%20Through
