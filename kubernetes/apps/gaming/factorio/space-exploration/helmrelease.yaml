@@ -5,7 +5,7 @@ metadata:
   name: space-exploration
   namespace: gaming
 spec:
-  releaseName: space-exploration
+  releaseName: spaceex
   interval: 60m
   chart:
     spec:
