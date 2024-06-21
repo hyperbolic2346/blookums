@@ -53,11 +53,7 @@ spec:
     mods:
       enabled: true
       portal:
-        - AutoDeconstruct
-        - Waterfill_v17
-        - Squeak%20Through
         - flib
-        - GhostScanner
         - bullet-trails
         - grappling-gun
         - combat-mechanics-overhaul
