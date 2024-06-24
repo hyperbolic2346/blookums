@@ -21,7 +21,7 @@ spec:
     remediation:
       retries: 3
   values:
-    providerRegex: ^(nuc0|nuc1|nuc2|thing1|thing2|dogbert|catbert|alice|wally|phil)$
+    providerRegex: ^(nuc0|nuc1|nuc2|thing1|thing2|dogbert|catbert|asok|alice|wally|phil)$
     bypassDnsResolution: true
     metrics:
       enable: true
