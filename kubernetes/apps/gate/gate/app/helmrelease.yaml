@@ -56,7 +56,7 @@ spec:
       persistence:
         enabled: true
         accessMode: ReadWriteOnce
-        storageClass: openebs-hostpath
+        storageClass: ${CLUSTER_STORAGE_OPENEBS_HOSTPATH}
         size: 8Gi
       auth:
         password: ${SECRET_GATE_RABBITMQ_PW}

@@ -9,4 +9,4 @@ spec:
   resources:
     requests:
       storage: 20Gi
-  storageClassName: ${CLUSTER_STORAGE_NFS}
+  storageClassName: ${CLUSTER_STORAGE_OPENEBS_HOSTPATH}

@@ -58,7 +58,7 @@ spec:
         - --retention.resolution-1h=60d
       persistence: &persistence
         enabled: true
-        storageClass: openebs-hostpath
+        storageClass: ${CLUSTER_STORAGE_OPENEBS_HOSTPATH}
         size: 10Gi
     query:
       replicas: 1
