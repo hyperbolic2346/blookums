@@ -1,0 +1,37 @@
+---
+apiVersion: "openebs.io/v1beta2"
+kind: DiskPool
+metadata:
+  name: asok-disk0
+  namespace: openebs-system
+spec:
+  node: asok
+  disks: ["/dev/disk/by-id/scsi-35000c500940dd1cf"]
+---
+apiVersion: "openebs.io/v1beta2"
+kind: DiskPool
+metadata:
+  name: asok-disk1
+  namespace: openebs-system
+spec:
+  node: asok
+  disks: ["/dev/disk/by-id/scsi-35000c500942abdc3"]
+---
+apiVersion: "openebs.io/v1beta2"
+kind: DiskPool
+metadata:
+  name: asok-disk2
+  namespace: openebs-system
+spec:
+  node: asok
+  disks: ["/dev/disk/by-id/scsi-35000c50094990913"]
+---
+apiVersion: "openebs.io/v1beta2"
+kind: DiskPool
+metadata:
+  name: asok-disk3
+  namespace: openebs-system
+spec:
+  node: asok
+  disks: ["/dev/disk/by-id/scsi-35000c5009499b667"]
+
