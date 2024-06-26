@@ -15,7 +15,7 @@ spec:
     value: ${TIMEZONE}
   storage:
     size: 50Gi
-    storageClass: ${CLUSTER_STORAGE_NFS}
+    storageClass: ${CLUSTER_STORAGE_OPENEBS_HOSTPATH}
   superuserSecret:
     name: cloudnative-pg-secret
   postgresql:
