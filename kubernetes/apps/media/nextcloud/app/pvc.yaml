@@ -12,4 +12,4 @@ spec:
   resources:
     requests:
       storage: 10Ti
-  storageClassName: ${CLUSTER_STORAGE_OPENEBS_REPLICA}
+  storageClassName: ${CLUSTER_STORAGE_NFS}
