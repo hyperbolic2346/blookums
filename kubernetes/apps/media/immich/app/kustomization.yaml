@@ -5,5 +5,4 @@ resources:
   - ./configmap.yaml
   - ./externalsecret.yaml
   - ./machine-learning
-  - ./microservices
   - ./server
