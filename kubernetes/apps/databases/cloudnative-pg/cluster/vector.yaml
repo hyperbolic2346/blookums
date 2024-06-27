@@ -18,12 +18,22 @@ spec:
   superuserSecret:
     name: cloudnative-pg-secret
   postgresql:
-    shared_preload_libraries: ["vectors.so"]
+    shared_preload_libraries:
+     - "vectors.so"
+    search_path: '"$user", public, vectors"'
     parameters:
       max_connections: "600"
       shared_buffers: 512MB
   monitoring:
     enablePodMonitor: true
+    # Ref: https://github.com/cloudnative-pg/cloudnative-pg/issues/2501
+    podMonitorMetricRelabelings:
+      - {
+        sourceLabels: ["cluster"],
+        targetLabel: cnpg_cluster,
+        action: replace,
+      }
+      - { regex: cluster, action: labeldrop }
   resources:
     requests:
       cpu: 500m
