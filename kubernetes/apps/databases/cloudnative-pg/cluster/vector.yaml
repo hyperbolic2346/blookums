@@ -20,7 +20,6 @@ spec:
   postgresql:
     shared_preload_libraries:
      - "vectors.so"
-    search_path: '"$user", public, vectors"'
     parameters:
       max_connections: "600"
       shared_buffers: 512MB
