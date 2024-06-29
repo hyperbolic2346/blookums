@@ -79,7 +79,6 @@ spec:
         storageClass: nfs-fileserv
         size: 100Gi
         retain: true
-        readOnly: false
       gameini:
         enabled: true
         type: configMap
@@ -90,7 +89,6 @@ spec:
               - subPath: Game.ini
                 path: /home/steam/steamcmd/sandstorm/Insurgency/Saved/Config/LinuxServer/Game.ini
         defaultMode: 0777
-        readOnly: true
       engineini:
         enabled: true
         type: configMap
@@ -101,7 +99,6 @@ spec:
               - subPath: Engine.ini
                 path: /home/steam/steamcmd/sandstorm/Insurgency/Saved/Config/LinuxServer/Engine.ini
         defaultMode: 0777
-        readOnly: true
       gameusersettingsini:
         enabled: true
         type: secret
@@ -112,7 +109,6 @@ spec:
               - subPath: GameUserSettings.ini
                 path: /home/steam/steamcmd/sandstorm/Insurgency/Saved/Config/LinuxServer/GameUserSettings.ini
         defaultMode: 0777
-        readOnly: true
       adminstxt:
         enabled: true
         type: secret
@@ -123,7 +119,6 @@ spec:
               - subPath: Admins.txt
                 path: /home/steam/steamcmd/sandstorm/Insurgency/Config/Server/Admins.txt
         defaultMode: 0777
-        readOnly: true
       mapcycletxt:
         enabled: true
         type: configMap
@@ -134,7 +129,6 @@ spec:
               - subPath: MapCycle.txt
                 path: /home/steam/steamcmd/sandstorm/Insurgency/Config/Server/MapCycle.txt
         defaultMode: 0777
-        readOnly: true
       modstxt:
         enabled: true
         type: configMap
@@ -145,4 +139,3 @@ spec:
               - subPath: Mods.txt
                 path: /home/steam/steamcmd/sandstorm/Insurgency/Config/Server/Mods.txt
         defaultMode: 0777
-        readOnly: true
