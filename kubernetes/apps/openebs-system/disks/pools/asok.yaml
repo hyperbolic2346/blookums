@@ -20,15 +20,6 @@ spec:
 apiVersion: "openebs.io/v1beta2"
 kind: DiskPool
 metadata:
-  name: asok-disk2
-  namespace: openebs-system
-spec:
-  node: asok
-  disks: ["aio:///dev/disk/by-id/wwn-0x5000c50094990913?blk_size=4096"]
----
-apiVersion: "openebs.io/v1beta2"
-kind: DiskPool
-metadata:
   name: asok-disk3
   namespace: openebs-system
 spec:
