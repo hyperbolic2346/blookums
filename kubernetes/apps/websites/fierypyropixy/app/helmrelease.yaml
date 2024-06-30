@@ -1,0 +1,96 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: fierypyropixy
+  namespace: websites
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: 3.1.0
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    controllers:
+      main:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        initContainers:
+          init-db:
+            image:
+              repository: ghcr.io/onedr0p/postgres-init
+              tag: 16.3
+            envFrom: &envFrom
+              - secretRef:
+                  name: fierypyropixy-secret
+        containers:
+          main:
+            image:
+              repository: 10.0.1.88:30095/fierypyropixy
+              tag: 1.0
+            envFrom: *envFrom
+            probes:
+              liveness: &probes
+                enabled: false
+              readiness: *probes
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 500m
+                memory: 512M
+              limits:
+                memory: 2048M
+        pod:
+          securityContext:
+            runAsUser: 568
+            runAsGroup: 568
+            fsGroup: 568
+            fsGroupChangePolicy: OnRootMismatch
+            supplementalGroups:
+              - 1001
+    ingress:
+      main:
+        enabled: true
+        className: internal
+        annotations:
+          cert-manager.io/cluster-issuer: letsencrypt-production
+        hosts:
+          - host: &host fierypyropixy.${SECRET_DOMAIN}
+            paths:
+              - path: /
+                service:
+                  name: main
+                  port: http
+        tls:
+          - hosts:
+              - *host
+            secretName: fierypyropixy-cert
+    persistence:
+      media:
+        existingClaim: fierypyropixy-images
+        globalMounts:
+          - path: /var/www/html/images
+      thumbnails:
+        existingClaim: fierypyropixy-thumbs
+        globalMounts:
+          - path: /var/www/html/thumbs
+    service:
+      main:
+        ports:
+          http:
+            port: *port

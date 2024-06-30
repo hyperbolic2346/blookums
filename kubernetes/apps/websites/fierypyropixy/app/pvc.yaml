@@ -1,0 +1,31 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fierypyropixy-images
+  namespace: websites
+  labels:
+    app.kubernetes.io/name: fierypyropixy
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: ${CLUSTER_STORAGE_NFS}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fierypyropixy-thumbs
+  namespace: websites
+  labels:
+    app.kubernetes.io/name: fierypyropixy
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: ${CLUSTER_STORAGE_NFS}
+
