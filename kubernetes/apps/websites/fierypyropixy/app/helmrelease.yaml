@@ -93,4 +93,4 @@ spec:
       main:
         ports:
           http:
-            port: *port
+            port: 80
