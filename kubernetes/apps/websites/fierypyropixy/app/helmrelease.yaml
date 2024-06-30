@@ -1,4 +1,5 @@
 ---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -75,7 +76,7 @@ spec:
               - path: /
                 service:
                   name: main
-                  port: http
+                  port: 80
         tls:
           - hosts:
               - *host
@@ -90,7 +91,8 @@ spec:
         globalMounts:
           - path: /var/www/html/thumbs
     service:
-      main:
+      pixy:
+        controller: main
         ports:
           http:
             port: 80
