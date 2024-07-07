@@ -29,6 +29,7 @@ resources:
   - ./piraeus-charts.yaml
   - ./postfinance.yaml
   - ./prometheus-community-charts.yaml
+  - ./rook-ceph.yaml
   - ./spegel.yaml
   - ./stakater.yaml
   - ./stevehipwell.yaml
