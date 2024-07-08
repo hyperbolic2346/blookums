@@ -161,7 +161,7 @@ spec:
         storageClass:
           enabled: true
           isDefault: false
-          name: ${CLUSTER_STORAGE_FILESYSTEM_SSD_2_REPLICA}
+          name: ${CLUSTER_STORAGE_FILESYSTEM_SSD_3_REPLICA}
           reclaimPolicy: Delete
           allowVolumeExpansion: true
           mountOptions: []
