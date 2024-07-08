@@ -27,7 +27,6 @@ spec:
         host:
           name: rook.${SECRET_DOMAIN}
           path: /
-    operatorNamespace: storage
     configOverride: |
       [global]
       bdev_enable_discard = true
