@@ -102,7 +102,7 @@ spec:
           deviceClass: ssd
         storageClass:
           enabled: true
-          name: $CLUSTER_STORAGE_BLOCK_SSD_2_REPLICA}
+          name: $CLUSTER_STORAGE_BLOCK_SSD_3_REPLICA}
           isDefault: true
           reclaimPolicy: Delete
           allowVolumeExpansion: true
@@ -124,7 +124,7 @@ spec:
           deviceClass: hdd
         storageClass:
           enabled: true
-          name: $CLUSTER_STORAGE_BLOCK_HDD_2_REPLICA}
+          name: $CLUSTER_STORAGE_BLOCK_HDD_3_REPLICA}
           isDefault: true
           reclaimPolicy: Delete
           allowVolumeExpansion: true
@@ -200,7 +200,7 @@ spec:
               interval: 60s
         storageClass:
           enabled: true
-          name: ${CLUSTER_STORAGE_BUCKET_SSD_2_REPLICA}
+          name: ${CLUSTER_STORAGE_BUCKET_SSD_3_REPLICA}
           reclaimPolicy: Delete
           parameters:
             region: us-east-1
