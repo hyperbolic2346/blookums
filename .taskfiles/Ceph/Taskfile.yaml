@@ -1,0 +1,39 @@
+---
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+tasks:
+
+  disk-wipe:
+    desc: Wipe a disk of ceph data to be used in a new cluster
+    vars:
+      drive: '{{ or .drive (fail "Drive is required(/dev/sdb)") }}'
+      node: '{{ or .node (fail "Node is required(10.0.14.10)") }}'
+    cmds:
+      - |
+        kubectl run disk-wipe-{{.drive}}-{{.node}} --image=null --overrides='
+          {
+            "apiVersion": "v1",
+            "spec": {
+              "containers": [
+                {
+                  "name": "disk-wipe",
+                  "image": "busybox",
+                  "command": [
+                    "/bin/sh", "-c", "dd if=/dev/zero bs=1M count=100 oflag=direct of=/dev/{{.drive}}"
+                  ],
+                  "securityContext": {
+                    "privileged": true
+                  }
+                }
+              ],
+              "restartPolicy": "Never",
+              "nodeName": "{{.node}}"
+            }
+          }'
+
+        kubectl get po -owide
+        kubectl wait --timeout=900s --for=jsonpath='{.status.phase}=Succeeded' pod disk-wipe-{{.drive}}-{{.node}}
+        kubectl get po -owide
+        kubectl logs disk-wipe-{{.drive}}-{{.node}}
+        kubectl delete po disk-wipe-{{.drive}}-{{.node}}

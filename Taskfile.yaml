@@ -26,6 +26,7 @@ env:
 
 includes:
   ansible: .taskfiles/Ansible/Taskfile.yaml
+  ceph: .taskfiles/Ceph/Taskfile.yaml
   kubernetes:
     aliases: ["k8s"]
     taskfile: .taskfiles/Kubernetes/Taskfile.yaml
