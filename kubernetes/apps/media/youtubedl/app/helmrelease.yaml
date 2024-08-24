@@ -66,6 +66,6 @@ spec:
           - path: /app/appdata
       media:
         enabled: true
-        existingClaim: videos
+        existingClaim: youtubedl-nfs
         globalMounts:
           - path: /app/video

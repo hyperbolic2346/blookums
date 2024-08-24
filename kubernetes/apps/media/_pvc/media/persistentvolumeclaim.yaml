@@ -40,3 +40,17 @@ spec:
   resources:
     requests:
       storage: 100Ti
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: youtubedl-nfs
+  namespace: media
+spec:
+  storageClassName: ''
+  volumeName: youtubedl-nfs
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Ti
