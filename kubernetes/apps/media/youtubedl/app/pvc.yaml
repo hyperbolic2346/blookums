@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: youtubedl-config
+  namespace: media
+  labels:
+    app.kubernetes.io/name: youtubedl
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: ${CLUSTER_STORAGE_NFS}
