@@ -24,7 +24,7 @@ spec:
       # Container image pull policy
       pullPolicy: IfNotPresent
       # Overrides the image tag whose default is the chart appVersion.
-      tag: 1.1.107
+      tag: 1.1.110
     envFrom:
       - secretRef:
           name: space-exploration-factorio
