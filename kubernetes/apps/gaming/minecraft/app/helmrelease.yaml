@@ -150,7 +150,7 @@ spec:
       externalIPs:
 
       modUrls:
-       - https://dynmap.us/builds/dynmap/Dynmap-3.7-beta-4-spigot.jar
+       - https://dynmap.us/builds/dynmap/Dynmap-3.7-beta-7-spigot.jar
 
       rcon:
         # If you enable this, make SURE to change your password below.
