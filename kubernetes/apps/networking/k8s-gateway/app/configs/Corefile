@@ -15,6 +15,7 @@
         10.0.14.15 alice.k8s.${SECRET_DOMAIN}
         10.0.14.16 wally.k8s.${SECRET_DOMAIN}
         10.0.14.17 phil.k8s.${SECRET_DOMAIN}
+        10.0.14.205 omni.${SECRET_DOMAIN}
         fallthrough ${SECRET_DOMAIN}
     }
     k8s_gateway ${SECRET_DOMAIN} {
