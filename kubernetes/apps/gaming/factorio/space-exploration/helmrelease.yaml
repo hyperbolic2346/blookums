@@ -24,7 +24,7 @@ spec:
       # Container image pull policy
       pullPolicy: IfNotPresent
       # Overrides the image tag whose default is the chart appVersion.
-      tag: 2.0.14
+      tag: stable-2.0.15
     envFrom:
       - secretRef:
           name: space-exploration-factorio
@@ -53,33 +53,13 @@ spec:
     mods:
       enabled: true
       portal:
-        - flib
-        - bullet-trails
-        - grappling-gun
-        - combat-mechanics-overhaul
-        - aai-containers
-        - aai-industry
-        - alien-biomes
-        - jetpack
-        - robot_attrition
-        - shield-projector
-        - space-exploration-graphics
-        - space-exploration-graphics-2
-        - space-exploration-graphics-3
-        - space-exploration-graphics-4
-        - space-exploration-graphics-5
-        - space-exploration-menu-simulations
-        - space-exploration-postprocess
-        - informatron
-        - aai-signal-transmission
-        - space-exploration
 
     # Sets the data persistence volume configuration
     persistence:
       enabled: true
       dataDir:
         Size: 10Gi
-      storageClassName: openebs-three-replica
+      storageClassName: nfs-fileserv
     factorioServer:
       # specify a save name
       save_name: space-exploration
