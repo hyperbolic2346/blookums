@@ -91,7 +91,9 @@ spec:
           limits:
             memory: 1Gi
     cephBlockPoolsVolumeSnapshotClass:
-      enabled: false
+      enabled: true
+      name: csi-ceph-block
+      deletionPolicy: Delete
     cephBlockPools:
       - name: ceph-ssd-3-replica
         spec:
@@ -172,6 +174,10 @@ spec:
             csi.storage.k8s.io/node-stage-secret-name: rook-csi-cephfs-node
             csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
             csi.storage.k8s.io/fstype: ext4
+    cephFilesystemVolumnSnapshotClass:
+      enabled: true
+      name: csi-ceph-fs
+      deletionPolicy: Delete
     cephObjectStores:
       - name: rook-ceph-objectstore
         spec:
