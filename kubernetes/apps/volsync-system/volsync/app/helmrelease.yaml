@@ -29,3 +29,21 @@ spec:
     manageCRDs: true
     metrics:
       disableAuth: true
+    image:
+      repository: &image ghcr.io/onedr0p/volsync
+      tag: &tag 0.11.0@sha256:af3bbfba8244b7a9ec5806899ecbfda4e0ddac6fcef618c4c3afcb7fe46fbca9
+    restic:
+      repository: *image
+      tag: *tag
+  postRenderers:
+    - kustomize:
+        patches:
+          - patch: |
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: volsync
+              spec:
+                template:
+                  spec:
+                    priorityClassName: system-cluster-critical
