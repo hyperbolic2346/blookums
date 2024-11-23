@@ -17,3 +17,7 @@ spec:
   interval: 30m
   retryInterval: 1m
   timeout: 5m
+  postBuild:
+    substitute:
+      APP: sabnzbd
+      VOLSYNC_CLAIM: sabnzbd-config
