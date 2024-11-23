@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: sabnzbd-config
+  name: ${VOLSYNC_CLAIM}
   namespace: media
   labels:
     app.kubernetes.io/name: sabnzbd
