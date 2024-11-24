@@ -30,4 +30,4 @@ spec:
     controller:
       replicas: 1
     externalSnapshotter:
-      enabled: false
+      enabled: true
