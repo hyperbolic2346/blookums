@@ -21,3 +21,4 @@ spec:
     substitute:
       APP: sabnzbd
       VOLSYNC_CLAIM: sabnzbd-config
+      VOLSYNC_SNAPSHOTCLASS: nfs-snapshot-class
