@@ -80,7 +80,6 @@ cameras:
         - path: rtsps://10.0.1.1:7441/OOpy17C6MJpV4NQs?enableSrtp
           roles:
             - record
-            - rtmp
   # --
   gate:
     ffmpeg:
@@ -91,7 +90,6 @@ cameras:
         - path: rtsp://10.0.1.1:7447/1wbphRIgh1ZRJjhG
           roles:
             - record
-            - rtmp
     zones:
       wilson:
         coordinates: 549,720,495,436,547,268,720,151,785,170,767,304,1280,520,1280,720
@@ -111,5 +109,4 @@ cameras:
             - detect
         - path: rtsp://10.0.1.1:7447/5yttyhAdUKP7k9E4
           roles:
-            - rtmp
             - record
