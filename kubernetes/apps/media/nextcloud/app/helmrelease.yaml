@@ -52,7 +52,7 @@ spec:
           main:
             image: &ncimg
               repository: nextcloud
-              tag: 30.0.2-apache
+              tag: 30.0.3-apache
             env: &env
               TZ: ${TIMEZONE}
               # https://github.com/nextcloud/docker/issues/763
