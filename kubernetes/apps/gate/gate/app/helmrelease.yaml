@@ -45,6 +45,10 @@ spec:
       persistence:
         enabled: true
         existingClaim: mysql
+      securityContext:
+        runAsUser: 568
+        runAsGroup: 568
+        fsGroup: 568
       configurationFiles:
         sanity.cnf: |-
           [mysqld]
