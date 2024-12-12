@@ -53,10 +53,6 @@ spec:
         pod:
           nodeSelector:
             kubernetes.io/hostname: "nuc1"
-          securityContext:
-            fsGroup: 568
-            fsGroupChangePolicy: OnRootMismatch
-
     service:
       app:
         controller: zwave-js-ui
