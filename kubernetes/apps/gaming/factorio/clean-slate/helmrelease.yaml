@@ -65,7 +65,7 @@ spec:
       enabled: true
       dataDir:
         Size: 10Gi
-      storageClassName: nfs-fileserv
+      storageClassName: ${CLUSTER_STORAGE_BLOCK_SSD_3_REPLICA}
     factorioServer:
       # specify a save name
       save_name: clean-slate
