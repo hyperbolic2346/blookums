@@ -39,7 +39,6 @@ spec:
       annotations:
         io.cilium/lb-ipam-ips: "${K8S_GATEWAY_LB_IP}"
       externalTrafficPolicy: Local
-    watchedResources: ["Ingress", "Service"]
     fallthrough:
       enabled: true
     extraZonePlugins:
