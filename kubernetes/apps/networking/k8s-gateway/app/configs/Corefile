@@ -1,4 +1,4 @@
-.:53 {
+.:1053 {
     log
     errors
     health {
@@ -10,11 +10,12 @@
         10.0.14.7 nuc0.k8s.${SECRET_DOMAIN}
         10.0.14.8 nuc1.k8s.${SECRET_DOMAIN}
         10.0.14.9 nuc2.k8s.${SECRET_DOMAIN}
+        10.0.14.11 thing2.k8s.${SECRET_DOMAIN}
         10.0.14.13 dogbert.k8s.${SECRET_DOMAIN}
         10.0.14.14 catbert.k8s.${SECRET_DOMAIN}
-        10.0.14.15 alice.k8s.${SECRET_DOMAIN}
         10.0.14.16 wally.k8s.${SECRET_DOMAIN}
         10.0.14.17 phil.k8s.${SECRET_DOMAIN}
+        10.0.14.18 asok.k8s.${SECRET_DOMAIN}
         10.0.14.205 omni.${SECRET_DOMAIN}
         fallthrough ${SECRET_DOMAIN}
     }
