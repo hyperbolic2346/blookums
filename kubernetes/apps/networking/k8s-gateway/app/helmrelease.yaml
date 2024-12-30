@@ -8,11 +8,11 @@ spec:
   interval: 30m
   chart:
     spec:
-      chart: app-template
-      version: 3.6.0
+      chart: k8s-gateway
+      version: 2.4.0
       sourceRef:
         kind: HelmRepository
-        name: bjw-s
+        name: k8s-gateway
         namespace: flux-system
   maxHistory: 2
   install:
@@ -26,89 +26,22 @@ spec:
   uninstall:
     keepHistory: false
   values:
-    defaultPodOptions:
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: DoNotSchedule
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/name: *app
-    controllers:
-      k8s-gateway:
-        replicas: 2
-        strategy: RollingUpdate
-        annotations:
-          reloader.strakater.com/auto: "true"
-        containers:
-          app:
-            image:
-              repository: quay.io/oriedge/k8s_gateway
-              tag: v0.4.0@sha256:7bdbd447c0244b8f89de9cd6f4826ed0ac66c9406fac3a4ac80081020c251c6b
-            args: ["-conf", "/etc/coredns/Corefile"]
-            probes:
-              readiness:
-                custom: true
-                spec:
-                  httpGet:
-                    path: /ready
-                    port: 8181
-              liveness:
-                custom: true
-                spec:
-                  httpGet:
-                    path: /health
-                    port: 8080
-              startup:
-                enabled: true
+    image:
+      registry: quay.io
+      repository: oriedge/k8s_gateway
+      tag: v0.4.0@sha256:7bdbd447c0244b8f89de9cd6f4826ed0ac66c9406fac3a4ac80081020c251c6b
+    fullnameOverride: k8s-gateway
+    domain: "${SECRET_DOMAIN}"
+    ttl: 1
     service:
-      app:
-        controller: *app
-        type: LoadBalancer
-        loadBalancerIP: ${K8S_GATEWAY_LB_IP}
-        externalTrafficPolicy: Local
-        ports:
-          http:
-            enabled: true
-            port: 8080
-          metrics:
-            enabled: true
-            port: 9153
-          dns:
-            enabled: true
-            port: 53
-            targetPort: 1053
-            protocol: UDP
-        annotations:
-          io.cilium/lb-ipam-ips: ${K8S_GATEWAY_LB_IP}
-          external-dns.alpha.kubernetes.io/hostname: dns.${SECRET_DOMAIN}
-        labels:
-          io.cilium/lb-ipam-layer2: "true"
-    serviceMonitor:
-      app:
-        serviceName: *app
-        enabled: true
-        endpoints:
-          - port: metrics
-            scheme: http
-            path: /metrics
-            interval: 1m
-            scrapeTimeout: 10s
-    serviceAccount:
-      create: true
-      name: *app
-    persistence:
-      config:
-        enabled: true
-        type: configMap
-        name: k8s-gateway-configmap
-        globalMounts:
-          - path: /etc/coredns/Corefile
-            subPath: Corefile
-            readOnly: true
-      hosts:
-        type: hostPath
-        hostPath: /etc/hosts
-        globalMounts:
-          - path: /etc/hosts
-            readOnly: true
+      type: LoadBalancer
+      port: 53
+      annotations:
+        io.cilium/lb-ipam-ips: "${K8S_GATEWAY_LB_IP}"
+      externalTrafficPolicy: Local
+    watchedResources: ["Ingress", "Service"]
+    fallthrough:
+      enabled: true
+    extraZonePlugins:
+      - name: forward
+        parameters: . tls://45.90.28.211 tls://45.90.30.211
