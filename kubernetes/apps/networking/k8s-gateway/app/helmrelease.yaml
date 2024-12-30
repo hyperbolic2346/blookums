@@ -43,7 +43,7 @@ spec:
       enabled: true
     extraZonePlugins:
       - name: forward
-        parameters: . tls://16c562.dns.nextdns.io
+        parameters: . tls://45.90.28.211
       - name: log
       - name: errors
       # Serves a /health endpoint on :8080, required for livenessProbe
