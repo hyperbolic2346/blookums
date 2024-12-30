@@ -35,26 +35,32 @@ spec:
             matchLabels:
               app.kubernetes.io/name: *app
     controllers:
-      app:
-        image:
-          repository: quay.io/oriedge/k8s_gateway
-          tag: v0.4.0@sha256:7bdbd447c0244b8f89de9cd6f4826ed0ac66c9406fac3a4ac80081020c251c6b
-        args: ["-conf", "/etc/coredns/Corefile"]
-        probes:
-          readiness:
-            custom: true
-            spec:
-              httpGet:
-                path: /ready
-                port: 8181
-          liveness:
-            custom: true
-            spec:
-              httpGet:
-                path: /health
-                port: 8080
-          startup:
-            enabled: true
+      k8s-gateway:
+        replicas: 2
+        strategy: RollingUpdate
+        annotations:
+          reloader.strakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: quay.io/oriedge/k8s_gateway
+              tag: v0.4.0@sha256:7bdbd447c0244b8f89de9cd6f4826ed0ac66c9406fac3a4ac80081020c251c6b
+            args: ["-conf", "/etc/coredns/Corefile"]
+            probes:
+              readiness:
+                custom: true
+                spec:
+                  httpGet:
+                    path: /ready
+                    port: 8181
+              liveness:
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: 8080
+              startup:
+                enabled: true
     service:
       app:
         controller: *app
