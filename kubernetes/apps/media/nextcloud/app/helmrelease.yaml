@@ -33,22 +33,6 @@ spec:
     nginx:
       enabled: true
     nextcloud:
-      extraVolumes:
-        - name: hugepages
-          emptyDir:
-            medium: HugePages-2Mi
-      extraVolumeMounts:
-        - name: hugepages
-          mountPath: /dev/hugepages
-      resources:
-        requests:
-          cpu: 500m
-          memory: 512Mi
-          hugepages-2Mi: 250Mi
-        limits:
-          cpu: 4000m
-          memory: 6000Mi
-          hugepages-2Mi: 250Mi
       extraInitContainers:
         - name: init-db
           image: ghcr.io/onedr0p/postgres-init
