@@ -56,6 +56,7 @@ spec:
             - secretRef:
                 name: &secret nextcloud-secret
       datadir: /var/www/data
+      host: &host nextcloud.${SECRET_DOMAIN}
       extraEnv:
         - name: REDIS_HOST
           value: dragonfly.databases.svc.cluster.local
@@ -70,7 +71,6 @@ spec:
       existingSecret:
         enabled: true
         secretName: *secret
-      host: &host nextcloud.${SECRET_DOMAIN}
       securityContext:
         runAsUser: 588
         runAsGroup: 588
