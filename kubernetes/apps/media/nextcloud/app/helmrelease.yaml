@@ -141,7 +141,7 @@ spec:
               pathType: Prefix
               service:
                 name: nextcloud
-                port: *port
+                port: http
       tls:
         - hosts:
             - *host
