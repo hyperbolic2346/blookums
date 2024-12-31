@@ -24,7 +24,7 @@ resources:
   - ./lwolf-charts.yaml
   - ./metrics-server.yaml
   - ./minecraft-server-charts.yaml
-  - ./nextcloud-charts.yaml
+  - ./nextcloud.yaml
   - ./node-feature-discovery-charts.yaml
   - ./openebs.yaml
   - ./piraeus-charts.yaml
