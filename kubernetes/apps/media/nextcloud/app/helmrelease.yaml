@@ -80,11 +80,6 @@ spec:
     externalDatabase:
       enabled: true
       type: postgresql
-      existingSecret:
-        enabled: true
-        secretName: *secret
-        usernameKey: INIT_POSTGRES_USER
-        passwordKey: INIT_POSTGRES_PASS
     ingress:
       enabled: true
       className: external
