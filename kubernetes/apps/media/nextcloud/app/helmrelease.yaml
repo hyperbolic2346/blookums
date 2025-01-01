@@ -52,9 +52,14 @@ spec:
           value: '10.0.0.0/8'
         - name: TZ
           value: ${TIMEZONE}
-      envFrom:
-        - secretRef:
-            name: *secret
+      existingSecret:
+        enabled: true
+        secretName: *secret
+        usernameKey: NEXTCLOUD_ADMIN_USER
+        passwordKey: NEXTCLOUD_ADMIN_PASSWORD
+        smtpUsernameKey: SMTP_NAME
+        smtpPasswordKey: SMTP_PASSWORD
+        smtpHostKey: SMTP_HOST
       securityContext:
         runAsUser: 588
         runAsGroup: 588
@@ -80,6 +85,12 @@ spec:
     externalDatabase:
       enabled: true
       type: postgresql
+      existingSecret:
+        enabled: true
+        usernameKey: POSTGRES_USER
+        passwordKey: POSTGRES_PASSWORD
+        hostKey: POSTGRES_HOST
+        databaseKey: POSTGRES_DB
     ingress:
       enabled: true
       className: external
