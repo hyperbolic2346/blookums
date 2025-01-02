@@ -19,6 +19,8 @@ spec:
     # Number of replicas to create (only 1 is supported)
     replicaCount: 1
 
+    hostNetworkEnabled: false
+
     image:
       repository: factoriotools/factorio
       # Container image pull policy
@@ -31,7 +33,6 @@ spec:
 
     service:
       type: LoadBalancer
-      port: 34197
       externalTrafficPolicy: Local
     # Compute Resources required by the operator container
     resources: # +doc-gen:break
