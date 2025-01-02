@@ -10,7 +10,7 @@ spec:
   chart:
     spec:
       chart: minecraft
-      version: 4.20.0
+      version: 4.23.1
       sourceRef:
         kind: HelmRepository
         name: minecraft-server-charts
@@ -22,8 +22,8 @@ spec:
     replicaCount: 1
     image:
       repository: itzg/minecraft-server
-      tag: latest
-
+      tag: java17-jdk
+      PullPolicy: IfNotPresent
     resources:
       requests:
         memory: 12Gi
@@ -55,7 +55,7 @@ spec:
       # One of: LATEST, SNAPSHOT, or a specific version (ie: "1.7.9").
       version: LATEST
       # This can be one of "VANILLA", "FORGE", "SPIGOT", "BUKKIT", "PAPER", "FTBA", "SPONGEVANILLA"
-      type: SPIGOT
+      type: PAPER
       # If type is set to FORGE, this sets the version; this is ignored if forgeInstallerUrl is set
       forgeVersion:
       # If type is set to SPONGEVANILLA, this sets the version
@@ -135,9 +135,8 @@ spec:
       # If you adjust this, you may need to adjust resources.requests above to match.
       memory: 12G
       # General JVM options to be passed to the Minecraft server invocation
-      jvmOpts: ''
-      # Options like -X that need to proceed general JVM options
-      jvmXXOpts: ''
+      jvmOpts: "-server -Xmx4G -Xms4G -Xmn768m"
+      jvmXXOpts: "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -XX:G1NewSizePercent=30 -XX:G1MaxNewSizePercent=40 -XX:G1HeapRegionSize=8M -XX:G1ReservePercent=20 -XX:G1HeapWastePercent=5 -XX:G1MixedGCCountTarget=4 -XX:InitiatingHeapOccupancyPercent=15 -XX:G1MixedGCLiveThresholdPercent=90 -XX:G1RSetUpdatingPauseTimePercent=5 -XX:SurvivorRatio=32 -XX:+PerfDisableSharedMem -XX:MaxTenuringThreshold=1"
       # "-XX:+UseLargePagesInMetaspace -XX:+UseG1GC -XX:+UnlockExperimentalVMOptions -XX:MaxGCPauseMillis=100 -XX:+DisableExplicitGC -XX:TargetSurvivorRatio=90 -XX:G1NewSizePercent=50 -XX:G1MaxNewSizePercent=80 -XX:G1MixedGCLiveThresholdPercent=50 -XX:+AlwaysPreTouch -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:+UseLargePages -XX:LargePageSizeInBytes=2m"
       serviceAnnotations: {}
       serviceType: LoadBalancer
