@@ -139,8 +139,5 @@ spec:
           secretName: nextcloud-cert
     persistence:
       enabled: true
-      storageClass: ${CLUSTER_STORAGE_BLOCK_SSD_3_REPLICA}
-      nextcloudData:
-        enabled: true
-        existingClaim: nextcloud-data
-        accessMode: ReadWriteMany
+      existingClaim: nextcloud-data
+      accessMode: ReadWriteMany
