@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: app-template
-      version: 3.1.0
+      version: 3.6.0
       sourceRef:
         kind: HelmRepository
         name: bjw-s
@@ -32,7 +32,11 @@ spec:
           app:
             image:
               repository: ghcr.io/gimlet-io/capacitor
-              tag: v0.4.8
+              tag: v0.4.8@sha256:c999a42cccc523b91086547f890466d09be4755bf05a52763b0d14594bf60782
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: {drop: [ALL]}
     serviceAccount:
       create: true
       name: capacitor
@@ -41,13 +45,14 @@ spec:
         controller: capacitor
         ports:
           http:
+            enabled: true
             port: &port 9000
     ingress:
       capacitor:
         enabled: true
         className: internal
         hosts:
-          - host: &host capacitor.${SECRET_DOMAIN}
+          - host: capacitor.${SECRET_DOMAIN}
             paths:
               - path: /
                 pathType: Prefix
