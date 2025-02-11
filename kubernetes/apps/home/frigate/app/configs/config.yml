@@ -28,7 +28,7 @@ objects:
 record:
   enabled: true
   retain:
-    days: 0
+    days: 3
   events:
     retain:
       default: 30
