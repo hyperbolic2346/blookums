@@ -5,6 +5,7 @@ resources:
   - ./namespace.yaml
   - ./_pvc/ks.yaml
   - ./immich/ks.yaml
+  - ./lidarr/ks.yaml
   - ./nextcloud/ks.yaml
   - ./overseerr/ks.yaml
   - ./plex/ks.yaml
