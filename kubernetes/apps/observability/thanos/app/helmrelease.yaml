@@ -41,7 +41,7 @@ spec:
         type: s3
         config:
           bucket: thanos
-          endpoint: minio.storage.svc:9000
+          endpoint: ${SECRET_FILESERV_IP}:9000
           insecure: true
     additionalEndpoints:
       - dnssrv+_grpc._tcp.kube-prometheus-stack-thanos-discovery.observability.svc.cluster.local
