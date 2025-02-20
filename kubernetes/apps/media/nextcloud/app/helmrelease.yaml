@@ -29,6 +29,8 @@ spec:
       namespace: rook-ceph
   values:
     image:
+      repository: nextcloud
+      tag: 30.0.6-fpm-alpine
       flavor: fpm-alpine
     nginx:
       enabled: true
