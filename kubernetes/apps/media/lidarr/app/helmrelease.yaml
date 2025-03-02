@@ -97,7 +97,7 @@ spec:
             paths:
               - path: /
                 service:
-                  name: main
+                  name: lidarr
                   port: *port
         tls:
           - hosts:
