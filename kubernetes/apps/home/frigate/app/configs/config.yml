@@ -29,7 +29,7 @@ record:
   enabled: true
   retain:
     days: 3
-  events:
+  detections:
     retain:
       default: 30
       objects:

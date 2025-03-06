@@ -33,7 +33,7 @@ spec:
           init-db:
             image:
               repository: ghcr.io/onedr0p/postgres-init
-              tag: 16.6@sha256:a37bbb04a0ea3f15b505c6f97637e7ae89bc66541ae23b8d3848024087980e76
+              tag: 16.8@sha256:217c47c886965474f5c234b5a35ed008f53b39ea90a3088b31c0da98e1f9284d
             envFrom: &envFrom
               - secretRef:
                   name: sonarr-secret
@@ -41,7 +41,7 @@ spec:
           main:
             image:
               repository: ghcr.io/onedr0p/sonarr-develop
-              tag: 4.0.13.2931@sha256:593a0fd5e941d7486e74b349a584dfea076f1e38ae170e0460ed7d2bad417670
+              tag: 4.0.13.2933@sha256:12427949df13731d802514d5f417e2d302f2d7c026be1903ae287921b4a60ac7
             env:
               TZ: ${TIMEZONE}
               SONARR__AUTHENTICATION_METHOD: External
