@@ -60,8 +60,6 @@ spec:
         smtpUsernameKey: SMTP_NAME
         smtpPasswordKey: SMTP_PASSWORD
         smtpHostKey: SMTP_HOST
-      securityContext:
-        runAsNonRoot: true
       configs:
         proxy.config.php: |-
           <?php
