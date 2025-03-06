@@ -11,7 +11,7 @@ spec:
   chart:
     spec:
       chart: nextcloud
-      version: 6.6.3
+      version: 6.6.6
       sourceRef:
         name: nextcloud
         kind: HelmRepository
@@ -145,3 +145,9 @@ spec:
       enabled: true
       existingClaim: nextcloud-data
       accessMode: ReadWriteMany
+    startupProbe:
+      enabled: false
+    readinessProbe:
+      enabled: false
+    livenessProble:
+      enabled: false
