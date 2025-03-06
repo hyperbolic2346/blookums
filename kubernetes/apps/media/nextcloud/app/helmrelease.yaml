@@ -61,8 +61,6 @@ spec:
         smtpPasswordKey: SMTP_PASSWORD
         smtpHostKey: SMTP_HOST
       securityContext:
-        runAsUser: 588
-        runAsGroup: 588
         runAsNonRoot: true
       configs:
         proxy.config.php: |-
