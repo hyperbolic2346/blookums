@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: app-template
-      version: 2.6.0
+      version: 3.7.1
       sourceRef:
         kind: HelmRepository
         name: bjw-s
@@ -25,6 +25,17 @@ spec:
   uninstall:
     keepHistory: false
   values:
+    defaultPodOptions:
+      securityContext:
+        runAsUser: 568
+        runAsGroup: 568
+        fsGroup: 568
+        fsGroupChangePolicy: OnRootMismatch
+        supplementalGroups:
+          - 44    # video
+          - 109   # render
+          - 65537 # media ro
+
     controllers:
       main:
         containers:
@@ -43,16 +54,18 @@ spec:
                 memory: 2000M
               limits:
                 memory: 10000M
-        pod:
-          securityContext:
-            runAsUser: 568
-            runAsGroup: 568
-            fsGroup: 568
-            fsGroupChangePolicy: OnRootMismatch
-            supplementalGroups:
-              - 44    # video
-              - 109   # render
-              - 65537 # media ro
+
+    service:
+      main:
+        controller: main
+        type: LoadBalancer
+        externalTrafficPolicy: Local
+        annotations:
+          io.cilium/lb-ipam-ips: ${PLEX_LB_IP}
+        ports:
+          http:
+            port: 32400
+
     ingress:
       main:
         enabled: true
@@ -68,11 +81,12 @@ spec:
               - path: /
                 service:
                   name: main
-                  port: http
+                  port: 32400
         tls:
           - hosts:
               - *host
             secretName: plex-cert
+
     persistence:
       config:
         enabled: true
@@ -85,12 +99,3 @@ spec:
         existingClaim: videos
         globalMounts:
           - path: /media
-    service:
-      main:
-        type: LoadBalancer
-        externalTrafficPolicy: Local
-        annotations:
-          io.cilium/lb-ipam-ips: ${PLEX_LB_IP}
-        ports:
-          http:
-            port: 32400
