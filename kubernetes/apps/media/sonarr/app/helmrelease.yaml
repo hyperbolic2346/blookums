@@ -56,7 +56,7 @@ spec:
               SONARR__AUTHENTICATION_METHOD: External
               SONARR__AUTHENTICATION_REQUIRED: DisabledForLocalAddresses
               SONARR__INSTANCE_NAME: Sonarr
-              SONARR__PORT: &port 8989
+              SONARR__PORT: 8989
               SONARR__LOG_LEVEL: info
               SONARR__THEME: dark
             envFrom: *envFrom
@@ -67,7 +67,7 @@ spec:
                 spec:
                   httpGet:
                     path: /ping
-                    port: *port
+                    port: 8989
                   initialDelaySeconds: 0
                   periodSeconds: 10
                   timeoutSeconds: 1
@@ -91,7 +91,7 @@ spec:
         controller: main
         ports:
           http:
-            port: *port
+            port: 8989
 
     ingress:
       main:
@@ -106,7 +106,7 @@ spec:
               - path: /
                 service:
                   name: main
-                  port: http
+                  port: 8989
         tls:
           - hosts:
               - *host
