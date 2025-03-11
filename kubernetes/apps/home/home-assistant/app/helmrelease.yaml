@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: app-template
-      version: 3.1.0
+      version: 3.7.1
       sourceRef:
         kind: HelmRepository
         name: bjw-s
@@ -25,6 +25,13 @@ spec:
   uninstall:
     keepHistory: false
   values:
+    defaultPodOptions:
+      securityContext:
+        runAsUser: 568
+        runAsGroup: 568
+        fsGroup: 568
+        fsGroupChangePolicy: OnRootMismatch
+
     controllers:
       main:
         annotations:
@@ -81,21 +88,17 @@ spec:
               - "/config"
             env:
               TZ: "${CONFIG_TIMEZONE}"
-        pod:
-          securityContext:
-            runAsUser: 568
-            runAsGroup: 568
-            fsGroup: 568
-            fsGroupChangePolicy: OnRootMismatch
+
     service:
       main:
         controller: main
         type: ClusterIP
         ports:
           http:
-            port: &port 8123
+            port: 8123
           code-server:
-            port: &code 8080
+            port: 8080
+
     ingress:
       main:
         enabled: true
@@ -109,8 +112,8 @@ spec:
             paths:
               - path: /
                 service:
-                  identifier: main
-                  port: *port
+                  name: main
+                  port: 8123
         tls:
           - hosts:
               - *host
@@ -123,8 +126,9 @@ spec:
             paths:
               - path: /
                 service:
-                  identifier: main
-                  port: *code
+                  name: main
+                  port: 8080
+
     persistence:
       config:
         enabled: true
