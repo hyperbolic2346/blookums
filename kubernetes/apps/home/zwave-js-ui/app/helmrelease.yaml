@@ -30,8 +30,6 @@ spec:
         - key: "node-role.kubernetes.io/control-plane"
           operator: "Exists"
           effect: "NoSchedule"
-      securityContext:
-        privileged: true
       nodeSelector:
         kubernetes.io/hostname: "nuc1"
 
@@ -45,6 +43,8 @@ spec:
               repository: zwavejs/zwave-js-ui
               tag: 9.31.0
               pullPolicy: IfNotPresent
+            securityContext:
+              privileged: true
             env:
               TZ: ${TIMEZONE}
             resources:
