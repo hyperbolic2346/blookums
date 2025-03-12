@@ -11,7 +11,7 @@ spec:
   chart:
     spec:
       chart: app-template
-      version: 3.3.2
+      version: 3.7.1
       sourceRef:
         kind: HelmRepository
         name: bjw-s
@@ -28,36 +28,51 @@ spec:
     keepHistory: false
   values:
     controllers:
-      youtubedl:
+      main:
         annotations:
           reloader.stakater.com/auto: "true"
         containers:
-          app:
+          main:
             image:
               repository: docker.io/tzahi12345/youtubedl-material
               tag: 4.3.2
             env:
-              TZ: America/New_York
+              TZ: ${TIMEZONE}
               write_ytdl_config: true
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256M
+              limits:
+                cpu: 1000m
+                memory: 512M
+
     service:
-      app:
-        controller: youtubedl
+      main:
+        controller: main
         ports:
           http:
             port: 17442
+
     ingress:
-      app:
+      main:
+        enabled: true
         className: internal
+        annotations:
+          hajimari.io/icon: mdi:youtube
+          cert-manager.io/cluster-issuer: letsencrypt-production
         hosts:
-          - host: ytd.${SECRET_DOMAIN}
+          - host: &host ytd.${SECRET_DOMAIN}
             paths:
               - path: /
                 service:
-                  identifier: app
+                  name: main
                   port: 17442
         tls:
           - hosts:
-              - ytd.${SECRET_DOMAIN}
+              - *host
+            secretName: youtubedl-cert
+
     persistence:
       config:
         enabled: true
