@@ -112,7 +112,7 @@ spec:
             paths:
               - path: /
                 service:
-                  name: main
+                  identifier: main
                   port: 8123
         tls:
           - hosts:
@@ -126,7 +126,7 @@ spec:
             paths:
               - path: /
                 service:
-                  name: main
+                  identifier: main
                   port: 8080
 
     persistence:
