@@ -41,7 +41,7 @@ spec:
           main:
             image:
               repository: zwavejs/zwave-js-ui
-              tag: 9.31.0
+              tag: 9.33.0
               pullPolicy: IfNotPresent
             securityContext:
               privileged: true
