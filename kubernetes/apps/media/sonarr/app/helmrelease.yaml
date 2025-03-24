@@ -105,7 +105,7 @@ spec:
             paths:
               - path: /
                 service:
-                  name: main
+                  identifier: main
                   port: 8989
         tls:
           - hosts:
