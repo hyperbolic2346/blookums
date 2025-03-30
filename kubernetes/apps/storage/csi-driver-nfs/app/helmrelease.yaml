@@ -29,5 +29,10 @@ spec:
     kubeletDir: /var/lib/kubelet
     controller:
       replicas: 1
+      runOnControlPlane: false
     externalSnapshotter:
       enabled: true
+    tolerations:
+      - key: "CriticalAddonsOnly"
+        operator: "Exists"
+        effect: "NoSchedule"
