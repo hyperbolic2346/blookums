@@ -29,11 +29,6 @@ record:
   enabled: true
   retain:
     days: 3
-  detections:
-    retain:
-      default: 30
-      objects:
-        bear: 3650
 
 birdseye:
   enabled: true

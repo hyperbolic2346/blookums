@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: app-template
-      version: 2.6.0
+      version: 3.7.1
       sourceRef:
         kind: HelmRepository
         name: bjw-s
@@ -25,6 +25,13 @@ spec:
   uninstall:
     keepHistory: false
   values:
+    defaultPodOptions:
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
+
     controllers:
       main:
         annotations:
@@ -37,7 +44,7 @@ spec:
             env:
               OP_BUS_PORT: 11220
               OP_BUS_PEERS: localhost:11221
-              OP_HTTP_PORT: &api-port 8080
+              OP_HTTP_PORT: 8080
               OP_SESSION:
                 valueFrom:
                   secretKeyRef:
@@ -50,7 +57,7 @@ spec:
                 spec:
                   httpGet:
                     path: /heartbeat
-                    port: *api-port
+                    port: 8080
                   initialDelaySeconds: 15
                   periodSeconds: 30
                   failureThreshold: 3
@@ -60,22 +67,22 @@ spec:
                 spec:
                   httpGet:
                     path: /health
-                    port: *api-port
+                    port: 8080
                   initialDelaySeconds: 15
               startup:
                 enabled: false
-            resources: &resources
+            resources:
               requests:
                 cpu: 10m
-                memory: 128M
+                memory: 128Mi
               limits:
-                memory: 256M
+                memory: 256Mi
           sync:
             image:
               repository: docker.io/1password/connect-sync
               tag: 1.7.3
             env:
-              OP_HTTP_PORT: &sync-port 8081
+              OP_HTTP_PORT: 8081
               OP_BUS_PORT: 11221
               OP_BUS_PEERS: localhost:11220
               OP_SESSION:
@@ -90,7 +97,7 @@ spec:
                 spec:
                   httpGet:
                     path: /heartbeat
-                    port: *sync-port
+                    port: 8081
                   initialDelaySeconds: 15
                   periodSeconds: 30
                   failureThreshold: 3
@@ -100,17 +107,16 @@ spec:
                 spec:
                   httpGet:
                     path: /health
-                    port: *sync-port
+                    port: 8081
                   initialDelaySeconds: 15
               startup:
                 enabled: false
-              resources: *resources
-        pod:
-          securityContext:
-            runAsUser: 999
-            runAsGroup: 999
-            fsGroup: 999
-            fsGroupChangePolicy: OnRootMismatch
+            resources:
+              requests:
+                cpu: 10m
+                memory: 128Mi
+              limits:
+                memory: 256Mi
     ingress:
       main:
         enabled: true
@@ -124,7 +130,7 @@ spec:
               - path: /
                 service:
                   name: main
-                  port: http
+                  port: 8080
         tls:
           - hosts:
               - *host
@@ -136,6 +142,9 @@ spec:
           - path: /home/opuser/.op/data
     service:
       main:
+        controller: main
         ports:
           http:
-            port: *api-port
+            port: 8080
+          sync:
+            port: 8081

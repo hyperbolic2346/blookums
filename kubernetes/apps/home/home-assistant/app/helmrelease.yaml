@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: app-template
-      version: 3.1.0
+      version: 3.7.1
       sourceRef:
         kind: HelmRepository
         name: bjw-s
@@ -25,6 +25,13 @@ spec:
   uninstall:
     keepHistory: false
   values:
+    defaultPodOptions:
+      securityContext:
+        runAsUser: 568
+        runAsGroup: 568
+        fsGroup: 568
+        fsGroupChangePolicy: OnRootMismatch
+
     controllers:
       main:
         annotations:
@@ -33,7 +40,7 @@ spec:
           init-db:
             image:
               repository: ghcr.io/onedr0p/postgres-init
-              tag: 16.8@sha256:217c47c886965474f5c234b5a35ed008f53b39ea90a3088b31c0da98e1f9284d
+              tag: 17.4@sha256:43dd04e91e861cf912378bad987afa168fa4f13d05528304907ad0aa351195d6
             envFrom: &envFrom
               - secretRef:
                   name: home-assistant-secret
@@ -41,7 +48,7 @@ spec:
           main:
             image:
               repository: ghcr.io/onedr0p/home-assistant
-              tag: 2025.2.5@sha256:595ced22062da128b78d249c84594f82649c097bb765a3c833afb3fce7e3a66d
+              tag: 2025.3.3@sha256:9e2a7177b4600653d6cb46dff01b1598189a5ae93be0b99242fbc039d32d79f1
             env:
               TZ: ${TIMEZONE}
               HASS_UNIT_SYSTEM: imperial
@@ -68,7 +75,7 @@ spec:
           code-server:
             image:
               repository: ghcr.io/coder/code-server
-              tag: 4.97.2@sha256:6ff0e9cf5a553b3961ece200be75e21e8c887ed0ae28a7c28213722dccf74b0c
+              tag: 4.98.2@sha256:9ed588a05d4e81aa464e753a409bc3b2b93267323d1c3975fbddf6f9aef84c26
             args:
               - --auth
               - none
@@ -81,21 +88,17 @@ spec:
               - "/config"
             env:
               TZ: "${CONFIG_TIMEZONE}"
-        pod:
-          securityContext:
-            runAsUser: 568
-            runAsGroup: 568
-            fsGroup: 568
-            fsGroupChangePolicy: OnRootMismatch
+
     service:
       main:
         controller: main
         type: ClusterIP
         ports:
           http:
-            port: &port 8123
+            port: 8123
           code-server:
-            port: &code 8080
+            port: 8080
+
     ingress:
       main:
         enabled: true
@@ -110,7 +113,7 @@ spec:
               - path: /
                 service:
                   identifier: main
-                  port: *port
+                  port: 8123
         tls:
           - hosts:
               - *host
@@ -124,7 +127,8 @@ spec:
               - path: /
                 service:
                   identifier: main
-                  port: *code
+                  port: 8080
+
     persistence:
       config:
         enabled: true

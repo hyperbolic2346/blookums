@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: app-template
-      version: 3.1.0
+      version: 3.7.1
       sourceRef:
         kind: HelmRepository
         name: bjw-s
@@ -31,16 +31,22 @@ spec:
         - key: "node-role.kubernetes.io/control-plane"
           operator: "Exists"
           effect: "NoSchedule"
+
     controllers:
-      smarter-device-manager:
+      main:
         type: daemonset
         annotations:
           reloader.stakater.com/auto: "true"
         containers:
-          app:
+          main:
             image:
               repository: ghcr.io/smarter-project/smarter-device-manager
               tag: v1.20.12@sha256:228f7f44594a3182571559e62f2e3fe8a3f26180fb5dd7fc0cb7bf7d22a5bbcd
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
             resources:
               requests:
                 cpu: 10m
@@ -48,11 +54,7 @@ spec:
               limits:
                 cpu: 100m
                 memory: 15Mi
-            securityContext:
-              allowPrivilegeEscalation: false
-              capabilities:
-                drop:
-                  - ALL
+
     persistence:
       config:
         enabled: true

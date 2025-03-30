@@ -16,3 +16,8 @@ spec:
   interval: 30m
   retryInterval: 1m
   timeout: 5m
+  postBuild:
+    substitute:
+      APP: youtubedl
+      VOLSYNC_CLAIM: youtubedl-config
+      VOLSYNC_SNAPSHOTCLASS: nfs-snapshot-class

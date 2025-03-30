@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: app-template
-      version: 2.6.0
+      version: 3.7.1
       sourceRef:
         kind: HelmRepository
         name: bjw-s
@@ -25,6 +25,15 @@ spec:
   uninstall:
     keepHistory: false
   values:
+    defaultPodOptions:
+      securityContext:
+        runAsUser: 568
+        runAsGroup: 568
+        fsGroup: 568
+        fsGroupChangePolicy: OnRootMismatch
+        supplementalGroups:
+          - 1001
+
     controllers:
       main:
         annotations:
@@ -33,7 +42,7 @@ spec:
           init-db:
             image:
               repository: ghcr.io/onedr0p/postgres-init
-              tag: 16.8@sha256:217c47c886965474f5c234b5a35ed008f53b39ea90a3088b31c0da98e1f9284d
+              tag: 17.4@sha256:43dd04e91e861cf912378bad987afa168fa4f13d05528304907ad0aa351195d6
             envFrom: &envFrom
               - secretRef:
                   name: radarr-secret
@@ -41,13 +50,13 @@ spec:
           main:
             image:
               repository: ghcr.io/onedr0p/radarr-develop
-              tag: 5.19.3.9730@sha256:dd64f1786f50ae79013822ce196e3e7bd20db369bd51d63d63c42f7821b77317
+              tag: 5.20.1.9773@sha256:8187c129a78fdfe15b1603db9175abd2be0e1ca2e99ea3733987c3ae941da165
             env:
               TZ: ${TIMEZONE}
               RADARR__AUTHENTICATION_METHOD: External
               RADARR__AUTHENTICATION_REQUIRED: DisabledForLocalAddresses
               RADARR__INSTANCE_NAME: Radarr
-              RADARR__PORT: &port 7878
+              RADARR__PORT: 7878
               RADARR__LOG_LEVEL: info
               RADARR__THEME: dark
             envFrom: *envFrom
@@ -58,7 +67,7 @@ spec:
                 spec:
                   httpGet:
                     path: /ping
-                    port: *port
+                    port: 7878
                   initialDelaySeconds: 0
                   periodSeconds: 10
                   timeoutSeconds: 1
@@ -72,14 +81,14 @@ spec:
                 memory: 512M
               limits:
                 memory: 2048M
-        pod:
-          securityContext:
-            runAsUser: 568
-            runAsGroup: 568
-            fsGroup: 568
-            fsGroupChangePolicy: OnRootMismatch
-            supplementalGroups:
-              - 1001
+
+    service:
+      main:
+        controller: main
+        ports:
+          http:
+            port: 7878
+
     ingress:
       main:
         enabled: true
@@ -92,12 +101,13 @@ spec:
             paths:
               - path: /
                 service:
-                  name: main
-                  port: http
+                  identifier: main
+                  port: 7878
         tls:
           - hosts:
               - *host
             secretName: radarr-cert
+
     persistence:
       config:
         enabled: true
@@ -106,8 +116,3 @@ spec:
         existingClaim: videos
         globalMounts:
           - path: /media
-    service:
-      main:
-        ports:
-          http:
-            port: *port

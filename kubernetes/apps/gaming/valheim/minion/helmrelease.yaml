@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: app-template
-      version: 3.1.0
+      version: 3.7.1
       sourceRef:
         kind: HelmRepository
         name: bjw-s
@@ -27,37 +27,40 @@ spec:
     keepHistory: false
 
   values:
+    defaultPodOptions:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+
     controllers:
-      minion-valheim:
+      main:
         annotations:
           reloader.stakater.com/auto: "true"
-
         containers:
-          app:
+          main:
             nameOverride: *name
             image:
               repository: lloesche/valheim-server
-              tag: latest@sha256:b97da1038714e5156cf28d042422a1c5af41e03189572025e615bde61395c678
+              tag: latest@sha256:8f1c5fc831c900312b4a47c1fe57bfc03b574c1433ea502f5d8f0ad301a22a83
               pullPolicy: IfNotPresent
-
             env:
-                BACKUPS: "false"
-                CONFIG_DIRECTORY_PERMISSIONS: "755"
-                WORLDS_DIRECTORY_PERMISSIONS: "755"
-                WORLDS_FILE_PERMISSIONS: "644"
-                SERVER_PORT: "2456"
-                SERVER_PUBLIC: "true"
-                STATUS_HTTP: "true"
-                SUPERVISOR_HTTP: "true"
-                SERVER_NAME: "Minion Valheim"
-                WORLD_NAME: "Minion"
-                SERVER_PASS: "${SECRET_VALHEIM_MINION_PW}"
-                ADMINLIST_IDS: ""
-                PERMITTEDLIST_IDS: ""
-                PUID: "1000"
-                PGID: "1000"
-                TZ: ${TIMEZONE}
-
+              BACKUPS: "false"
+              CONFIG_DIRECTORY_PERMISSIONS: "755"
+              WORLDS_DIRECTORY_PERMISSIONS: "755"
+              WORLDS_FILE_PERMISSIONS: "644"
+              SERVER_PORT: "2456"
+              SERVER_PUBLIC: "true"
+              STATUS_HTTP: "true"
+              SUPERVISOR_HTTP: "true"
+              SERVER_NAME: "Minion Valheim"
+              WORLD_NAME: "Minion"
+              SERVER_PASS: "${SECRET_VALHEIM_MINION_PW}"
+              ADMINLIST_IDS: ""
+              PERMITTEDLIST_IDS: ""
+              PUID: "1000"
+              PGID: "1000"
+              TZ: ${TIMEZONE}
             resources:
               requests:
                 memory: 4Gi
@@ -66,8 +69,8 @@ spec:
                 memory: 10Gi
 
     service:
-      app:
-        controller: *name
+      main:
+        controller: main
         type: LoadBalancer
         ports:
           steam1:

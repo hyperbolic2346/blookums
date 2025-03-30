@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: app-template
-      version: 3.1.0
+      version: 3.7.1
       sourceRef:
         kind: HelmRepository
         name: bjw-s
@@ -30,39 +30,43 @@ spec:
         - key: "node-role.kubernetes.io/control-plane"
           operator: "Exists"
           effect: "NoSchedule"
+      nodeSelector:
+        kubernetes.io/hostname: "nuc1"
+
     controllers:
-      zwave-js-ui:
+      main:
         annotations:
           reloader.stakater.com/auto: "true"
         containers:
-          app:
+          main:
             image:
               repository: zwavejs/zwave-js-ui
-              tag: 9.31.0
+              tag: 10.1.3
               pullPolicy: IfNotPresent
+            securityContext:
+              privileged: true
             env:
               TZ: ${TIMEZONE}
             resources:
               requests:
                 cpu: 10m
                 memory: 100M
+                smarter-devices/ttyACM0: 1
               limits:
                 memory: 256M
-            securityContext:
-              privileged: true
-        pod:
-          nodeSelector:
-            kubernetes.io/hostname: "nuc1"
+                smarter-devices/ttyACM0: 1
+
     service:
-      app:
-        controller: zwave-js-ui
+      main:
+        controller: main
         ports:
           http:
-            port: &port 8091
+            port: 8091
           websocket:
             port: 3000
+
     ingress:
-      app:
+      main:
         enabled: true
         className: internal
         annotations:
@@ -73,23 +77,16 @@ spec:
             paths:
               - path: /
                 service:
-                  identifier: app
-                  port: *port
+                  name: main
+                  port: 8091
         tls:
           - hosts:
               - *host
             secretName: zwave-js-ui-cert
+
     persistence:
       config:
         enabled: true
         existingClaim: zwave-js-ui-config
         globalMounts:
           - path: /usr/src/app/store
-    resources:
-      requests:
-        smarter-devices/ttyACM0: 1
-        cpu: 10m
-        memory: 100M
-      limits:
-        smarter-devices/ttyACM0: 1
-        memory: 512M

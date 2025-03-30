@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: app-template
-      version: 2.6.0
+      version: 3.7.1
       sourceRef:
         kind: HelmRepository
         name: bjw-s
@@ -25,29 +25,38 @@ spec:
   uninstall:
     keepHistory: false
   values:
+    defaultPodOptions:
+      securityContext:
+        runAsUser: 568
+        runAsGroup: 568
+        fsGroup: 568
+        fsGroupChangePolicy: OnRootMismatch
+        supplementalGroups:
+          - 1001
+
     controllers:
       main:
-        annotations:
-          reloader.stakater.com/auto: "true"
         initContainers:
           init-db:
             image:
               repository: ghcr.io/onedr0p/postgres-init
-              tag: 16.8@sha256:217c47c886965474f5c234b5a35ed008f53b39ea90a3088b31c0da98e1f9284d
+              tag: 17.4@sha256:43dd04e91e861cf912378bad987afa168fa4f13d05528304907ad0aa351195d6
             envFrom: &envFrom
               - secretRef:
                   name: sonarr-secret
+
         containers:
           main:
             image:
               repository: ghcr.io/onedr0p/sonarr-develop
-              tag: 4.0.13.2933@sha256:12427949df13731d802514d5f417e2d302f2d7c026be1903ae287921b4a60ac7
+              tag: 4.0.14.2938@sha256:75da01d2da78d226cd89352fbab919f2eb26ea9a8d6c592bf812dde5f8949243
+
             env:
               TZ: ${TIMEZONE}
               SONARR__AUTHENTICATION_METHOD: External
               SONARR__AUTHENTICATION_REQUIRED: DisabledForLocalAddresses
               SONARR__INSTANCE_NAME: Sonarr
-              SONARR__PORT: &port 8989
+              SONARR__PORT: 8989
               SONARR__LOG_LEVEL: info
               SONARR__THEME: dark
             envFrom: *envFrom
@@ -58,7 +67,7 @@ spec:
                 spec:
                   httpGet:
                     path: /ping
-                    port: *port
+                    port: 8989
                   initialDelaySeconds: 0
                   periodSeconds: 10
                   timeoutSeconds: 1
@@ -66,20 +75,24 @@ spec:
               readiness: *probes
               startup:
                 enabled: false
+
             resources:
               requests:
                 cpu: 500m
                 memory: 512M
               limits:
                 memory: 2048M
-        pod:
-          securityContext:
-            runAsUser: 568
-            runAsGroup: 568
-            fsGroup: 568
-            fsGroupChangePolicy: OnRootMismatch
-            supplementalGroups:
-              - 1001
+
+        annotations:
+          reloader.stakater.com/auto: "true"
+
+    service:
+      main:
+        controller: main
+        ports:
+          http:
+            port: 8989
+
     ingress:
       main:
         enabled: true
@@ -92,12 +105,13 @@ spec:
             paths:
               - path: /
                 service:
-                  name: main
-                  port: http
+                  identifier: main
+                  port: 8989
         tls:
           - hosts:
               - *host
             secretName: sonarr-cert
+
     persistence:
       config:
         enabled: true
@@ -106,8 +120,3 @@ spec:
         existingClaim: videos
         globalMounts:
           - path: /media
-    service:
-      main:
-        ports:
-          http:
-            port: *port

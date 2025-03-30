@@ -10,7 +10,7 @@ spec:
   chart:
     spec:
       chart: app-template
-      version: 3.1.0
+      version: 3.7.1
       sourceRef:
         kind: HelmRepository
         name: bjw-s
@@ -27,41 +27,43 @@ spec:
   uninstall:
     keepHistory: false
   values:
+    defaultPodOptions:
+      securityContext:
+        runAsUser: 568
+        runAsGroup: 568
+        fsGroup: 568
+        fsGroupChangePolicy: OnRootMismatch
+      enableServiceLinks: false
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: *app
+
     controllers:
       main:
         strategy: RollingUpdate
         annotations:
           configmap.reloader.stakater.com/reload: immich-configmap
-        pod:
-          enableServiceLinks: false
-          securityContext:
-            runAsUser: 568
-            runAsGroup: 568
-            fsGroup: 568
-            fsGroupChangePolicy: OnRootMismatch
-          topologySpreadConstraints:
-            - maxSkew: 1
-              topologyKey: kubernetes.io/hostname
-              whenUnsatisfiable: DoNotSchedule
-              labelSelector:
-                matchLabels:
-                  app.kubernetes.io/name: *app
 
         initContainers:
           init-db:
             image:
               repository: ghcr.io/onedr0p/postgres-init
-              tag: 16.8@sha256:217c47c886965474f5c234b5a35ed008f53b39ea90a3088b31c0da98e1f9284d
+              tag: 17.4@sha256:43dd04e91e861cf912378bad987afa168fa4f13d05528304907ad0aa351195d6
             envFrom: &envFrom
               - secretRef:
                   name: immich-secret
               - configMapRef:
                   name: immich-configmap
+
         containers:
           main:
             image:
               repository: ghcr.io/immich-app/immich-server
-              tag: v1.128.0
+              tag: v1.130.3
             envFrom: *envFrom
             resources:
               requests:
@@ -69,12 +71,14 @@ spec:
                 memory: 256Mi
               limits:
                 memory: 4Gi
+
     service:
       immich-server:
         controller: main
         ports:
           http:
-            port: &port 3001
+            port: 3001
+
     ingress:
       immich-server:
         enabled: true
@@ -89,11 +93,12 @@ spec:
                 pathType: Prefix
                 service:
                   name: immich-server
-                  port: *port
+                  port: 3001
         tls:
           - hosts:
               - *host
             secretName: immich-cert
+
     persistence:
       config:
         enabled: true
