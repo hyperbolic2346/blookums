@@ -22,4 +22,4 @@ spec:
     substitute:
       APP: overseerr
       VOLSYNC_CLAIM: overseerr-config
-      VOLSYNC_SNAPSHOTCLASS: nfs-snapshot-class
+      VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
