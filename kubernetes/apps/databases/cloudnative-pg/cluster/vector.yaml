@@ -23,6 +23,24 @@ spec:
     parameters:
       max_connections: "600"
       shared_buffers: 512MB
+  backup:
+    retentionPolicy: 14d
+    barmanObjectStore:
+      data:
+        compression: bzip2
+      wal:
+        compression: bzip2
+        maxParallel: 8
+      destinationPath: s3://blookums-databases/pgvector
+      endpointURL: ${SECRET_DATABASE_S3}
+      serverName: pgvector
+      s3Credentials:
+        accessKeyId:
+          key: aws-access-key-id
+          name: cloudnative-pg-secret
+        secretAccessKey:
+          key: aws-secret-access-key
+          name: cloudnative-pg-secret
   monitoring:
     enablePodMonitor: true
     # Ref: https://github.com/cloudnative-pg/cloudnative-pg/issues/2501
