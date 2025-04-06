@@ -17,3 +17,8 @@ spec:
   interval: 30m
   retryInterval: 1m
   timeout: 5m
+  postBuild:
+    substitute:
+      APP: home-assistant
+      VOLSYNC_CLAIM: home-assistant-config
+      VOLSYNC_SNAPSHOTCLASS: nfs-snapshot-class
