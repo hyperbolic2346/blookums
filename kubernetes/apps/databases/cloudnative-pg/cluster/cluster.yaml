@@ -35,10 +35,10 @@ spec:
       serverName: postgres
       s3Credentials:
         accessKeyId:
-          key: aws-access-key-id
+          key: AWS_ACCESS_KEY_ID
           name: cloudnative-pg-secret
         secretAccessKey:
-          key: aws-secret-access-key
+          key: AWS_SECRET_ACCESS_KEY
           name: cloudnative-pg-secret
   monitoring:
     enablePodMonitor: true
