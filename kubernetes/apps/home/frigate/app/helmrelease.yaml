@@ -17,8 +17,6 @@ spec:
       interval: 30m
   values:
     defaultPodOptions:
-      securityContext:
-        privileged: true
       nodeSelector:
         google.feature.node.kubernetes.io/coral: "true"
 
@@ -36,6 +34,8 @@ spec:
             envFrom:
               - secretRef:
                   name: frigate-secret
+            securityContext:
+              privileged: true
             probes:
               liveness: &probes
                 enabled: true
