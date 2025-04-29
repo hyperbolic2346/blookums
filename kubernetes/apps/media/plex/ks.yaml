@@ -17,3 +17,8 @@ spec:
   interval: 30m
   retryInterval: 1m
   timeout: 5m
+  postBuild:
+    substitute:
+      APP: plex
+      VOLSYNC_CLAIM: plex-config
+      VOLSYNC_SNAPSHOTCLASS: csi-ceph-block

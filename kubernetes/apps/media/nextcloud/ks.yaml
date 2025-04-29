@@ -7,6 +7,7 @@ metadata:
 spec:
   dependsOn:
     - name: pvc-media
+    - name: cloudnative-pg-cluster
     - name: external-secrets-stores
   path: ./kubernetes/apps/media/nextcloud/app
   prune: true
@@ -17,3 +18,8 @@ spec:
   interval: 30m
   retryInterval: 1m
   timeout: 5m
+  postBuild:
+    substitute:
+      APP: nextcloud
+      VOLSYNC_CLAIM: nextcloud-config
+      VOLSYNC_SNAPSHOTCLASS: csi-ceph-block

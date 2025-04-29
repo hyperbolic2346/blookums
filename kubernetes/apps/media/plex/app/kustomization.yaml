@@ -5,6 +5,7 @@ namespace: media
 resources:
   - ./pvc.yaml
   - ./helmrelease.yaml
+  - ../../../../templates/volsync/r2
 configMapGenerator:
   - name: plex-gatus-ep
     files:
