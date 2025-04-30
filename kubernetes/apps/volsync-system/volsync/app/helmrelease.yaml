@@ -30,7 +30,7 @@ spec:
     metrics:
       disableAuth: true
     image:
-      repository: &image ghcr.io/onedr0p/volsync
+      repository: &image ghcr.io/k8s-at-home/volsync
       tag: &tag 0.12.0@sha256:628947bbb45f290e3d310cec4200e1a0174bd98e0b99dcf219a32e66055eb870
     restic:
       repository: *image
