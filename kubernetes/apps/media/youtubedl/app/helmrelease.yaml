@@ -48,7 +48,7 @@ spec:
                 memory: 512M
 
     service:
-      main:
+      ytd:
         controller: main
         ports:
           http:
