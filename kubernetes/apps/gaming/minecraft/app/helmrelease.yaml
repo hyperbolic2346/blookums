@@ -53,7 +53,7 @@ spec:
       # This must be overridden, since we can't accept this for the user.
       eula: 'TRUE'
       # One of: LATEST, SNAPSHOT, or a specific version (ie: "1.7.9").
-      version: LATEST
+      version: 1.21.3
       # This can be one of "VANILLA", "FORGE", "SPIGOT", "BUKKIT", "PAPER", "FTBA", "SPONGEVANILLA"
       type: SPIGOT
       # If type is set to FORGE, this sets the version; this is ignored if forgeInstallerUrl is set
@@ -150,7 +150,7 @@ spec:
       externalIPs:
 
       modUrls:
-       - https://dynmap.us/builds/dynmap/Dynmap-3.7-beta-7-spigot.jar
+       - https://gate.${SECRET_DOMAIN}/media/Dynmap-3.7-beta-8-spigot.jar
 
       rcon:
         # If you enable this, make SURE to change your password below.
