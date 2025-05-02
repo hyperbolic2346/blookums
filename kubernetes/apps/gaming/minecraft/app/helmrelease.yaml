@@ -177,6 +177,7 @@ spec:
             port: 8123
           ingress:
             enabled: true
+            className: internal
             annotations:
               kubernetes.io/ingress.class: internal
               cert-manager.io/cluster-issuer: letsencrypt-production
