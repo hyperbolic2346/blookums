@@ -80,7 +80,7 @@ spec:
             paths:
               - path: /
                 service:
-                  name: main
+                  name: frigate
                   port: 5000
     persistence:
       config-file:
