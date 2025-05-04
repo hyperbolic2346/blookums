@@ -30,6 +30,13 @@ spec:
     controller:
       replicas: 1
       runOnControlPlane: false
+      resources:
+        nfs:
+          limits:
+            memory: 2Gi
+          requests:
+            memory: 1Gi
+            cpu: 250m
     externalSnapshotter:
       enabled: true
     tolerations:
