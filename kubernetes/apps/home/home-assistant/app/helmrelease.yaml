@@ -81,6 +81,8 @@ spec:
               - none
               - --user-data-dir
               - "/config/.vscode"
+              - --socket-path
+              - "/vscode-tmp/code-server-ipc.sock"
               - --extensions-dir
               - "/config/.vscode"
               - --port
