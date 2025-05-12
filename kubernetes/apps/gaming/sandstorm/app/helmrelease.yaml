@@ -44,7 +44,7 @@ spec:
               PORT: "27102"
               QUERYPORT: "27131"
               HOSTNAME: "Minion Sandstorm"
-              LAUNCH_SERVER_ENV: "LAUNCH_SERVER_ENV=Ministry?Scenario=Scenario_Ministry_Checkpoint_Security?Game=Checkpoint?password=${SECRET_SANDSTORM_PW}?MaxPlayers=8 -MapCycle=MapCycle -Mods -ModList=Mods.txt -mutators='ImprovedAI,NoRestrictedArea,AdvancedSupplyPoints' -ModDownloadTravelTo=Ministry?Scenario=Scenario_Ministry_Checkpoint_Security"
+              LAUNCH_SERVER_ENV: "LAUNCH_SERVER_ENV=Ministry?Scenario=Scenario_Ministry_Checkpoint_Security?Game=Checkpoint?password=${SECRET_SANDSTORM_PW}?MaxPlayers=8 -MapCycle=MapCycle -Mods -ModList=Mods.txt -mutators=${SECRET_SANDSTORM_MUTATORS} -GameStatsToken=${SECRET_SANDSTORM_STATSTOKEN} -GameStats -GSLTToken=${SECRET_SANDSTORM_STATSTOKEN} -ModDownloadTravelTo=Ministry?Scenario=Scenario_Ministry_Checkpoint_Security"
             resources:
               requests:
                 cpu: 1000m
