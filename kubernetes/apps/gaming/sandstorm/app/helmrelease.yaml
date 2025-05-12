@@ -41,14 +41,10 @@ spec:
               tag: lite # I wish this wasn't how it's tagged, but alas
             env:
               TZ: ${TIMEZONE}
-              GAME_PORT: "27102"
-              QUERY_PORT: "27131"
-              SERVER_NAME: "Minion Sandstorm"
-              SERVER_PASS: "${SECRET_SANDSTORM_PW}"
-              ADMINLIST_IDS: ""
-              PERMITTEDLIST_IDS: ""
-              PUID: "1001"
-              PGID: "1001"
+              PORT: "27102"
+              QUERYPORT: "27131"
+              HOSTNAME: "Minion Sandstorm"
+              LAUNCH_SERVER_ENV: "LAUNCH_SERVER_ENV=Ministry?Scenario=Scenario_Ministry_Checkpoint_Security?Game=Checkpoint?password=${SECRET_SANDSTORM_PW}?MaxPlayers=8 -MapCycle=MapCycle -Mods -ModList=Mods.txt -mutators="ImprovedAI,NoRestrictedArea,AdvancedSupplyPoints" -ModDownloadTravelTo=Ministry?Scenario=Scenario_Ministry_Checkpoint_Security"
             resources:
               requests:
                 cpu: 1000m
