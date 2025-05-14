@@ -108,7 +108,7 @@ spec:
         enabled: true
         existingClaim: lidarr-config
       media:
-        existingClaim: videos
+        existingClaim: music
         globalMounts:
           - path: /media
       tmp:
