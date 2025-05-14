@@ -111,6 +111,10 @@ spec:
         existingClaim: music
         globalMounts:
           - path: /media
+      movies:
+        existingClaim: movies
+        globalMounts:
+          - path: /movies
       tmp:
         type: emptyDir
       logs:
