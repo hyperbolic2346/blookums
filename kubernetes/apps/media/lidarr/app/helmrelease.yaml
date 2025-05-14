@@ -112,9 +112,9 @@ spec:
         globalMounts:
           - path: /media
       movies:
-        existingClaim: movies
+        existingClaim: videos
         globalMounts:
-          - path: /movies
+          - path: /videos
       tmp:
         type: emptyDir
       logs:
