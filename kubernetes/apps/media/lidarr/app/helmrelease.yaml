@@ -110,11 +110,11 @@ spec:
       media:
         existingClaim: music
         globalMounts:
-          - path: /media
+          - path: /music
       movies:
         existingClaim: videos
         globalMounts:
-          - path: /videos
+          - path: /media
       tmp:
         type: emptyDir
       logs:
