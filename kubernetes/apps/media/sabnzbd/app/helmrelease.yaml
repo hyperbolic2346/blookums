@@ -113,3 +113,7 @@ spec:
         existingClaim: videos
         globalMounts:
           - path: /media
+      music:
+        existingClaim: music
+        globalMounts:
+          - path: /music
