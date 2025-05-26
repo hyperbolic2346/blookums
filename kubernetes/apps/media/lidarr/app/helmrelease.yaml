@@ -41,7 +41,7 @@ spec:
           main:
             image:
               repository: ghcr.io/szinn/lidarr
-              tag: 2.9.6.4552
+              tag: 2.11.2@sha256:52e39bc82a717e3d8d45574e6b469324252a03247818f1d30078c29bde6b89f9
             env:
               TZ: ${TIMEZONE}
               LIDARR__AUTHENTICATION_METHOD: External
