@@ -54,12 +54,12 @@ spec:
     mods:
       enabled: false
       portal:
-        - LogisticTrainNetwork
-        - AutoDeconstruct
-        - Waterfill_v17
-        - Squeak%20Through
-        - flib
-        - GhostScanner
+        - name: LogisticTrainNetwork
+        - name: AutoDeconstruct
+        - name: Waterfill_v17
+        - name: Squeak%20Through
+        - name: flib
+        - name: GhostScanner
 
     # Sets the data persistence volume configuration
     persistence:
