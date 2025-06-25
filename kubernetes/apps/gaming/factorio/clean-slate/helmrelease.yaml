@@ -27,9 +27,6 @@ spec:
       pullPolicy: IfNotPresent
       # Overrides the image tag whose default is the chart appVersion.
       tag: 2.0.55
-    envFrom:
-      - secretRef:
-          name: factorio-secret
 
     service:
       type: LoadBalancer
