@@ -22,14 +22,15 @@ spec:
     retain:
       daily: 7
     volumeSnapshotClassName: "${VOLSYNC_SNAPSHOTCLASS:-csi-ceph-block}"
-    moverAffinity:
-      podAntiAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-          - topologyKey: kubernetes.io/hostname
-            labelSelector:
-              matchLabels:
-                app.kubernetes.io/created-by: volsync
-            namespaceSelector:
-              matchExpressions:
-                - key: kubernetes.io/metadata.name
-                  operator: Exists
+    # Commented out to fix scheduling issues - multiple VolSync jobs can now run on same node
+    # moverAffinity:
+    #   podAntiAffinity:
+    #     requiredDuringSchedulingIgnoredDuringExecution:
+    #       - topologyKey: kubernetes.io/hostname
+    #         labelSelector:
+    #           matchLabels:
+    #             app.kubernetes.io/created-by: volsync
+    #         namespaceSelector:
+    #           matchExpressions:
+    #             - key: kubernetes.io/metadata.name
+    #               operator: Exists
