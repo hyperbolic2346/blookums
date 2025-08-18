@@ -33,11 +33,21 @@ record:
   enabled: true
   retain:
     days: 3
+    mode: all
+  alerts:
+    retain:
+      days: 30
+      mode: motion
+  detections:
+    retain:
+      days: 30
+      mode: motion
 
 birdseye:
   enabled: true
   # objects, motion, continuous
   mode: objects
+
 snapshots:
   enabled: true
   retain:
