@@ -1,4 +1,8 @@
 ---
+# Authentication configuration for Frigate 0.15.x
+auth:
+  enabled: false  # Disable authentication for now to fix the 500 errors
+
 mqtt:
   host: 10.0.1.14
   port: 8883
