@@ -149,9 +149,6 @@ spec:
       externalTrafficPolicy: Local
       externalIPs:
 
-      modUrls:
-       - https://gate.${SECRET_DOMAIN}/media/Dynmap-3.7-beta-8-spigot.jar
-
       rcon:
         # If you enable this, make SURE to change your password below.
         enabled: true
