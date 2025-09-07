@@ -75,7 +75,7 @@ spec:
       # One of: peaceful, easy, normal, and hard
       difficulty: normal
       # A comma-separated list of player names to whitelist.
-      whitelist: hyperbolic2346,minionmcmuffin
+      whitelist: hyperbolic2346,minionmcmuffin,gllich
       # A comma-separated list of player names who should be admins.
       ops: hyperbolic2346
       # A server icon URL for server listings. Auto-scaled and transcoded.
