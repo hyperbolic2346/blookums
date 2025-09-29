@@ -3,6 +3,9 @@
 auth:
   enabled: false  # Disable authentication for now to fix the 500 errors
 
+detect:
+  enabled: true
+
 mqtt:
   host: 10.0.1.14
   port: 8883
@@ -37,19 +40,33 @@ record:
   alerts:
     retain:
       days: 30
-      mode: motion
+      mode: active_objects
   detections:
     retain:
       days: 30
-      mode: motion
+      mode: active_objects
 
-birdseye:
-  enabled: true
-  # objects, motion, continuous
-  mode: objects
+review:
+  alerts:
+    labels:
+      - person
+      - bear
+      - dog
+      - car
+      - bus
+  detections:
+    labels:
+      - person
+      - bear
+      - dog
+      - car
+      - bus
 
 snapshots:
   enabled: true
+  timestamp: false
+  bounding_box: true
+  crop: false
   retain:
     default: 365
     objects:
