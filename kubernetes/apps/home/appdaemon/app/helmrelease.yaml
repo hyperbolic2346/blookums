@@ -24,6 +24,7 @@ spec:
       ELEVATION: ${SECRET_ALTITUDE}
       HA_URL: http://home-assistant:8123
       DASH_URL: http://$HOSTNAME:5050
+      HOSTNAME: 0.0.0.0
     envFrom:
       - secretRef:
           name: appdaemon-secret
