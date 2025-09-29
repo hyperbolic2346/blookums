@@ -40,8 +40,8 @@ spec:
         containers:
           main:
             image:
-              repository: ghcr.io/szinn/lidarr
-              tag: 2.11.2@sha256:52e39bc82a717e3d8d45574e6b469324252a03247818f1d30078c29bde6b89f9
+              repository: ghcr.io/home-operations/lidarr
+              tag: 2.14.3.4791@sha256:46d1b3ac8687c8d5a621b3f5a2d83f08952afa00474113434c6ad3e320ea9e5a
             env:
               TZ: ${TIMEZONE}
               LIDARR__AUTHENTICATION_METHOD: External
