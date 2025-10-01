@@ -51,10 +51,11 @@ spec:
               requests:
                 cpu: 10m
                 memory: 100M
-                smarter-devices/ttyACM0: 1
               limits:
                 memory: 256M
-                smarter-devices/ttyACM0: 1
+        pod:
+          nodeSelector:
+            kubernetes.io/hostname: "nuc1"
 
     service:
       main:
