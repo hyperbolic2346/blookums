@@ -1,0 +1,25 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+  name: gatecam
+  namespace: gate
+spec:
+  ingressClassName: external
+  tls:
+    - hosts:
+        - gatecam.${SECRET_DOMAIN}
+      secretName: gatecam-tls
+  rules:
+    - host: gatecam.${SECRET_DOMAIN}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gate-motion
+                port:
+                  number: 9081
