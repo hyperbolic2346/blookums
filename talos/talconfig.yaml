@@ -22,7 +22,7 @@ cniConfig:
 nodes:
   - hostname: "nuc0"
     ipAddress: "10.0.14.7"
-    installDisk: "/dev/sdb"
+    installDisk: "/dev/nvme0n1"
     machineSpec:
       secureboot: false
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
@@ -79,7 +79,7 @@ nodes:
           ip: "10.0.14.5"
   - hostname: "dogbert"
     ipAddress: "10.0.14.13"
-    installDisk: "/dev/sdb"
+    installDisk: "/dev/sdd"
     machineSpec:
       secureboot: false
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
@@ -96,7 +96,7 @@ nodes:
         mtu: 1500
   - hostname: "catbert"
     ipAddress: "10.0.14.14"
-    installDisk: "/dev/sdd"
+    installDisk: "/dev/sdb"
     machineSpec:
       secureboot: false
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
@@ -113,7 +113,7 @@ nodes:
         mtu: 1500
   - hostname: "wally"
     ipAddress: "10.0.14.16"
-    installDisk: "/dev/sdg"
+    installDisk: "/dev/sdc"
     machineSpec:
       secureboot: false
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
@@ -147,7 +147,7 @@ nodes:
         mtu: 1500
   - hostname: "asok"
     ipAddress: "10.0.14.18"
-    installDisk: "/dev/sdb"
+    installDisk: "/dev/sdg"
     machineSpec:
       secureboot: false
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
