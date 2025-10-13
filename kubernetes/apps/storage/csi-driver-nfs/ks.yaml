@@ -12,6 +12,10 @@ spec:
       app.kubernetes.io/name: *app
   path: ./kubernetes/apps/storage/csi-driver-nfs/app
   prune: true
+  postBuild:
+    substituteFrom:
+      - name: cluster-secrets
+        kind: Secret
   sourceRef:
     kind: GitRepository
     name: flux-system
