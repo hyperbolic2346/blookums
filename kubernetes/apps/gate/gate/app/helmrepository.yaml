@@ -1,0 +1,10 @@
+---
+# yaml-language-server: $schema=https://github.com/fluxcd-community/flux2-schemas/raw/main/helmrepository-source-v1.json
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: gate-charts
+spec:
+  interval: 60m
+  url: https://hyperbolic2346.github.io/gate-charts
+  timeout: 3m

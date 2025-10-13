@@ -5,3 +5,4 @@ namespace: gate
 resources:
   - ./gatecam-ing.yaml
   - ./helmrelease.yaml
+  - ./helmrepository.yaml
