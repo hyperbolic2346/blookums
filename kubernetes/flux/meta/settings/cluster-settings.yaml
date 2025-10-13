@@ -1,0 +1,24 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-settings
+  namespace: flux-system
+data:
+  TIMEZONE: "America/New_York"
+  CLUSTER_CIDR: "10.69.0.0/16"
+  CLUSTER_STORAGE_NFS: nfs-fileserv
+  CLUSTER_STORAGE_OPENEBS_HOSTPATH: openebs-hostpath
+  CLUSTER_STORAGE_BLOCK_SSD_3_REPLICA: ceph-ssd-3-replica
+  CLUSTER_STORAGE_FILESYSTEM_SSD_3_REPLICA: ceph-ssd-3-replica-filesystem
+  CLUSTER_STORAGE_BUCKET_SSD_3_REPLICA: ceph-ssd-3-replica-bucket
+
+  CLUSTER_STORAGE_BLOCK_HDD_3_REPLICA: ceph-hdd-3-replica
+
+  K8S_GATEWAY_LB_IP: 192.168.14.53
+  INGRESS_EXT_LB_IP: 192.168.14.52
+  INGRESS_INT_LB_IP: 192.168.14.51
+  PLEX_LB_IP: 192.168.14.195
+
+  CILIUM_LB_CIDR: 192.168.14.0/24
+  CILIUM_BGP_PEER: 10.0.14.1

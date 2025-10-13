@@ -42,6 +42,12 @@ spec:
     namespace: flux-system
   timeout: 5m
   wait: false
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-settings
+      - kind: Secret
+        name: cluster-secrets
   patches:
     - # Add Sops decryption to all Kustomizations
       patch: |-
@@ -52,6 +58,12 @@ spec:
         spec:
           decryption:
             provider: sops
+          postBuild:
+            substituteFrom:
+              - kind: ConfigMap
+                name: cluster-settings
+              - kind: Secret
+                name: cluster-secrets
       target:
         group: kustomize.toolkit.fluxcd.io
         kind: Kustomization
