@@ -7,7 +7,6 @@ metadata:
 spec:
   dependsOn:
     - name: pvc-media
-    - name: external-secrets-stores
   path: ./kubernetes/apps/gate/gate/app
   prune: true
   postBuild:
