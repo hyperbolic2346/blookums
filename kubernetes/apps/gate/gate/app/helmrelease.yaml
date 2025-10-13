@@ -59,7 +59,7 @@ spec:
       persistence:
         enabled: true
         accessMode: ReadWriteOnce
-        storageClass: ${CLUSTER_STORAGE_OPENEBS_HOSTPATH}
+        storageClass: nfs-fileserv
         size: 8Gi
       auth:
         password: ${SECRET_GATE_RABBITMQ_PW}
