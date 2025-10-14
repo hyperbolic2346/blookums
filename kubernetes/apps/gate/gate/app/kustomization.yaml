@@ -6,3 +6,5 @@ resources:
   - ./gatecam-ing.yaml
   - ./helmrelease.yaml
   - ./helmrepository.yaml
+  - ./httproute.yaml
+  - ./rabbitmq.yaml
