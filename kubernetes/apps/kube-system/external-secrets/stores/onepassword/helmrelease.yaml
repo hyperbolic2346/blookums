@@ -1,0 +1,145 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: onepassword-connect
+  namespace: kube-system
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: onepassword
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    defaultPodOptions:
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
+
+    controllers:
+      main:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          main:
+            image:
+              repository: docker.io/1password/connect-api
+              tag: 1.8.1
+            env:
+              OP_BUS_PORT: 11220
+              OP_BUS_PEERS: localhost:11221
+              OP_HTTP_PORT: 8080
+              OP_SESSION:
+                valueFrom:
+                  secretKeyRef:
+                    name: onepassword-connect-secret
+                    key: 1password-credentials.json
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /heartbeat
+                    port: 8080
+                  initialDelaySeconds: 15
+                  periodSeconds: 30
+                  failureThreshold: 3
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: 8080
+                  initialDelaySeconds: 15
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 10m
+                memory: 128Mi
+              limits:
+                memory: 256Mi
+          sync:
+            image:
+              repository: docker.io/1password/connect-sync
+              tag: 1.8.1
+            env:
+              OP_HTTP_PORT: 8081
+              OP_BUS_PORT: 11221
+              OP_BUS_PEERS: localhost:11220
+              OP_SESSION:
+                valueFrom:
+                  secretKeyRef:
+                    name: onepassword-connect-secret
+                    key: 1password-credentials.json
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /heartbeat
+                    port: 8081
+                  initialDelaySeconds: 15
+                  periodSeconds: 30
+                  failureThreshold: 3
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: 8081
+                  initialDelaySeconds: 15
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 10m
+                memory: 128Mi
+              limits:
+                memory: 256Mi
+    ingress:
+      main:
+        enabled: true
+        className: internal
+        annotations:
+          hajimari.io/enable: "false"
+          cert-manager.io/cluster-issuer: letsencrypt-production
+        hosts:
+          - host: &host onepassword-connect.${SECRET_DOMAIN}
+            paths:
+              - path: /
+                service:
+                  name: main
+                  port: 8080
+        tls:
+          - hosts:
+              - *host
+            secretName: onepassword-connect-cert
+    persistence:
+      shared:
+        type: emptyDir
+        globalMounts:
+          - path: /home/opuser/.op/data
+    service:
+      main:
+        controller: main
+        ports:
+          http:
+            port: 8080
+          sync:
+            port: 8081
