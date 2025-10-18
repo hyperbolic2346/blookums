@@ -13,7 +13,7 @@ spec:
       version: v1.18.2
       sourceRef:
         kind: HelmRepository
-        name: rook-ceph
+        name: storage
   values:
     crds:
       enabled: true
