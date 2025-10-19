@@ -1,0 +1,55 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/postgresql.cnpg.io/cluster_v1.json
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres
+  namespace: databases
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.2-10
+  enableSuperuserAccess: true
+  primaryUpdateStrategy: unsupervised
+  bootstrap:
+    recovery:
+      source: postgres
+  env:
+  - name: TZ
+    value: ${TIMEZONE}
+  storage:
+    size: 50Gi
+    storageClass: ${CLUSTER_STORAGE_BLOCK_SSD_3_REPLICA}
+  superuserSecret:
+    name: cloudnative-pg-secret
+  postgresql:
+    parameters:
+      max_connections: "600"
+      shared_buffers: 512MB
+  backup:
+    retentionPolicy: 14d
+    barmanObjectStore:
+      data:
+        compression: bzip2
+      wal:
+        compression: bzip2
+        maxParallel: 8
+      destinationPath: s3://blookums-databases/postgres
+      endpointURL: ${SECRET_DATABASE_S3}
+      serverName: postgres
+      s3Credentials:
+        accessKeyId:
+          key: AWS_ACCESS_KEY_ID
+          name: cloudnative-pg-secret
+        secretAccessKey:
+          key: AWS_SECRET_ACCESS_KEY
+          name: cloudnative-pg-secret
+  monitoring:
+    enablePodMonitor: true
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+      hugepages-2Mi: 500Mi
+    limits:
+      memory: 4Gi
+      hugepages-2Mi: 500Mi

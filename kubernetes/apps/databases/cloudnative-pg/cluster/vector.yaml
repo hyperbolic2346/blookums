@@ -1,0 +1,64 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pgvector
+  namespace: databases
+spec:
+  instances: 3
+  imageName: ghcr.io/tensorchord/cloudnative-pgvecto.rs:16-v0.2.0
+  enableSuperuserAccess: true
+  primaryUpdateStrategy: unsupervised
+  bootstrap:
+    recovery:
+      source: pgvector
+  env:
+  - name: TZ
+    value: ${TIMEZONE}
+  storage:
+    size: 50Gi
+    storageClass: ${CLUSTER_STORAGE_BLOCK_SSD_3_REPLICA}
+  superuserSecret:
+    name: cloudnative-pg-secret
+  postgresql:
+    shared_preload_libraries:
+     - "vectors.so"
+    parameters:
+      max_connections: "600"
+      shared_buffers: 512MB
+  backup:
+    retentionPolicy: 14d
+    barmanObjectStore:
+      data:
+        compression: bzip2
+      wal:
+        compression: bzip2
+        maxParallel: 8
+      destinationPath: s3://blookums-databases/pgvector
+      endpointURL: ${SECRET_DATABASE_S3}
+      serverName: pgvector
+      s3Credentials:
+        accessKeyId:
+          key: AWS_ACCESS_KEY_ID
+          name: cloudnative-pg-secret
+        secretAccessKey:
+          key: AWS_SECRET_ACCESS_KEY
+          name: cloudnative-pg-secret
+  monitoring:
+    enablePodMonitor: true
+    # Ref: https://github.com/cloudnative-pg/cloudnative-pg/issues/2501
+    podMonitorMetricRelabelings:
+      - {
+        sourceLabels: ["cluster"],
+        targetLabel: cnpg_cluster,
+        action: replace,
+      }
+      - { regex: cluster, action: labeldrop }
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+      hugepages-2Mi: 500Mi
+    limits:
+      memory: 4Gi
+      hugepages-2Mi: 500Mi
