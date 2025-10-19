@@ -126,7 +126,7 @@ spec:
         storageClass:
           enabled: true
           name: ${CLUSTER_STORAGE_BLOCK_HDD_3_REPLICA}
-          isDefault: true
+          isDefault: false
           reclaimPolicy: Delete
           allowVolumeExpansion: true
           parameters:
