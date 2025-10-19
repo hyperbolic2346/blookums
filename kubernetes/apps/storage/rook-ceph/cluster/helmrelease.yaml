@@ -17,6 +17,7 @@ spec:
   values:
     crds:
       enabled: true
+    operatorNamespace: storage
     monitoring:
       enabled: true
     ingress:
