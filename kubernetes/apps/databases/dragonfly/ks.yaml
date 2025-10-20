@@ -11,7 +11,8 @@ spec:
     labels:
       app.kubernetes.io/name: *app
   dependsOn:
-    - name: external-secrets
+    - name: external-secrets-stores
+      namespace: kube-system
   path: ./kubernetes/apps/databases/dragonfly/app
   prune: true
   sourceRef:
