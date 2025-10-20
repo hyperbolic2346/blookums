@@ -67,7 +67,5 @@ spec:
     requests:
       cpu: 500m
       memory: 1Gi
-      hugepages-2Mi: 500Mi
     limits:
       memory: 4Gi
-      hugepages-2Mi: 500Mi
