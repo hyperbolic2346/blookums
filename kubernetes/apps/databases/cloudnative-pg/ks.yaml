@@ -25,6 +25,7 @@ spec:
   dependsOn:
     - name: cloudnative-pg
     - name: external-secrets-stores
+      namespace: kube-system
   path: ./kubernetes/apps/databases/cloudnative-pg/cluster
   prune: true
   sourceRef:
