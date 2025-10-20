@@ -12,7 +12,7 @@ spec:
       version: 0.13.1
       sourceRef:
         kind: HelmRepository
-        name: backube-charts
+        name: botkube-charts
   install:
     remediation:
       retries: 3
