@@ -62,19 +62,20 @@ spec:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
               capabilities: { drop: ["ALL"] }
-    defaultPodOptions:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 65534
-        runAsGroup: 65534
-        seccompProfile: { type: RuntimeDefault }
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: DoNotSchedule
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/name: *app
+        serviceAccount:
+          identifier: *app
+          pod:
+          securityContext:
+            runAsUser: 65534
+            runAsGroup: 65534
+            runAsNonRoot: true
+          topologySpreadConstraints:
+            - maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: DoNotSchedule
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: *app
     service:
       app:
         controller: *app
@@ -93,5 +94,42 @@ spec:
             interval: 1m
             scrapeTimeout: 10s
     serviceAccount:
-      create: true
-      name: *app
+      dragonfly-operator: {}
+    rbac:
+      bindings:
+        dragonfly-operator:
+          roleRef:
+            kind: ClusterRole
+            name: dragonfly-operator
+          subjects:
+            - identifier: *app
+          type: ClusterRoleBinding
+      roles:
+        dragonfly-operator:
+          rules:
+            - apiGroups: ["coordination.k8s.io"]
+              resources: ["leases"]
+              verbs:
+                ["get", "list", "watch", "create", "update", "patch", "delete"]
+            - apiGroups: [""]
+              resources: ["events"]
+              verbs: ["create", "patch"]
+            - apiGroups: [""]
+              resources: ["pods", "services"]
+              verbs:
+                ["create", "delete", "get", "list", "patch", "update", "watch"]
+            - apiGroups: ["apps"]
+              resources: ["statefulsets"]
+              verbs:
+                ["create", "delete", "get", "list", "patch", "update", "watch"]
+            - apiGroups: ["dragonflydb.io"]
+              resources: ["dragonflies"]
+              verbs:
+                ["create", "delete", "get", "list", "patch", "update", "watch"]
+            - apiGroups: ["dragonflydb.io"]
+              resources: ["dragonflies/finalizers"]
+              verbs: ["update"]
+            - apiGroups: ["dragonflydb.io"]
+              resources: ["dragonflies/status"]
+              verbs: ["get", "patch", "update"]
+          type: ClusterRole
