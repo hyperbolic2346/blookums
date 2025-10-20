@@ -12,6 +12,24 @@ spec:
   bootstrap:
     recovery:
       source: pgvector
+  externalClusters:
+    - name: pgvector
+      barmanObjectStore:
+        data:
+          compression: bzip2
+        wal:
+          compression: bzip2
+          maxParallel: 8
+        destinationPath: s3://blookums-databases/pgvector
+        endpointURL: ${SECRET_DATABASE_S3}
+        serverName: pgvector
+        s3Credentials:
+          accessKeyId:
+            key: AWS_ACCESS_KEY_ID
+            name: cloudnative-pg-secret
+          secretAccessKey:
+            key: AWS_SECRET_ACCESS_KEY
+            name: cloudnative-pg-secret
   env:
   - name: TZ
     value: ${TIMEZONE}

@@ -13,9 +13,27 @@ spec:
   bootstrap:
     recovery:
       source: postgres
+  externalClusters:
+    - name: postgres
+      barmanObjectStore:
+        destinationPath: s3://blookums-databases/postgres
+        endpointURL: ${SECRET_DATABASE_S3}
+        serverName: postgres
+        s3Credentials:
+          accessKeyId:
+            key: AWS_ACCESS_KEY_ID
+            name: cloudnative-pg-secret
+          secretAccessKey:
+            key: AWS_SECRET_ACCESS_KEY
+            name: cloudnative-pg-secret
+        data:
+          compression: bzip2
+        wal:
+          compression: bzip2
+          maxParallel: 8
   env:
-  - name: TZ
-    value: ${TIMEZONE}
+    - name: TZ
+      value: ${TIMEZONE}
   storage:
     size: 50Gi
     storageClass: ${CLUSTER_STORAGE_BLOCK_SSD_3_REPLICA}
