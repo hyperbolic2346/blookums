@@ -33,6 +33,7 @@ spec:
       enableRbdDriver: true
       # enableCephfsSnapshotter: true
       enableCsiOperator: true
+      enableGrpcMetrics: false
     crds:
       enabled: true
     pspEnable: false
