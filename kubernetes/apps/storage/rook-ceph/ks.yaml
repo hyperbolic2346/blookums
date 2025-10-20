@@ -40,6 +40,7 @@ spec:
         kind: Secret
       - name: cluster-settings
         kind: ConfigMap
+        namespace: flux-system
   wait: true
   interval: 30m
   retryInterval: 1m
