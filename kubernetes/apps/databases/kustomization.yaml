@@ -4,6 +4,5 @@ kind: Kustomization
 components:
   - ../../components/common
 resources:
-  - ./namespace.yaml
   - ./dragonfly/ks.yaml
   - ./cloudnative-pg/ks.yaml
