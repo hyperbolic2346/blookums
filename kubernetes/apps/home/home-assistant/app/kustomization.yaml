@@ -6,5 +6,4 @@ resources:
   - ./pvc.yaml
   - ./externalsecret.yaml
   - ./ocirepository.yaml
-  #- ./helmrelease.yaml
-  #- ../../../../templates/volsync/r2
+  - ./helmrelease.yaml
