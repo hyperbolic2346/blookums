@@ -32,6 +32,6 @@ spec:
         kind: ConfigMap
     substitute:
       APP: home-assistant
-      VOLSYNC_CLAIM: home-assistant-config-volsync
+      VOLSYNC_CLAIM: home-assistant-config
       VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
       VOLSYNC_CAPACITY: 5Gi

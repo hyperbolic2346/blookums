@@ -25,8 +25,9 @@ spec:
   postBuild:
     substitute:
       APP: zwave-js-ui
-      VOLSYNC_CLAIM: zwave-js-ui-config-volsync
+      VOLSYNC_CLAIM: zwave-js-ui-config
       VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
+      VOLSYNC_CAPACITY: 5Gi
     substituteFrom:
       - name: cluster-secrets
         kind: Secret
