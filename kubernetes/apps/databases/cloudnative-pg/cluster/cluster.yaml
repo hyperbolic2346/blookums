@@ -16,15 +16,15 @@ spec:
   externalClusters:
     - name: postgres
       barmanObjectStore:
-        destinationPath: s3://blookums-databases/postgres
+        destinationPath: s3://blookums-databases-Oct-25/postgres
         endpointURL: ${SECRET_DATABASE_S3}
         serverName: postgres
         s3Credentials:
           accessKeyId:
-            key: AWS_ACCESS_KEY_ID
+            key: AWS_BACKUP_ACCESS_KEY_ID
             name: cloudnative-pg-secret
           secretAccessKey:
-            key: AWS_SECRET_ACCESS_KEY
+            key: AWS_BACKUP_SECRET_ACCESS_KEY
             name: cloudnative-pg-secret
         data:
           compression: bzip2
