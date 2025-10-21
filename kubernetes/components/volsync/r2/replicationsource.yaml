@@ -19,7 +19,6 @@ spec:
       runAsGroup: ${APP_GID:-568}
       fsGroup: ${APP_GID:-568}
     pruneIntervalDays: 7
-    repository: ${APP}-volsync-r2
     retain:
       daily: 7
     volumeSnapshotClassName: "${VOLSYNC_SNAPSHOTCLASS:-csi-ceph-block}"
