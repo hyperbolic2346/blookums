@@ -34,3 +34,4 @@ spec:
       APP: home-assistant
       VOLSYNC_CLAIM: home-assistant-config-volsync
       VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
+      VOLSYNC_CAPACITY: 5Gi

@@ -28,6 +28,7 @@ spec:
       APP: frigate
       VOLSYNC_CLAIM: frigate-data
       VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
+      VOLSYNC_CAPACITY: 2Ti
     substituteFrom:
       - name: cluster-secrets
         kind: Secret

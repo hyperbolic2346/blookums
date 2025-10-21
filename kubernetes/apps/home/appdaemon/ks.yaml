@@ -28,6 +28,7 @@ spec:
       APP: appdaemon
       VOLSYNC_CLAIM: appdaemon-config
       VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
+      VOLSYNC_CAPACITY: 5Gi
     substituteFrom:
       - name: cluster-secrets
         kind: Secret
