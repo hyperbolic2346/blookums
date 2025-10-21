@@ -16,7 +16,7 @@ spec:
   externalClusters:
     - name: postgres
       barmanObjectStore:
-        destinationPath: s3://blookums-databases-Oct-25/postgres
+        destinationPath: s3://blookums-databases-oct-25/postgres
         endpointURL: ${SECRET_DATABASE_S3}
         serverName: postgres
         s3Credentials:

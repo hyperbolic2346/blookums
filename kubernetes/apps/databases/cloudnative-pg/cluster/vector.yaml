@@ -20,7 +20,7 @@ spec:
         wal:
           compression: bzip2
           maxParallel: 8
-        destinationPath: s3://blookums-databases-Oct-25/pgvector
+        destinationPath: s3://blookums-databases-oct-25/pgvector
         endpointURL: ${SECRET_DATABASE_S3}
         serverName: pgvector
         s3Credentials:
