@@ -25,5 +25,5 @@ spec:
   postBuild:
     substitute:
       APP: zwave-js-ui
-      VOLSYNC_CLAIM: zwave-js-ui-config
+      VOLSYNC_CLAIM: zwave-js-ui-config-volsync
       VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
