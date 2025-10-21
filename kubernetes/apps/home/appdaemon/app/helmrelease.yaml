@@ -1,0 +1,80 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: appdaemon
+  namespace: home
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: app-template
+      version: 1.5.1
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+  values:
+    image:
+      repository: docker.io/acockburn/appdaemon
+      tag: 4.5.11
+
+    env:
+      TZ: ${TIMEZONE}
+      ELEVATION: ${SECRET_ALTITUDE}
+      HA_URL: http://home-assistant:8123
+      DASH_URL: http://0.0.0.0:5050
+    envFrom:
+      - secretRef:
+          name: appdaemon-secret
+
+    service:
+      main:
+        ports:
+          http:
+            port: 5050
+
+    persistence:
+      config:
+        enabled: false
+      conf:
+        enabled: true
+        existingClaim: appdaemon-config
+
+    ingress:
+      main:
+        enabled: false
+    addons:
+      codeserver:
+        enabled: true
+        image:
+          repository: codercom/code-server
+          tag: 4.104.2
+        workingDir: /conf
+        args:
+          - --auth
+          - none
+          - --user-data-dir
+          - /conf/.vscode
+          - --extensions-dir
+          - /conf/.vscode
+        ingress:
+          enabled: true
+          annotations:
+            kubernetes.io/tls-acme: 'true'
+            kubernetes.io/ingress.class: nginx
+            nginx.ingress.kubernetes.io/auth-url: http://oauth2-proxy.networking.svc.cluster.local/oauth2/auth
+            nginx.ingress.kubernetes.io/auth-signin: ${SECRET_AUTH_URL}
+            cert-manager.io/cluster-issuer: letsencrypt-production
+        hosts:
+          - host: appdaemon-code.${SECRET_DOMAIN}
+            paths:
+              - path: /
+                pathType: Prefix
+        tls:
+          - hosts:
+              - appdaemon-code.${SECRET_DOMAIN}
+            secretName: hass-cert
+        volumeMounts:
+          - name: conf
+            mountPath: /conf
