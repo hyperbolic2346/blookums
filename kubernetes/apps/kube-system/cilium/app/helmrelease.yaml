@@ -18,6 +18,8 @@ spec:
       retries: 3
   values:
     autoDirectNodeRoutes: true
+    bgpControlPlane:
+      enabled: true
     bpf:
       masquerade: true
       # Ref: https://github.com/siderolabs/talos/issues/10002
