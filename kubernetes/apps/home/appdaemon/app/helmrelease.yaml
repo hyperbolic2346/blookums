@@ -10,40 +10,51 @@ spec:
     kind: OCIRepository
     name: appdaemon
   values:
-    image:
-      repository: docker.io/acockburn/appdaemon
-      tag: 4.5.11
-
-    env:
-      TZ: ${TIMEZONE}
-      ELEVATION: ${SECRET_ALTITUDE}
-      HA_URL: http://home-assistant:8123
-      DASH_URL: http://0.0.0.0:5050
-    envFrom:
-      - secretRef:
-          name: appdaemon-secret
-
+    controllers:
+      main:
+        containers:
+          main:
+            image:
+              repository: docker.io/acockburn/appdaemon
+              tag: 4.5.11
+            env:
+              TZ: ${TIMEZONE}
+              ELEVATION: ${SECRET_ALTITUDE}
+              HA_URL: http://home-assistant:8123
+              DASH_URL: http://0.0.0.0:5050
+            envFrom:
+              - secretRef:
+                  name: appdaemon-secret
     service:
       main:
+        controller: main
         ports:
           http:
             port: 5050
+            protocol: TCP
 
+    route:
+      main:
+        hostnames: ["appdaemon.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: internal
+            namespace: kube-system
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: main
+                port: 5050
     persistence:
       conf:
         enabled: true
         existingClaim: appdaemon-config
-
-    ingress:
-      main:
-        enabled: false
+        mountPath: /conf
     addons:
-      codeserver:
+      code:
         enabled: true
         image:
           repository: codercom/code-server
           tag: 4.104.2
-        workingDir: /conf
         args:
           - --auth
           - none
@@ -51,6 +62,7 @@ spec:
           - /conf/.vscode
           - --extensions-dir
           - /conf/.vscode
+        workingDir: /conf
         ingress:
           enabled: true
           annotations:
@@ -59,15 +71,15 @@ spec:
             nginx.ingress.kubernetes.io/auth-url: http://oauth2-proxy.networking.svc.cluster.local/oauth2/auth
             nginx.ingress.kubernetes.io/auth-signin: ${SECRET_AUTH_URL}
             cert-manager.io/cluster-issuer: letsencrypt-production
-        hosts:
-          - host: appdaemon-code.${SECRET_DOMAIN}
-            paths:
-              - path: /
-                pathType: Prefix
-        tls:
-          - hosts:
-              - appdaemon-code.${SECRET_DOMAIN}
-            secretName: hass-cert
+          hosts:
+            - host: appdaemon-code.${SECRET_DOMAIN}
+              paths:
+                - path: /
+                  pathType: Prefix
+          tls:
+            - hosts:
+                - appdaemon-code.${SECRET_DOMAIN}
+              secretName: hass-cert
         volumeMounts:
           - name: conf
             mountPath: /conf
