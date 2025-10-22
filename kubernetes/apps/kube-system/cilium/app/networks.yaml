@@ -24,26 +24,51 @@ spec:
     matchLabels:
       kubernetes.io/os: linux
 ---
-apiVersion: cilium.io/v2
-kind: CiliumBGPClusterConfig
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/cilium.io/ciliumbgpadvertisement_v2alpha1.json
+apiVersion: cilium.io/v2alpha1
+kind: CiliumBGPAdvertisement
 metadata:
-  name: cluster-config
+  name: bgp-advertisement-config
+  labels:
+    advertise: bgp
 spec:
-  bgpVirtualRouters:
-  - localASN: ${SECRET_NETWORK_BGP_ASN}
-    serviceSelector:
-      matchLabels:
-          - {
-              key: thisFakeSelector,
-              operator: NotIn,
-              values: ["will-match-and-announce-all-services"],
-            }
+  advertisements:
+    - advertisementType: Service
+      service:
+        addresses:
+          - LoadBalancerIP
+      selector:
+        matchExpressions:
+          - { key: somekey, operator: NotIn, values: ["never-used-value"] }
 ---
-apiVersion: cilium.io/v2
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/cilium.io/ciliumbgppeerconfig_v2alpha1.json
+apiVersion: cilium.io/v2alpha1
 kind: CiliumBGPPeerConfig
 metadata:
-  name: peer-config-1
+  name: bgp-peer-config-v4
 spec:
-  peerAddress: ${CILIUM_BGP_PEER}
-  peerASN: ${SECRET_NETWORK_BGP_PEER_ASN}
-  holdTime: 90
+  families:
+    - afi: ipv4
+      safi: unicast
+      advertisements:
+        matchLabels:
+          advertise: bgp
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/cilium.io/ciliumbgpclusterconfig_v2alpha1.json
+apiVersion: cilium.io/v2alpha1
+kind: CiliumBGPClusterConfig
+metadata:
+  name: bgp-cluster-config
+spec:
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/os: linux
+  bgpInstances:
+    - name: instance-${SECRET_NETWORK_BGP_ASN}
+      localASN: ${SECRET_NETWORK_BGP_ASN}
+      peers:
+        - name: peer-${SECRET_NETWORK_BGP_PEER_ASN}-v4
+          peerASN: ${SECRET_NETWORK_BGP_PEER_ASN}
+          peerAddress: ${CILIUM_BGP_PEER}
+          peerConfigRef:
+            name: bgp-peer-config-v4
