@@ -5,3 +5,4 @@ namespace: home
 resources:
   - ./externalsecret.yaml
   - ./helmrelease.yaml
+  - ./ocirepository.yaml
