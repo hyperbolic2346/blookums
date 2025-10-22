@@ -24,24 +24,26 @@ spec:
     matchLabels:
       kubernetes.io/os: linux
 ---
-apiVersion: cilium.io/v2alpha1
-kind: CiliumBGPPeeringPolicy
+apiVersion: cilium.io/v2
+kind: CiliumBGPClusterConfig
 metadata:
-  name: l3-policy
+  name: cluster-config
 spec:
-  nodeSelector:
-    matchLabels:
-      kubernetes.io/os: linux
-  virtualRouters:
-    - localASN: ${SECRET_NETWORK_BGP_ASN}
-      exportPodCIDR: false
-      serviceSelector:
-        matchExpressions:
+  bgpVirtualRouters:
+  - localASN: ${SECRET_NETWORK_BGP_ASN}
+    serviceSelector:
+      matchLabels:
           - {
               key: thisFakeSelector,
               operator: NotIn,
               values: ["will-match-and-announce-all-services"],
             }
-      neighbors:
-        - peerAddress: ${CILIUM_BGP_PEER}/32
-          peerASN: ${SECRET_NETWORK_BGP_PEER_ASN}
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPPeerConfig
+metadata:
+  name: peer-config-1
+spec:
+  peerAddress: ${CILIUM_BGP_PEER}
+  peerASN: ${SECRET_NETWORK_BGP_PEER_ASN}
+  holdTime: 90
