@@ -30,8 +30,6 @@ spec:
             port: 5050
 
     persistence:
-      config:
-        enabled: false
       conf:
         enabled: true
         existingClaim: appdaemon-config
