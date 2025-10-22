@@ -1,0 +1,91 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: plex
+  namespace: media
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: plex
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    defaultPodOptions:
+      securityContext:
+        runAsUser: 568
+        runAsGroup: 568
+        fsGroup: 568
+        fsGroupChangePolicy: OnRootMismatch
+        supplementalGroups:
+          - 44    # video
+          - 109   # render
+          - 65537 # media ro
+
+    controllers:
+      main:
+        containers:
+          main:
+            image:
+              repository: ghcr.io/home-operations/plex
+              tag: 1.42.2.10156@sha256:9ad8a3506e1d8ebda873a668603c1a2c10e6887969564561be669efd65ae8871
+            env:
+              TZ: ${TIMEZONE}
+              ADVERTISE_IP: http://${PLEX_LB_IP}:32400,https://plex.${SECRET_DOMAIN}:443
+              ALLOWED_NETWORKS: '10.0.0.0/8'
+              HOSTNAME: 'plex'
+            resources:
+              requests:
+                cpu: 1000m
+                memory: 2000M
+              limits:
+                memory: 10000M
+
+    service:
+      main:
+        controller: main
+        type: LoadBalancer
+        externalTrafficPolicy: Local
+        annotations:
+          io.cilium/lb-ipam-ips: ${PLEX_LB_IP}
+        ports:
+          http:
+            port: 32400
+
+    route:
+      main:
+        hostnames: ["plex.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: external
+            namespace: kube-system
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: main
+                port: 32400
+
+    persistence:
+      config:
+        enabled: true
+        existingClaim: plex-config
+      tmp:
+        type: emptyDir
+      transcode:
+        type: emptyDir
+      media:
+        existingClaim: videos
+        globalMounts:
+          - path: /media
+      music:
+        existingClaim: music
+        globalMounts:
+          - path: /music
