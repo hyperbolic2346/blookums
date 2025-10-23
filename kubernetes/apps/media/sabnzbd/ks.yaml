@@ -32,5 +32,5 @@ spec:
     substitute:
       APP: sabnzbd
       VOLSYNC_CLAIM: sabnzbd-config
-      VOLSYNC_SNAPSHOTCLASS: nfs-snapshot-class
+      VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
       VOLSYNC_CAPACITY: 2Gi

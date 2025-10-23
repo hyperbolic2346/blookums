@@ -1,0 +1,74 @@
+# https://github.com/Tzahi12345/YoutubeDL-Material/blob/master/docker-compose.yml
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/helmrelease-helm-v2beta1.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: youtubedl
+  namespace: media
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: youtubedl
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    controllers:
+      main:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          main:
+            image:
+              repository: docker.io/tzahi12345/youtubedl-material
+              tag: 4.3.2
+            env:
+              TZ: ${TIMEZONE}
+              write_ytdl_config: true
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256M
+              limits:
+                cpu: 1000m
+                memory: 512M
+
+    service:
+      youtubedl:
+        controller: main
+        ports:
+          http:
+            port: 17442
+
+    route:
+      main:
+        hostnames: ["ytd.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: internal
+            namespace: kube-system
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: youtubedl
+                port: 17442
+
+    persistence:
+      config:
+        enabled: true
+        existingClaim: youtubedl-config
+        globalMounts:
+          - path: /app/appdata
+      media:
+        enabled: true
+        existingClaim: youtubedl-nfs
+        globalMounts:
+          - path: /app/video
