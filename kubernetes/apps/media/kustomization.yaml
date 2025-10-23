@@ -8,4 +8,5 @@ resources:
   #- ./namespace.yaml
   - ./plex/ks.yaml
   - ./sabnzbd/ks.yaml
+  - ./sonarr/ks.yaml
   - ./_pvc/ks.yaml
