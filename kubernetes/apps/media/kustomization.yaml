@@ -4,6 +4,6 @@ kind: Kustomization
 components:
   - ../../components/common
 resources:
-  - ./namespace.yaml
+  #- ./namespace.yaml
   - ./plex/ks.yaml
   - ./_pvc/ks.yaml
