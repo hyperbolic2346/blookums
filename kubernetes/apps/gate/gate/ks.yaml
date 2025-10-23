@@ -3,10 +3,11 @@ apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
   name: gate
-  namespace: flux-system
+  namespace: gate
 spec:
   dependsOn:
     - name: pvc-media
+      namespace: media
   path: ./kubernetes/apps/gate/gate/app
   prune: true
   postBuild:
