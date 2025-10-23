@@ -6,8 +6,9 @@ components:
   - ../../components/common
 resources:
   #- ./namespace.yaml
+  - ./_pvc/ks.yaml
   - ./plex/ks.yaml
   - ./radarr/ks.yaml
   - ./sabnzbd/ks.yaml
   - ./sonarr/ks.yaml
-  - ./_pvc/ks.yaml
+  - ./youtubedl/ks.yaml
