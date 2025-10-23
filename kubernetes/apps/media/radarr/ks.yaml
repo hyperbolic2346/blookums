@@ -1,0 +1,33 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: radarr
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: pvc-media
+    - name: cloudnative-pg-cluster
+      namespace: databases
+    - name: external-secrets-stores
+      namespace: kube-system
+    - name: volsync
+      namespace: volsync-system
+  components:
+    - ../../../../components/volsync
+  path: ./kubernetes/apps/media/radarr/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  wait: true
+  interval: 30m
+  retryInterval: 1m
+  timeout: 5m
+  postBuild:
+    substitute:
+      APP: radarr
+      VOLSYNC_CLAIM: radarr-config
+      VOLSYNC_SNAPSHOTCLASS: nfs-snapshot-class
+      VOLSYNC_CAPACITY: 10Gi
