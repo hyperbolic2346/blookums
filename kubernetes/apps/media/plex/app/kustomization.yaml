@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: media
 resources:
   - ./helmrelease.yaml
+  - ./ocirepository.yaml
 configMapGenerator:
   - name: plex-gatus-ep
     files:
