@@ -1,15 +1,14 @@
----
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: cicada
+  name: armadillo
   namespace: gaming
 spec:
-  releaseName: cicada
+  releaseName: armadillo
   interval: 10m
   chartRef:
     kind: OCIRepository
-    name: cicada
+    name: armadillo
   values:
     replicaCount: 1
     image:
@@ -105,7 +104,7 @@ spec:
       # One of: creative, survival, adventure, spectator
       gameMode: survival
       # Message of the Day
-      motd: Welcome to Oliver's Cicada Server!
+      motd: Welcome to Oliver's Armadillo Server!
       # If true, enable player-vs-player damage.
       pvp: false
       # One of: DEFAULT, FLAT, LARGEBIOMES, AMPLIFIED, CUSTOMIZED
@@ -113,7 +112,7 @@ spec:
       # When levelType == FLAT or CUSTOMIZED, this can be used to further customize map generation.
       # ref: https://hub.docker.com/r/itzg/minecraft-server/
       generatorSettings:
-      worldSaveName: cicada
+      worldSaveName: armadillo
       # If set, this URL will be downloaded at startup and used as a starting point
       downloadWorldUrl:
       # force re-download of server file
@@ -156,7 +155,7 @@ spec:
         externalTrafficPolicy: Local
 
       extraPorts:
-        - name: cicadadynmap
+        - name: armadillodynmap
           containerPort: 8123
           service:
             # Enable a service for dynmap
@@ -168,18 +167,18 @@ spec:
             # externalTrafficPolicy: Cluster
             port: 8123
           ingress:
-            enabled: false
+            enabled: true
             className: internal
             annotations:
               kubernetes.io/ingress.class: internal
               cert-manager.io/cluster-issuer: letsencrypt-production
             hosts:
-              - name: cicada.${SECRET_DOMAIN}
+              - name: armadillo.${SECRET_DOMAIN}
                 path: /
             tls:
-              - secretName: cicada-dynmap-tls
+              - secretName: armadillo-dynmap-tls
                 hosts:
-                  - cicada.${SECRET_DOMAIN}
+                  - armadillo.${SECRET_DOMAIN}
 
       query:
         # If you enable this, your server will be "published" to Gamespy
@@ -206,4 +205,4 @@ spec:
       dataDir:
         # Set this to false if you don't care to persist state between restarts.
         enabled: true
-        existingClaim: cicada-data
+        existingClaim: armadillo-data
