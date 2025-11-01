@@ -34,6 +34,11 @@ spec:
       # enableCephfsSnapshotter: true
       enableCsiOperator: true
       enableGrpcMetrics: false
+      rbd:
+        pluginTolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
     crds:
       enabled: true
     pspEnable: false
