@@ -207,4 +207,4 @@ spec:
       dataDir:
         # Set this to false if you don't care to persist state between restarts.
         enabled: true
-        existingClaim: scorpion-data
+        existingClaim: skyblock-data
