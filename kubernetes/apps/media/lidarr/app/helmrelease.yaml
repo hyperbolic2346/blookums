@@ -90,7 +90,7 @@ spec:
             sectionName: https
         rules:
           - backendRefs:
-              - identifier: lidarr
+              - identifier: main
                 port: *port
     persistence:
       config:
