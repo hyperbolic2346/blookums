@@ -63,6 +63,12 @@
       ignoreTests: true,
     },
     {
+      description: "Auto-merge Patches",
+      matchUpdateTypes: ["patch"],
+      automerge: true
+      automergeType: "branch",
+    },
+    {
       matchUpdateTypes: ["major"],
       semanticCommitType: "feat",
       commitMessagePrefix: "{{semanticCommitType}}({{semanticCommitScope}})!:",
