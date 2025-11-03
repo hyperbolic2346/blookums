@@ -111,7 +111,7 @@ spec:
         globalMounts:
           - path: /config/logs
     service:
-      app:
+      main:
         controller: lidarr
         ports:
           http:
