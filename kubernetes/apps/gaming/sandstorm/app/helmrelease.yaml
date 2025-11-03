@@ -65,6 +65,7 @@ spec:
     persistence:
       game:
         enabled: true
+        type: persistentVolumeClaim
         advancedMounts:
           main:
             main:
