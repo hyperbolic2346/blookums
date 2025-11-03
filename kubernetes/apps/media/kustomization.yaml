@@ -5,9 +5,9 @@ namespace: media
 components:
   - ../../components/common
 resources:
-  #- ./namespace.yaml
   - ./_pvc/ks.yaml
   - ./lidarr/ks.yaml
+  - ./nextcloud/ks.yaml
   - ./plex/ks.yaml
   - ./radarr/ks.yaml
   - ./sabnzbd/ks.yaml

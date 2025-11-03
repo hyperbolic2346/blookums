@@ -1,0 +1,92 @@
+---
+# yaml-language-server: $schema=https://github.com/fluxcd-community/flux2-schemas/raw/main/helmrelease-helm-v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: &app nextcloud
+  namespace: media
+spec:
+  timeout: 15m
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: nextcloud
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      strategy: rollback
+      retries: 3
+  values:
+    image:
+      flavor: fpm-alpine
+    nginx:
+      enabled: true
+    nextcloud:
+      extraInitContainers:
+        - name: init-db
+          image: ghcr.io/home-operations/postgres-init:17.6@sha256:86a1992d46273c58fd4ad95b626081dfaabfe16bd56944675169e406d1a660dd
+          envFrom:
+            - secretRef:
+                name: &secret nextcloud-secret
+      datadir: /var/www/data
+      host: &host nextcloud.${SECRET_DOMAIN}
+      extraEnv:
+        - name: REDIS_HOST
+          value: dragonfly.databases.svc.cluster.local
+        - name: REDIT_HOST_PORT
+          value: "6379"
+        - name: NEXTCLOUD_TRUSTED_DOMAINS
+          value: *host
+        - name: TRUSTED_PROXIES
+          value: '10.0.0.0/8'
+        - name: TZ
+          value: ${TIMEZONE}
+      existingSecret:
+        enabled: true
+        secretName: *secret
+        usernameKey: NEXTCLOUD_ADMIN_USER
+        passwordKey: NEXTCLOUD_ADMIN_PASSWORD
+        smtpUsernameKey: SMTP_NAME
+        smtpPasswordKey: SMTP_PASSWORD
+        smtpHostKey: SMTP_HOST
+      configs:
+        proxy.config.php: |-
+          <?php
+          $CONFIG = array (
+            'trusted_proxies' => array(
+              0 => '127.0.0.1',
+              1 => '10.0.0.0/8',
+            ),
+            'forwarded_for_headers' => array('HTTP_X_FORWARDED_FOR'),
+          ); ?>
+        misc.config.php: |-
+          <?php
+          $CONFIG = array (
+            'default_phone_region' => 'NC',
+            'maintenance_window_start' => 2,
+          ); ?>
+    internalDatabase:
+      enabled: false
+    externalDatabase:
+      enabled: true
+      type: postgresql
+      existingSecret:
+        enabled: true
+        secretName: *secret
+        usernameKey: POSTGRES_USER
+        passwordKey: POSTGRES_PASSWORD
+        hostKey: POSTGRES_HOST
+        databaseKey: POSTGRES_DB
+    persistence:
+      enabled: true
+      existingClaim: nextcloud-data
+      accessMode: ReadWriteMany
+    startupProbe:
+      enabled: false
+    readinessProbe:
+      enabled: false
+    livenessProble:
+      enabled: false
