@@ -43,7 +43,7 @@ spec:
           main:
             image:
               repository: ghcr.io/home-operations/home-assistant
-              tag: 2025.9.4@sha256:55c7db16301626265c6c8132985137ca0798303773dafa244e562353baa93a6f
+              tag: 2025.11.0@sha256:844b7fc34b7742d5135ca12bf5900cc496b161b3a0ca8549729e67d98160f8bf
             env:
               TZ: ${TIMEZONE}
               HASS_UNIT_SYSTEM: imperial
