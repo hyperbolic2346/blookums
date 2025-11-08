@@ -15,7 +15,7 @@ spec:
         name: gate-charts
   values:
     celery:
-      image: ${SECRET_DOCKER_USER}/celery_motion:latest
+      image: ${SECRET_DOCKER_USER}/celery_motion:v2
       persistence:
         enabled: true
         existingClaim: security-camera
@@ -33,7 +33,7 @@ spec:
       ingressClassName: external
       ingressClass: external
     motion:
-      image: ${SECRET_DOCKER_USER}/motion:latest
+      image: ${SECRET_DOCKER_USER}/motion:v2
       motionNodePort: 9081
       persistence:
         enabled: true
