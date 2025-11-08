@@ -2,7 +2,3 @@ apiVersion: rabbitmq.com/v1beta1
 kind: RabbitmqCluster
 metadata:
   name: gate-rabbitmq
-spec:
-  rabbitmq:
-    additionalConfig: |
-      default_pass=${SECRET_GATE_RABBITMQ_PW}
