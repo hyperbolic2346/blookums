@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - ./externalsecret.yaml
   - ./helm-release.yaml
+  - ./ocirepository.yaml
 configMapGenerator:
   - name: immich-config-tpl
     namespace: media
