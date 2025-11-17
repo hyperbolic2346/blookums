@@ -1,0 +1,62 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: immich-redis
+  namespace: media
+spec:
+  path: ./kubernetes/apps/media/immich/redis
+  prune: true
+  dependsOn:
+    - name: pvc-media
+    - name: cloudnative-pg-cluster
+      namespace: databases
+    - name: external-secrets-stores
+      namespace: kube-system
+    - name: volsync
+      namespace: volsync-system
+  components:
+    - ../../../../components/volsync
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  wait: true
+  interval: 30m
+  retryInterval: 1m
+  timeout: 5m
+  postBuild:
+    substituteFrom:
+      - name: cluster-secrets
+        kind: Secret
+      - name: cluster-settings
+        kind: ConfigMap
+    substitute:
+      APP: immich
+      VOLSYNC_CLAIM: immich-data
+      VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
+      VOLSYNC_CAPACITY: 10Gi
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: immich
+  namespace: media
+spec:
+  dependsOn:
+    - name: pvc-media
+    - name: external-secrets-stores
+      namespace: kube-system
+    - name: immich-redis
+    - name: cloudnative-pg-cluster
+      namespace: databases
+  path: ./kubernetes/apps/media/immich/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  wait: false
+  interval: 30m
+  retryInterval: 1m
+  timeout: 5m
