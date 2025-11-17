@@ -6,6 +6,7 @@ components:
   - ../../components/common
 resources:
   - ./_pvc/ks.yaml
+  - ./immich/ks.yaml
   - ./lidarr/ks.yaml
   - ./nextcloud/ks.yaml
   - ./plex/ks.yaml
