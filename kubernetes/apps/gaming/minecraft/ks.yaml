@@ -173,3 +173,38 @@ spec:
       VOLSYNC_CLAIM: skyblock-data
       VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
       VOLSYNC_CAPACITY: 100Gi
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: bedrock
+  namespace: gaming
+spec:
+  path: ./kubernetes/apps/gaming/minecraft/bedrock
+  prune: true
+  dependsOn:
+    - name: volsync
+      namespace: volsync-system
+    - name: rook-ceph-cluster
+      namespace: storage
+  components:
+    - ../../../../components/volsync
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  wait: true
+  interval: 30m
+  retryInterval: 1m
+  timeout: 5m
+  postBuild:
+    substituteFrom:
+      - name: cluster-secrets
+        kind: Secret
+      - name: cluster-settings
+        kind: ConfigMap
+    substitute:
+      APP: bedrock
+      VOLSYNC_CLAIM: bedrock-data
+      VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
+      VOLSYNC_CAPACITY: 100Gi
