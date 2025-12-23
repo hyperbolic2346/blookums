@@ -103,6 +103,6 @@ spec:
           - path: /config
       library:
         enabled: true
-        existingClaim: immich-data
+        existingClaim: immich-nfs
         globalMounts:
           - path: /usr/src/app/upload
