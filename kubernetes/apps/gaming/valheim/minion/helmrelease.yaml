@@ -40,21 +40,11 @@ spec:
               tag: 3.1.2@sha256:44c2ab93f34c63765b0fbab8f5ec5f67a35f315d995760bf8d4af6ba2f766860
               pullPolicy: IfNotPresent
             env:
-              BACKUPS: "false"
-              CONFIG_DIRECTORY_PERMISSIONS: "755"
-              WORLDS_DIRECTORY_PERMISSIONS: "755"
-              WORLDS_FILE_PERMISSIONS: "644"
-              SERVER_PORT: "2456"
-              SERVER_PUBLIC: "true"
-              STATUS_HTTP: "true"
-              SUPERVISOR_HTTP: "true"
+              PORT: "2456"
+              PUBLIC: "1"
               NAME: "Minion Valheim"
               WORLD: "Minion"
-              SERVER_PASS: "${SECRET_VALHEIM_MINION_PW}"
-              ADMINLIST_IDS: ""
-              PERMITTEDLIST_IDS: ""
-              PUID: "1000"
-              PGID: "1000"
+              PASSWORD: "${SECRET_VALHEIM_MINION_PW}"
               TZ: ${TIMEZONE}
             resources:
               requests:
