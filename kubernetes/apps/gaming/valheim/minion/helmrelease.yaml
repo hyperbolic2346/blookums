@@ -37,7 +37,8 @@ spec:
             nameOverride: *name
             image:
               repository: docker.io/mbround18/valheim
-              tag: 3.1.2@sha256:44c2ab93f34c63765b0fbab8f5ec5f67a35f315d995760bf8d4af6ba2f766860              pullPolicy: IfNotPresent
+              tag: 3.1.2@sha256:44c2ab93f34c63765b0fbab8f5ec5f67a35f315d995760bf8d4af6ba2f766860
+              pullPolicy: IfNotPresent
             env:
               BACKUPS: "false"
               CONFIG_DIRECTORY_PERMISSIONS: "755"
