@@ -77,4 +77,4 @@ spec:
 
     persistence:
       config:
-        existingClaim: *name
+        existingClaim: minion-valheim-data
