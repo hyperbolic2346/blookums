@@ -48,8 +48,8 @@ spec:
               SERVER_PUBLIC: "true"
               STATUS_HTTP: "true"
               SUPERVISOR_HTTP: "true"
-              SERVER_NAME: "Minion Valheim"
-              WORLD_NAME: "Minion"
+              NAME: "Minion Valheim"
+              WORLD: "Minion"
               SERVER_PASS: "${SECRET_VALHEIM_MINION_PW}"
               ADMINLIST_IDS: ""
               PERMITTEDLIST_IDS: ""
@@ -67,6 +67,7 @@ spec:
       main:
         controller: main
         type: LoadBalancer
+        externalTrafficPolicy: Cluster
         ports:
           steam1:
             port: 2456
