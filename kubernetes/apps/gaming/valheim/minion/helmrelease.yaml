@@ -31,7 +31,7 @@ spec:
             nameOverride: *name
             image:
               repository: docker.io/mbround18/valheim
-              tag: 3.1.2@sha256:44c2ab93f34c63765b0fbab8f5ec5f67a35f315d995760bf8d4af6ba2f766860
+              tag: 3.4.1@sha256:4e4c209455150200baa0f2237271bd0d196f9b32ae11130f6129ec1ca5f2fa5d
               pullPolicy: IfNotPresent
             env:
               PORT: "2456"
