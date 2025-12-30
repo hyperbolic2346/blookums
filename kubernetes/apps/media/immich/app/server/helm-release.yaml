@@ -83,7 +83,7 @@ spec:
             sectionName: https
         rules:
           - backendRefs:
-              - identifier: main
+              - identifier: immich-server
                 port: 3001
 
     persistence:
