@@ -75,7 +75,7 @@ spec:
             port: 3001
 
     route:
-      main:
+      immich-server:
         hostnames: ["immich.${SECRET_DOMAIN}"]
         parentRefs:
           - name: external
