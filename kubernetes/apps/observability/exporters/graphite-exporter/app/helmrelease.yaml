@@ -5,7 +5,7 @@ metadata:
   name: graphite-exporter
 spec:
   interval: 15m
-  chartref:
+  chartRef:
     kind: OCIRepository
     name: graphite-exporter
   install:
