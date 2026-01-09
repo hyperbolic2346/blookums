@@ -72,9 +72,9 @@ spec:
         controller: main
         ports:
           http:
-            port: 3001
+            port: 2283
             protocol: http
-            targetPort: 3001
+            targetPort: 2283
             targetSelector: main
 
     route:
