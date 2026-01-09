@@ -3,13 +3,29 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: grafana
+  name: grafana-operator
+spec:
+  interval: 1h
+  path: ./kubernetes/apps/observability/grafana/operator
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: observability
+  wait: true
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: grafana-dashboard
 spec:
   dependsOn:
     - name: grafana-operator
       namespace: observability
   interval: 1h
-  path: ./kubernetes/apps/observability/grafana/app
+  path: ./kubernetes/apps/observability/grafana/dashboard
   prune: true
   sourceRef:
     kind: GitRepository
@@ -25,7 +41,7 @@ metadata:
   name: grafana-instance
 spec:
   dependsOn:
-    - name: grafana
+    - name: grafana-operator
     - name: rook-ceph-cluster
       namespace: rook-ceph
   interval: 1h
