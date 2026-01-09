@@ -73,9 +73,8 @@ spec:
         ports:
           http:
             port: 2283
-            protocol: http
+            protocol: HTTP
             targetPort: 2283
-            targetSelector: main
 
     route:
       immich-server:
