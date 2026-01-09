@@ -80,7 +80,7 @@ spec:
         parentRefs:
           - name: external
             namespace: kube-system
-            sectionName: https
+            port: 443
         rules:
           - backendRefs:
               - identifier: immich-server
