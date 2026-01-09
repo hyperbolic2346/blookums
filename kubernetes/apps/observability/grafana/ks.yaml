@@ -53,3 +53,9 @@ spec:
     namespace: flux-system
   targetNamespace: observability
   wait: false
+  postBuild:
+    substituteFrom:
+      - name: cluster-secrets
+        kind: Secret
+      - name: cluster-settings
+        kind: ConfigMap
