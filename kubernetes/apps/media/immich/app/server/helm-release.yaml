@@ -87,7 +87,7 @@ spec:
         rules:
           - backendRefs:
               - identifier: immich-server
-                port: 3001
+                port: 2283
 
     persistence:
       config:
