@@ -193,3 +193,18 @@ spec:
     - datasourceName: prometheus
       inputName: DS_PROMETHEUS
   url: https://raw.githubusercontent.com/itzg/mc-monitor/a94294924e50d3b07a9542527f696d84c530316f/examples/mc-monitor-prom/dashboards/mc-monitor.json
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/grafana.integreatly.org/grafanadashboard_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: Ceph
+spec:
+  allowCrossNamespaceImport: true
+  instanceSelector:
+    matchLabels:
+      grafana.internal/instance: grafana
+  datasources:
+    - datasourceName: prometheus
+      inputName: DS_PROMETHEUS
+  url: https://grafana.com/api/dashboards/2842/revisions/18
