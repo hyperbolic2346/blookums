@@ -29,8 +29,8 @@ spec:
             args: ["export-for-prometheus"]
             env:
               TZ: "America/New_York"
-              EXPORT_SERVERS: "cicada.gaming.svc.cluster.local,armadillo.gaming.svc.cluster.local"
-              EXPORT_BEDROCK_SERVERS: "bedrock.gaming.svc.cluster.local"
+              EXPORT_SERVERS: "cicada-minecraft.gaming.svc.cluster.local,armadillo-minecraft.gaming.svc.cluster.local"
+              EXPORT_BEDROCK_SERVERS: "bedrock-minecraft-bedrock.gaming.svc.cluster.local"
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
