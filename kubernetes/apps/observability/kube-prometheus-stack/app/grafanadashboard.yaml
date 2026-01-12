@@ -138,7 +138,7 @@ spec:
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:
-  name: K8S-Dashboard
+  name: k8s-dashboard
 spec:
   allowCrossNamespaceImport: true
   instanceSelector:
@@ -153,7 +153,7 @@ spec:
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:
-  name: Flux
+  name: flux
 spec:
   allowCrossNamespaceImport: true
   instanceSelector:
@@ -168,7 +168,7 @@ spec:
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:
-  name: Volsync
+  name: volsync
 spec:
   allowCrossNamespaceImport: true
   instanceSelector:
@@ -183,7 +183,7 @@ spec:
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:
-  name: Minecraft
+  name: minecraft
 spec:
   allowCrossNamespaceImport: true
   instanceSelector:
@@ -198,7 +198,7 @@ spec:
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:
-  name: Ceph
+  name: ceph
 spec:
   allowCrossNamespaceImport: true
   instanceSelector:
