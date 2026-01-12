@@ -10,6 +10,7 @@ components:
 
 resources:
   - ./exporters/graphite-exporter/ks.yaml
+  - ./exporters/minecraft/ks.yaml
   - ./exporters/radarr-exporter/ks.yaml
   - ./exporters/sonarr-exporter/ks.yaml
   - ./grafana/ks.yaml
