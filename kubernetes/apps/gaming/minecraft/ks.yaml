@@ -80,8 +80,6 @@ spec:
   dependsOn:
     - name: volsync
       namespace: volsync-system
-    - name: rook-ceph-cluster
-      namespace: storage
   components:
     - ../../../../components/volsync
   sourceRef:
