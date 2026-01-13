@@ -56,6 +56,8 @@ spec:
             substituteFrom:
               - kind: Secret
                 name: cluster-secrets
+              - name: cluster-settings
+                kind: ConfigMap
       target:
         group: kustomize.toolkit.fluxcd.io
         kind: Kustomization
