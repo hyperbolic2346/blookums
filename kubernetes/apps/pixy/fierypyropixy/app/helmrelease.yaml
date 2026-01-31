@@ -35,7 +35,7 @@ spec:
           main:
             image:
               repository: ghcr.io/hyperbolic2346/fierypyropixy
-              tag: latest
+              tag: sha-8ddb426
             envFrom: *envFrom
             probes:
               liveness: &probes
