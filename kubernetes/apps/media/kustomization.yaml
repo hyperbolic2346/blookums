@@ -6,6 +6,7 @@ components:
   - ../../components/common
 resources:
   - ./_pvc/ks.yaml
+  - ./bazarr/ks.yaml
   - ./immich/ks.yaml
   - ./lidarr/ks.yaml
   - ./nextcloud/ks.yaml
@@ -13,4 +14,5 @@ resources:
   - ./radarr/ks.yaml
   - ./sabnzbd/ks.yaml
   - ./sonarr/ks.yaml
+  - ./tautulli/ks.yaml
   - ./youtubedl/ks.yaml
