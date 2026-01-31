@@ -11,5 +11,6 @@ resources:
   - ./external-secrets/ks.yaml
   - ./metrics-server/ks.yaml
   - ./node-feature-discovery/ks.yaml
+  - ./nut-server/ks.yaml
   - ./reloader/ks.yaml
   - ./spegel/ks.yaml
