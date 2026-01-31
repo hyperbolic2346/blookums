@@ -6,13 +6,9 @@ metadata:
   namespace: databases
 spec:
   interval: 30m
-  chart:
-    spec:
-      chart: cloudnative-pg
-      version: 0.26.0
-      sourceRef:
-        kind: HelmRepository
-        name: cloudnative-pg-charts
+  chartRef:
+    kind: OCIRepository
+    name: cloudnative-pg
   maxHistory: 2
   install:
     remediation:

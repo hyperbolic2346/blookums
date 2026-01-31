@@ -4,4 +4,4 @@ kind: Kustomization
 namespace: databases
 resources:
   - ./helmrelease.yaml
-  - ./helmrepository.yaml
+  - ./ocirepository.yaml
