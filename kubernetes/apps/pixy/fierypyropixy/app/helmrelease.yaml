@@ -69,6 +69,15 @@ spec:
           http:
             port: 80
 
+    persistence:
+      data:
+        existingClaim: fierypyropixy-data
+        globalMounts:
+          - path: /var/www/html/images
+            subPath: images
+          - path: /var/www/html/thumbs
+            subPath: thumbs
+
     route:
       main:
         hostnames: ["fierypyropixy.${SECRET_DOMAIN}"]

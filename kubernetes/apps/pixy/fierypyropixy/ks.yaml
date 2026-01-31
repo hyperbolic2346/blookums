@@ -10,6 +10,10 @@ spec:
       namespace: databases
     - name: external-secrets-stores
       namespace: kube-system
+    - name: volsync
+      namespace: volsync-system
+  components:
+    - ../../../../components/volsync
   path: ./kubernetes/apps/pixy/fierypyropixy/app
   prune: true
   sourceRef:
@@ -26,3 +30,8 @@ spec:
         kind: Secret
       - name: cluster-settings
         kind: ConfigMap
+    substitute:
+      APP: fierypyropixy
+      VOLSYNC_CLAIM: fierypyropixy-data
+      VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
+      VOLSYNC_CAPACITY: 1Gi
