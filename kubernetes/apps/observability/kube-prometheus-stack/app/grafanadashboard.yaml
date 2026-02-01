@@ -138,36 +138,6 @@ spec:
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:
-  name: k8s-dashboard
-spec:
-  allowCrossNamespaceImport: true
-  instanceSelector:
-    matchLabels:
-      grafana.internal/instance: grafana
-  datasources:
-    - datasourceName: prometheus
-      inputName: DS_PROMETHEUS
-  url: https://grafana.com/api/dashboards/15661/revisions/2/download
----
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/grafana.integreatly.org/grafanadashboard_v1beta1.json
-apiVersion: grafana.integreatly.org/v1beta1
-kind: GrafanaDashboard
-metadata:
-  name: flux
-spec:
-  allowCrossNamespaceImport: true
-  instanceSelector:
-    matchLabels:
-      grafana.internal/instance: grafana
-  datasources:
-    - datasourceName: prometheus
-      inputName: DS_PROMETHEUS
-  url: https://grafana.com/api/dashboards/16714/revisions/1/download
----
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/grafana.integreatly.org/grafanadashboard_v1beta1.json
-apiVersion: grafana.integreatly.org/v1beta1
-kind: GrafanaDashboard
-metadata:
   name: volsync
 spec:
   allowCrossNamespaceImport: true
@@ -178,21 +148,6 @@ spec:
     - datasourceName: prometheus
       inputName: DS_PROMETHEUS
   url: https://grafana.com/api/dashboards/21356/revisions/3/download
----
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/grafana.integreatly.org/grafanadashboard_v1beta1.json
-apiVersion: grafana.integreatly.org/v1beta1
-kind: GrafanaDashboard
-metadata:
-  name: minecraft
-spec:
-  allowCrossNamespaceImport: true
-  instanceSelector:
-    matchLabels:
-      grafana.internal/instance: grafana
-  datasources:
-    - datasourceName: prometheus
-      inputName: DS_PROMETHEUS
-  url: https://raw.githubusercontent.com/itzg/mc-monitor/a94294924e50d3b07a9542527f696d84c530316f/examples/mc-monitor-prom/dashboards/mc-monitor.json
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/grafana.integreatly.org/grafanadashboard_v1beta1.json
 apiVersion: grafana.integreatly.org/v1beta1
@@ -321,7 +276,7 @@ spec:
         {
           "title": "Servers",
           "type": "stat",
-          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 4 },
+          "gridPos": { "h": 4, "w": 4, "x": 0, "y": 4 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -343,9 +298,209 @@ spec:
           ]
         },
         {
+          "title": "UPS Status",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 4, "y": 4 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "options": { "1": { "color": "green", "index": 0, "text": "ON LINE" } }, "type": "value" },
+                { "options": { "0": { "color": "red", "index": 1, "text": "ON BATTERY" } }, "type": "value" }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
+          "targets": [
+            {
+              "expr": "min(nut_ups_status{flag=\"OL\"})",
+              "legendFormat": "UPS",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "UPS Battery",
+          "type": "gauge",
+          "gridPos": { "h": 4, "w": 4, "x": 8, "y": 4 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 100,
+              "unit": "percent",
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 25 }, { "color": "yellow", "value": 50 }, { "color": "green", "value": 75 }] }
+            },
+            "overrides": []
+          },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showThresholdLabels": false, "showThresholdMarkers": true },
+          "targets": [
+            {
+              "expr": "min(nut_battery_charge_percent)",
+              "legendFormat": "Battery",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "Internet",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 12, "y": 4 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "options": { "1": { "color": "green", "index": 0, "text": "UP" } }, "type": "value" },
+                { "options": { "0": { "color": "red", "index": 1, "text": "DOWN" } }, "type": "value" }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
+          "targets": [
+            {
+              "expr": "min(up{job=~\".*unifi.*\"}) or unifi_device_uptime_seconds > bool 0 or vector(1)",
+              "legendFormat": "Internet",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "Home Assistant",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 16, "y": 4 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "options": { "1": { "color": "green", "index": 0, "text": "UP" } }, "type": "value" },
+                { "options": { "0": { "color": "red", "index": 1, "text": "DOWN" } }, "type": "value" }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
+          "targets": [
+            {
+              "expr": "up{job=\"home-assistant\"}",
+              "legendFormat": "Home Assistant",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "Ceph Health",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 20, "y": 4 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "options": { "0": { "color": "green", "index": 0, "text": "HEALTH_OK" } }, "type": "value" },
+                { "options": { "1": { "color": "yellow", "index": 1, "text": "HEALTH_WARN" } }, "type": "value" },
+                { "options": { "2": { "color": "red", "index": 2, "text": "HEALTH_ERR" } }, "type": "value" }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 2 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
+          "targets": [
+            {
+              "expr": "ceph_health_status",
+              "legendFormat": "Ceph",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "Fileserver Disk Usage",
+          "type": "bargauge",
+          "gridPos": { "h": 6, "w": 12, "x": 0, "y": 8 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 85 }] }
+            },
+            "overrides": []
+          },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient", "showUnfilled": true },
+          "targets": [
+            {
+              "expr": "100 - (node_filesystem_avail_bytes{instance=~\".*:9100\", fstype=~\"ext4|xfs|zfs|btrfs\"} / node_filesystem_size_bytes{instance=~\".*:9100\", fstype=~\"ext4|xfs|zfs|btrfs\"} * 100)",
+              "legendFormat": "{{ mountpoint }}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "SMART Disk Health",
+          "type": "stat",
+          "gridPos": { "h": 6, "w": 6, "x": 12, "y": 8 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "options": { "0": { "color": "green", "index": 0, "text": "ALL HEALTHY" } }, "type": "value" },
+                { "options": { "from": 1, "to": 999, "result": { "color": "red", "index": 1, "text": "FAILING" } }, "type": "range" }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
+          "targets": [
+            {
+              "expr": "count(smartctl_device_smart_status{smart_status!=\"passed\"}) or vector(0)",
+              "legendFormat": "SMART",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "Disk Temperatures",
+          "type": "table",
+          "gridPos": { "h": 6, "w": 6, "x": 18, "y": 8 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "celsius",
+              "custom": { "filterable": false },
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 40 }, { "color": "red", "value": 50 }] }
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "Value" },
+                "properties": [
+                  { "id": "custom.displayMode", "value": "color-background" }
+                ]
+              }
+            ]
+          },
+          "options": { "showHeader": true, "footer": { "show": false } },
+          "transformations": [
+            { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true, "temperature_type": true }, "renameByName": { "device": "Device", "model_name": "Model", "Value": "Temp" } } }
+          ],
+          "targets": [
+            {
+              "expr": "smartctl_device_temperature{temperature_type=\"current\"}",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
+            }
+          ]
+        },
+        {
           "title": "Server Details",
           "type": "table",
-          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 4 },
+          "gridPos": { "h": 6, "w": 12, "x": 0, "y": 14 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -374,104 +529,56 @@ spec:
           ]
         },
         {
-          "title": "UPS Status",
-          "type": "stat",
-          "gridPos": { "h": 4, "w": 4, "x": 12, "y": 4 },
+          "title": "Node Resource Summary",
+          "type": "table",
+          "gridPos": { "h": 6, "w": 12, "x": 12, "y": 14 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
-              "mappings": [
-                { "options": { "1": { "color": "green", "index": 0, "text": "ON LINE" } }, "type": "value" },
-                { "options": { "0": { "color": "red", "index": 1, "text": "ON BATTERY" } }, "type": "value" }
-              ],
-              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
-            },
-            "overrides": []
-          },
-          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
-          "targets": [
-            {
-              "expr": "min(nut_ups_status{flag=\"OL\"})",
-              "legendFormat": "UPS",
-              "refId": "A"
-            }
-          ]
-        },
-        {
-          "title": "UPS Battery",
-          "type": "gauge",
-          "gridPos": { "h": 4, "w": 4, "x": 16, "y": 4 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "fieldConfig": {
-            "defaults": {
-              "min": 0,
-              "max": 100,
               "unit": "percent",
-              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 25 }, { "color": "yellow", "value": 50 }, { "color": "green", "value": 75 }] }
+              "decimals": 1,
+              "custom": { "filterable": false },
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 85 }] }
             },
-            "overrides": []
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "CPU %" },
+                "properties": [
+                  { "id": "custom.displayMode", "value": "color-background" }
+                ]
+              },
+              {
+                "matcher": { "id": "byName", "options": "Memory %" },
+                "properties": [
+                  { "id": "custom.displayMode", "value": "color-background" }
+                ]
+              }
+            ]
           },
-          "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showThresholdLabels": false, "showThresholdMarkers": true },
+          "options": { "showHeader": true, "footer": { "show": false } },
+          "transformations": [
+            { "id": "merge", "options": {} },
+            { "id": "organize", "options": { "excludeByName": { "Time": true, "Time 1": true, "Time 2": true }, "renameByName": { "instance": "Instance", "Value #A": "CPU %", "Value #B": "Memory %" } } }
+          ],
           "targets": [
             {
-              "expr": "min(nut_battery_charge_percent)",
-              "legendFormat": "Battery",
+              "expr": "(1 - avg by(instance)(rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))) * 100",
+              "format": "table",
+              "instant": true,
               "refId": "A"
-            }
-          ]
-        },
-        {
-          "title": "Internet",
-          "type": "stat",
-          "gridPos": { "h": 4, "w": 4, "x": 20, "y": 4 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "fieldConfig": {
-            "defaults": {
-              "mappings": [
-                { "options": { "1": { "color": "green", "index": 0, "text": "UP" } }, "type": "value" },
-                { "options": { "0": { "color": "red", "index": 1, "text": "DOWN" } }, "type": "value" }
-              ],
-              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
             },
-            "overrides": []
-          },
-          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
-          "targets": [
             {
-              "expr": "min(up{job=~\".*unifi.*\"}) or unifi_device_uptime_seconds > bool 0 or vector(1)",
-              "legendFormat": "Internet",
-              "refId": "A"
-            }
-          ]
-        },
-        {
-          "title": "Home Assistant",
-          "type": "stat",
-          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "fieldConfig": {
-            "defaults": {
-              "mappings": [
-                { "options": { "1": { "color": "green", "index": 0, "text": "UP" } }, "type": "value" },
-                { "options": { "0": { "color": "red", "index": 1, "text": "DOWN" } }, "type": "value" }
-              ],
-              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
-            },
-            "overrides": []
-          },
-          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
-          "targets": [
-            {
-              "expr": "up{job=\"home-assistant\"}",
-              "legendFormat": "Home Assistant",
-              "refId": "A"
+              "expr": "(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100",
+              "format": "table",
+              "instant": true,
+              "refId": "B"
             }
           ]
         },
         {
           "title": "Lock Details",
           "type": "table",
-          "gridPos": { "h": 6, "w": 12, "x": 0, "y": 12 },
+          "gridPos": { "h": 6, "w": 12, "x": 0, "y": 20 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -509,7 +616,7 @@ spec:
         {
           "title": "Light Details",
           "type": "table",
-          "gridPos": { "h": 6, "w": 12, "x": 12, "y": 12 },
+          "gridPos": { "h": 6, "w": 12, "x": 12, "y": 20 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -767,4 +874,246 @@ spec:
       "timezone": "",
       "title": "Home Overview",
       "uid": "home-overview"
+    }
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/grafana.integreatly.org/grafanadashboard_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: minecraft-overview
+spec:
+  allowCrossNamespaceImport: true
+  instanceSelector:
+    matchLabels:
+      grafana.internal/instance: grafana
+  datasources:
+    - datasourceName: prometheus
+      inputName: DS_PROMETHEUS
+  json: |
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "links": [],
+      "panels": [
+        {
+          "title": "Cicada Status",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 8, "x": 0, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "options": { "1": { "color": "green", "index": 0, "text": "ONLINE" } }, "type": "value" },
+                { "options": { "0": { "color": "red", "index": 1, "text": "OFFLINE" } }, "type": "value" }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
+          "targets": [
+            {
+              "expr": "minecraft_status_healthy{server_host=\"cicada\"}",
+              "legendFormat": "Cicada",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "Armadillo Status",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 8, "x": 8, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "options": { "1": { "color": "green", "index": 0, "text": "ONLINE" } }, "type": "value" },
+                { "options": { "0": { "color": "red", "index": 1, "text": "OFFLINE" } }, "type": "value" }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
+          "targets": [
+            {
+              "expr": "minecraft_status_healthy{server_host=\"armadillo\"}",
+              "legendFormat": "Armadillo",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "Bedrock Status",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 8, "x": 16, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "options": { "1": { "color": "green", "index": 0, "text": "ONLINE" } }, "type": "value" },
+                { "options": { "0": { "color": "red", "index": 1, "text": "OFFLINE" } }, "type": "value" }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
+          "targets": [
+            {
+              "expr": "minecraft_status_healthy{server_host=\"bedrock\"}",
+              "legendFormat": "Bedrock",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "Cicada Players",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 8, "x": 0, "y": 4 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }, { "color": "green", "value": 1 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
+          "targets": [
+            {
+              "expr": "minecraft_status_players_online_count{server_host=\"cicada\"}",
+              "legendFormat": "Cicada Players",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "Armadillo Players",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 8, "x": 8, "y": 4 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }, { "color": "green", "value": 1 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
+          "targets": [
+            {
+              "expr": "minecraft_status_players_online_count{server_host=\"armadillo\"}",
+              "legendFormat": "Armadillo Players",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "Bedrock Players",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 8, "x": 16, "y": 4 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }, { "color": "green", "value": 1 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
+          "targets": [
+            {
+              "expr": "minecraft_status_players_online_count{server_host=\"bedrock\"}",
+              "legendFormat": "Bedrock Players",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "Player Count Over Time",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10, "pointSize": 5, "showPoints": "never", "spanNulls": true },
+              "decimals": 0
+            },
+            "overrides": []
+          },
+          "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+          "targets": [
+            {
+              "expr": "minecraft_status_players_online_count",
+              "legendFormat": "{{ server_host }}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "Server Response Time",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10, "pointSize": 5, "showPoints": "never", "spanNulls": true }
+            },
+            "overrides": []
+          },
+          "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "mean", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+          "targets": [
+            {
+              "expr": "minecraft_status_response_time_seconds",
+              "legendFormat": "{{ server_host }}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "Server Info",
+          "type": "table",
+          "gridPos": { "h": 6, "w": 24, "x": 0, "y": 16 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "custom": { "filterable": false },
+              "mappings": [
+                { "options": { "1": { "color": "green", "index": 0, "text": "ONLINE" } }, "type": "value" },
+                { "options": { "0": { "color": "red", "index": 1, "text": "OFFLINE" } }, "type": "value" }
+              ]
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "Value" },
+                "properties": [
+                  { "id": "custom.displayMode", "value": "color-background" }
+                ]
+              }
+            ]
+          },
+          "options": { "showHeader": true, "footer": { "show": false } },
+          "transformations": [
+            { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true, "server_port": true }, "renameByName": { "server_host": "Host", "server_edition": "Edition", "server_version": "Version", "Value": "Status" } } }
+          ],
+          "targets": [
+            {
+              "expr": "minecraft_status_healthy",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
+            }
+          ]
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 39,
+      "tags": ["minecraft", "gaming"],
+      "templating": { "list": [] },
+      "time": { "from": "now-6h", "to": "now" },
+      "timepicker": {},
+      "timezone": "",
+      "title": "Minecraft Overview",
+      "uid": "minecraft-overview"
     }

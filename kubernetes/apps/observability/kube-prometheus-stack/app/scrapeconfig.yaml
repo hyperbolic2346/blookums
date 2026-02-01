@@ -39,7 +39,7 @@ spec:
     - targets:
         - home-assistant.home.svc.cluster.local:8123
   metricsPath: /api/prometheus
-  scheme: http
+  scheme: HTTP
   authorization:
     credentials:
       name: home-assistant-prometheus-token
