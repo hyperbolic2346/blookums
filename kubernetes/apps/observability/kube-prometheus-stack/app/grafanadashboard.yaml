@@ -223,7 +223,7 @@ spec:
           "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
           "targets": [
             {
-              "expr": "count(homeassistant_entity_state{domain=\"light\", state=\"on\"}) or vector(0)",
+              "expr": "count(homeassistant_light_brightness_percent > 0) or vector(0)",
               "legendFormat": "Lights On",
               "refId": "A"
             }
@@ -247,7 +247,7 @@ spec:
           "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
           "targets": [
             {
-              "expr": "count(homeassistant_entity_state{domain=\"cover\", entity=~\".*garage.*\", state=\"open\"}) or vector(0)",
+              "expr": "count(homeassistant_cover_state{entity=~\".*garage.*\"} != 0) or vector(0)",
               "legendFormat": "Open Garage Doors",
               "refId": "A"
             }
@@ -267,7 +267,7 @@ spec:
           "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
           "targets": [
             {
-              "expr": "count(homeassistant_entity_state{domain=\"binary_sensor\", entity=~\".*(door|window).*\", entity!~\".*(garage).*\", state=\"on\"}) or vector(0)",
+              "expr": "count(homeassistant_binary_sensor_state{entity=~\".*(door|window).*\", entity!~\".*(garage).*\"} == 1) or vector(0)",
               "legendFormat": "Open",
               "refId": "A"
             }
@@ -291,7 +291,7 @@ spec:
           "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
           "targets": [
             {
-              "expr": "min(up{job=\"node-exporter\"})",
+              "expr": "min(up{job=~\".*node.?exporter.*\"})",
               "legendFormat": "Servers",
               "refId": "A"
             }
@@ -418,9 +418,9 @@ spec:
           ]
         },
         {
-          "title": "Fileserver Disk Usage",
-          "type": "bargauge",
-          "gridPos": { "h": 6, "w": 12, "x": 0, "y": 8 },
+          "title": "ZFS Pool Usage",
+          "type": "gauge",
+          "gridPos": { "h": 6, "w": 8, "x": 0, "y": 8 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -431,68 +431,35 @@ spec:
             },
             "overrides": []
           },
-          "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "horizontal", "displayMode": "gradient", "showUnfilled": true },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showThresholdLabels": false, "showThresholdMarkers": true },
           "targets": [
             {
-              "expr": "100 - (node_filesystem_avail_bytes{instance=~\".*:9100\", fstype=~\"ext4|xfs|zfs|btrfs\"} / node_filesystem_size_bytes{instance=~\".*:9100\", fstype=~\"ext4|xfs|zfs|btrfs\"} * 100)",
-              "legendFormat": "{{ mountpoint }}",
+              "expr": "max(100 - node_filesystem_avail_bytes{fstype=\"zfs\"} / node_filesystem_size_bytes{fstype=\"zfs\"} * 100)",
+              "legendFormat": "ZFS Pool",
               "refId": "A"
             }
           ]
         },
         {
-          "title": "SMART Disk Health",
+          "title": "Disk Health",
           "type": "stat",
-          "gridPos": { "h": 6, "w": 6, "x": 12, "y": 8 },
+          "gridPos": { "h": 6, "w": 16, "x": 8, "y": 8 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
-                { "options": { "0": { "color": "green", "index": 0, "text": "ALL HEALTHY" } }, "type": "value" },
-                { "options": { "from": 1, "to": 999, "result": { "color": "red", "index": 1, "text": "FAILING" } }, "type": "range" }
+                { "options": { "1": { "color": "green", "index": 0, "text": "OK" } }, "type": "value" },
+                { "options": { "0": { "color": "red", "index": 1, "text": "FAIL" } }, "type": "value" }
               ],
-              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
             },
             "overrides": []
           },
-          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value_and_name" },
           "targets": [
             {
-              "expr": "count(smartctl_device_smart_status{smart_status!=\"passed\"}) or vector(0)",
-              "legendFormat": "SMART",
-              "refId": "A"
-            }
-          ]
-        },
-        {
-          "title": "Disk Temperatures",
-          "type": "table",
-          "gridPos": { "h": 6, "w": 6, "x": 18, "y": 8 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "celsius",
-              "custom": { "filterable": false },
-              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 40 }, { "color": "red", "value": 50 }] }
-            },
-            "overrides": [
-              {
-                "matcher": { "id": "byName", "options": "Value" },
-                "properties": [
-                  { "id": "custom.displayMode", "value": "color-background" }
-                ]
-              }
-            ]
-          },
-          "options": { "showHeader": true, "footer": { "show": false } },
-          "transformations": [
-            { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true, "temperature_type": true }, "renameByName": { "device": "Device", "model_name": "Model", "Value": "Temp" } } }
-          ],
-          "targets": [
-            {
-              "expr": "smartctl_device_temperature{temperature_type=\"current\"}",
-              "format": "table",
-              "instant": true,
+              "expr": "smartctl_device_smart_status",
+              "legendFormat": "{{ device }}",
               "refId": "A"
             }
           ]
@@ -504,26 +471,33 @@ spec:
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
-              "mappings": [
-                { "options": { "1": { "color": "green", "index": 0, "text": "UP" } }, "type": "value" },
-                { "options": { "0": { "color": "red", "index": 1, "text": "DOWN" } }, "type": "value" }
-              ],
-              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] },
               "custom": { "filterable": false }
             },
-            "overrides": []
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "Status" },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      { "options": { "1": { "color": "green", "index": 0, "text": "UP" } }, "type": "value" },
+                      { "options": { "0": { "color": "red", "index": 1, "text": "DOWN" } }, "type": "value" }
+                    ]
+                  },
+                  { "id": "custom.displayMode", "value": "color-background" }
+                ]
+              }
+            ]
           },
           "options": { "showHeader": true, "footer": { "show": false } },
           "transformations": [
-            { "id": "labelsToFields", "options": { "mode": "columns", "valueLabel": "instance" } },
-            { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+            { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true, "container": true, "endpoint": true, "namespace": true, "pod": true, "service": true, "domainname": true, "machine": true, "release": true, "sysname": true, "version": true }, "renameByName": { "nodename": "Node", "Value": "Status" } } }
           ],
           "targets": [
             {
-              "expr": "up{job=\"node-exporter\"}",
+              "expr": "max by(instance)(up{job=~\".*node.?exporter.*\"}) * on(instance) group_left(nodename) max by(instance, nodename)(node_uname_info)",
               "format": "table",
               "instant": true,
-              "legendFormat": "",
               "refId": "A"
             }
           ]
@@ -552,26 +526,38 @@ spec:
                 "properties": [
                   { "id": "custom.displayMode", "value": "color-background" }
                 ]
+              },
+              {
+                "matcher": { "id": "byName", "options": "Disk %" },
+                "properties": [
+                  { "id": "custom.displayMode", "value": "color-background" }
+                ]
               }
             ]
           },
           "options": { "showHeader": true, "footer": { "show": false } },
           "transformations": [
             { "id": "merge", "options": {} },
-            { "id": "organize", "options": { "excludeByName": { "Time": true, "Time 1": true, "Time 2": true }, "renameByName": { "instance": "Instance", "Value #A": "CPU %", "Value #B": "Memory %" } } }
+            { "id": "organize", "options": { "excludeByName": { "Time": true, "Time 1": true, "Time 2": true, "Time 3": true, "instance": true }, "renameByName": { "nodename": "Node", "Value #A": "CPU %", "Value #B": "Memory %", "Value #C": "Disk %" } } }
           ],
           "targets": [
             {
-              "expr": "(1 - avg by(instance)(rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))) * 100",
+              "expr": "(1 - avg by(instance)(rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))) * 100 * on(instance) group_left(nodename) max by(instance, nodename)(node_uname_info)",
               "format": "table",
               "instant": true,
               "refId": "A"
             },
             {
-              "expr": "(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100",
+              "expr": "(1 - sum by(instance)(node_memory_MemAvailable_bytes) / sum by(instance)(node_memory_MemTotal_bytes)) * 100 * on(instance) group_left(nodename) max by(instance, nodename)(node_uname_info)",
               "format": "table",
               "instant": true,
               "refId": "B"
+            },
+            {
+              "expr": "max by(instance)((1 - node_filesystem_avail_bytes{mountpoint=\"/\", fstype!=\"tmpfs\"} / node_filesystem_size_bytes{mountpoint=\"/\", fstype!=\"tmpfs\"}) * 100) * on(instance) group_left(nodename) max by(instance, nodename)(node_uname_info)",
+              "format": "table",
+              "instant": true,
+              "refId": "C"
             }
           ]
         },
@@ -624,13 +610,13 @@ spec:
             },
             "overrides": [
               {
-                "matcher": { "id": "byName", "options": "state" },
+                "matcher": { "id": "byName", "options": "Status" },
                 "properties": [
                   {
                     "id": "mappings",
                     "value": [
-                      { "options": { "on": { "color": "yellow", "index": 0, "text": "ON" } }, "type": "value" },
-                      { "options": { "off": { "color": "green", "index": 1, "text": "OFF" } }, "type": "value" }
+                      { "options": { "from": 1, "to": 100, "result": { "color": "yellow", "index": 0, "text": "ON" } }, "type": "range" },
+                      { "options": { "0": { "color": "green", "index": 1, "text": "OFF" } }, "type": "value" }
                     ]
                   },
                   { "id": "custom.displayMode", "value": "color-background" }
@@ -640,11 +626,11 @@ spec:
           },
           "options": { "showHeader": true, "footer": { "show": false } },
           "transformations": [
-            { "id": "organize", "options": { "excludeByName": { "Time": true, "Value": true, "__name__": true, "domain": true, "job": true, "instance": true }, "renameByName": { "friendly_name": "Name", "state": "Status" } } }
+            { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "domain": true, "job": true, "instance": true, "entity": true }, "renameByName": { "friendly_name": "Name", "Value": "Status" } } }
           ],
           "targets": [
             {
-              "expr": "homeassistant_entity_state{domain=\"light\"}",
+              "expr": "homeassistant_light_brightness_percent",
               "format": "table",
               "instant": true,
               "refId": "A"
@@ -703,7 +689,7 @@ spec:
           "options": { "showValue": "never", "mergeValues": true, "alignValue": "left", "legend": { "displayMode": "list", "placement": "bottom" } },
           "targets": [
             {
-              "expr": "homeassistant_entity_state{domain=\"binary_sensor\", entity=~\".*motion.*\"} == bool 1",
+              "expr": "homeassistant_binary_sensor_state{entity=~\".*motion.*\"} == 1",
               "legendFormat": "{{ friendly_name }}",
               "refId": "A"
             }
@@ -728,17 +714,17 @@ spec:
           "options": { "showValue": "never", "mergeValues": true, "alignValue": "left", "legend": { "displayMode": "list", "placement": "bottom" } },
           "targets": [
             {
-              "expr": "max(homeassistant_entity_state{domain=\"binary_sensor\", entity=~\".*(basement).*motion.*\"} == bool 1)",
+              "expr": "max(homeassistant_binary_sensor_state{entity=~\".*(basement).*motion.*\"} == 1)",
               "legendFormat": "Basement",
               "refId": "A"
             },
             {
-              "expr": "max(homeassistant_entity_state{domain=\"binary_sensor\", entity=~\".*(first|living|kitchen|dining|entry|front|back|main).*motion.*\"} == bool 1)",
+              "expr": "max(homeassistant_binary_sensor_state{entity=~\".*(first|living|kitchen|dining|entry|front|back|main).*motion.*\"} == 1)",
               "legendFormat": "First Floor",
               "refId": "B"
             },
             {
-              "expr": "max(homeassistant_entity_state{domain=\"binary_sensor\", entity=~\".*(second|upstairs|bedroom|office|bath|nursery|loft).*motion.*\"} == bool 1)",
+              "expr": "max(homeassistant_binary_sensor_state{entity=~\".*(second|upstairs|bedroom|office|bath|nursery|loft).*motion.*\"} == 1)",
               "legendFormat": "Second Floor",
               "refId": "C"
             }
@@ -751,7 +737,7 @@ spec:
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
-              "unit": "fahrenheit",
+              "unit": "celsius",
               "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10, "pointSize": 5, "showPoints": "never", "spanNulls": true }
             },
             "overrides": []
@@ -759,7 +745,7 @@ spec:
           "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "min", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
           "targets": [
             {
-              "expr": "homeassistant_sensor_temperature_fahrenheit{entity=~\".*temperature.*\"}",
+              "expr": "{__name__=~\"homeassistant_sensor_temperature.*\", entity=~\".*temperature.*\"}",
               "legendFormat": "{{ friendly_name }}",
               "refId": "A"
             }
@@ -807,7 +793,7 @@ spec:
           "options": { "showValue": "auto", "mergeValues": true, "alignValue": "left", "legend": { "displayMode": "list", "placement": "bottom" } },
           "targets": [
             {
-              "expr": "homeassistant_entity_state{domain=\"binary_sensor\", entity=~\".*(door|window).*\", entity!~\".*(garage).*\"} == bool 1",
+              "expr": "homeassistant_binary_sensor_state{entity=~\".*(door|window).*\", entity!~\".*(garage).*\"} == 1",
               "legendFormat": "{{ friendly_name }}",
               "refId": "A"
             }
@@ -857,7 +843,7 @@ spec:
           ],
           "targets": [
             {
-              "expr": "increase(homeassistant_entity_state{domain=\"binary_sensor\", entity=~\".*motion.*\", state=\"on\"}[24h])",
+              "expr": "changes(homeassistant_binary_sensor_state{entity=~\".*motion.*\"}[24h]) / 2",
               "legendFormat": "{{ friendly_name }}",
               "instant": true,
               "refId": "A"
