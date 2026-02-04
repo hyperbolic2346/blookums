@@ -1,0 +1,158 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: clean-slate
+  namespace: gaming
+spec:
+  releaseName: clean-slate
+  interval: 60m
+  chart:
+    spec:
+      chart: factorio-server-charts
+      version: 2.5.2
+      sourceRef:
+        kind: HelmRepository
+        name: factorio-charts
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    # Number of replicas to create (only 1 is supported)
+    replicaCount: 1
+
+    hostNetworkEnabled: false
+
+    image:
+      repository: factoriotools/factorio
+      pullPolicy: IfNotPresent
+      tag: 2.0.73@sha256:6471fbfb7eab3abf55bb53fed632606ecf17bf930891bccddff724afab9ed94c
+
+    service:
+      type: LoadBalancer
+      externalTrafficPolicy: Local
+    # Compute Resources required by the operator container
+    resources: # +doc-gen:break
+      requests:
+        memory: 1Gi
+        cpu: 1000m
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+    # Node labels for pod assignment
+    # Example:
+    # nodeSelector:
+    #  beta.kubernetes.io/os: linux
+    #  beta.kubernetes.io/arch: amd64
+    nodeSelector: {} # +doc-gen:break
+    # Tolerations for pod assignment
+    tolerations: []
+
+    mods:
+      enabled: false
+      portal:
+        - name: LogisticTrainNetwork
+        - name: AutoDeconstruct
+        - name: Waterfill_v17
+        - name: Squeak%20Through
+        - name: flib
+        - name: GhostScanner
+
+    # Sets the data persistence volume configuration
+    persistence:
+      enabled: true
+      dataDir:
+        existingClaim: factorio-clean-slate
+    factorioServer:
+      # specify a save name
+      save_name: clean-slate
+      # Generate a New Save
+      generate_new_save: true
+      # Update mods on start
+      update_mods_on_start: true
+      # lets the game know if you want to load the latest save
+      load_latest_save: true
+      # Location of the configuration files that are generated
+      config_path: /srv
+    account:
+      accountSecret: factorio-secret
+
+    serverPassword:
+      passwordSecret: factorio-secret
+    serverSettings:
+      # Your Instance Name
+      name: Clean Slate
+      # Your Instance Description
+      description: Factorio running on Kubernetes
+      tags:
+        - game
+        - tags
+      # Maximum number of players allowed, admins can join even a full server. 0 means unlimited.
+      max_players: 0
+      # Game visibility
+      visibility:
+        # Game will be published on the official Factorio matching server
+        public: false
+        # Game will be broadcast on LAN
+        lan: true
+      # When set to true, the server will only allow clients that have a valid Factorio.com account
+      require_user_verification: false
+      # optional, default value is 0. 0 means unlimited.
+      max_upload_in_kilobytes_per_second: 0
+      # optional, default value is 5. 0 means unlimited.
+      max_upload_slots: 5
+      # optional one tick is 16ms in default speed, default value is 0. 0 means no minimum.
+      minimum_latency_in_ticks: 0
+      # Players that played on this map already can join even when the max player limit was reached.
+      ignore_player_limit_for_returning_players: false
+      # possible values are, true, false and admins-only
+      allow_commands: admins-only
+      # Autosave interval in minutes
+      autosave_interval: 30
+      # server autosave slots, it is cycled through when the server autosaves.
+      autosave_slots: 5
+      # How many minutes until someone is kicked when doing nothing, 0 for never.
+      afk_autokick_interval: 0
+      # Whether should the server be paused when no players are present.
+      auto_pause: true
+      # specifies if anyone can pause or only admins
+      only_admins_can_pause_the_game: true
+      # Whether autosaves should be saved only on server or also on all connected clients. Default is true.
+      autosave_only_on_server: true
+      #  Highly experimental feature, enable only at your own
+      #  risk of losing your saves. On UNIX systems, server will fork itself to create an
+      #  autosave. Autosaving on connected Windows clients will be disabled regardless of
+      #  autosave_only_on_server option.
+      non_blocking_saving: true
+      #  Long network messages are split into segments that are sent
+      #  over multiple ticks. Their size depends on the number of peers currently connected.
+      #  Increasing the segment size will increase upload bandwidth requirement for the server
+      #  and download bandwidth requirement for clients. This setting only affects server
+      #  outbound messages. Changing these settings can have a negative impact on connection
+      #  stability for some clients.
+      minimum_segment_size: 25
+      minimum_segment_size_peer_count: 20
+      maximum_segment_size: 100
+      maximum_segment_size_peer_count: 10
+
+    # Password and port for the rcon service
+    rcon:
+      password: ${SECRET_GAME_SERVER_CONSOLE_LONG_PW}
+      port: 27015
+
+    map_settings:
+      difficulty_settings:
+        research_queue_setting: always
+      pollution:
+        enabled: true
+      enemy_evolution:
+        enabled: true
+      enemy_expansion:
+        enabled: true
