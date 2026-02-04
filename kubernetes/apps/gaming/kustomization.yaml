@@ -5,6 +5,7 @@ namespace: gaming
 components:
   - ../../components/common
 resources:
+  - ./factorio/ks.yaml
   - ./minecraft/ks.yaml
   - ./sandstorm/ks.yaml
   - ./valheim/ks.yaml
