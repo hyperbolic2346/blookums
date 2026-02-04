@@ -79,7 +79,8 @@ nodes:
           ip: "10.0.14.5"
   - hostname: "dogbert"
     ipAddress: "10.0.14.13"
-    installDisk: "/dev/sdd"
+    installDiskSelector:
+      wwid: "naa.5000cca06cb1172c"
     machineSpec:
       secureboot: false
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
@@ -96,7 +97,8 @@ nodes:
         mtu: 1500
   - hostname: "catbert"
     ipAddress: "10.0.14.14"
-    installDisk: "/dev/sdb"
+    installDiskSelector:
+      wwid: "naa.50014ee059b5df94"
     machineSpec:
       secureboot: false
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
@@ -113,7 +115,8 @@ nodes:
         mtu: 1500
   - hostname: "wally"
     ipAddress: "10.0.14.16"
-    installDisk: "/dev/sdc"
+    installDiskSelector:
+      wwid: "naa.5001b448ba49e9d1"
     machineSpec:
       secureboot: false
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
@@ -130,7 +133,8 @@ nodes:
         mtu: 1500
   - hostname: "phil"
     ipAddress: "10.0.14.17"
-    installDisk: "/dev/sde"
+    installDiskSelector:
+      wwid: "naa.5000cca06cb1204c"
     machineSpec:
       secureboot: false
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
@@ -147,7 +151,8 @@ nodes:
         mtu: 1500
   - hostname: "asok"
     ipAddress: "10.0.14.18"
-    installDisk: "/dev/sdg"
+    installDiskSelector:
+      model: "DELLBOSS VD"
     machineSpec:
       secureboot: false
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
