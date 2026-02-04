@@ -34,6 +34,8 @@ spec:
       # enableCephfsSnapshotter: true
       enableCsiOperator: true
       enableGrpcMetrics: false
+      readAffinity:
+        enabled: true
       pluginTolerations:
       - key: node-role.kubernetes.io/control-plane
         operator: Exists
