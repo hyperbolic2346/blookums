@@ -1,0 +1,99 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s/helm-charts/common-3.1.0/charts/library/common/values.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: ark-sa
+  namespace: gaming
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: ark-sa
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    controllers:
+      main:
+        containers:
+          main:
+            image:
+              repository: docker.io/johnnyknighten/ark-sa-server
+              tag: latest
+            env:
+              TZ: ${TIMEZONE}
+              MAP: "Ragnarok_WP"
+              MANUAL_CONFIG: "True"
+              GAME_PORT: "7777"
+              RCON_PORT: "27020"
+              ENABLE_RCON: "True"
+              NO_BATTLEYE: "True"
+              UPDATE_ON_BOOT: "True"
+              PUID: "1000"
+              PGID: "1000"
+              ADMIN_PASSWORD: "${SECRET_ARK_ADMIN_PW}"
+              SERVER_PASSWORD: "${SECRET_ARK_SERVER_PW}"
+              MOD_LIST: "928597,929420,953154,929299,927090"
+            resources:
+              requests:
+                cpu: 4000m
+                memory: 16Gi
+              limits:
+                memory: 24Gi
+
+    service:
+      main:
+        controller: main
+        type: LoadBalancer
+        externalTrafficPolicy: Cluster
+        ports:
+          game:
+            enabled: true
+            port: 7777
+            protocol: UDP
+          game2:
+            enabled: true
+            port: 7778
+            protocol: UDP
+          rcon:
+            enabled: true
+            port: 27020
+            protocol: TCP
+
+    persistence:
+      server:
+        enabled: true
+        type: persistentVolumeClaim
+        existingClaim: ark-sa-data
+        advancedMounts:
+          main:
+            main:
+              - path: /ark-server/server
+      gameusersettings:
+        enabled: true
+        type: configMap
+        name: ark-sa-gameusersettings
+        advancedMounts:
+          main:
+            main:
+              - subPath: GameUserSettings.ini
+                path: /ark-server/server/ShooterGame/Saved/Config/WindowsServer/GameUserSettings.ini
+        defaultMode: 0644
+      gameini:
+        enabled: true
+        type: configMap
+        name: ark-sa-gameini
+        advancedMounts:
+          main:
+            main:
+              - subPath: Game.ini
+                path: /ark-server/server/ShooterGame/Saved/Config/WindowsServer/Game.ini
+        defaultMode: 0644

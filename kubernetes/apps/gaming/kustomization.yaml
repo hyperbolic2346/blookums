@@ -8,4 +8,5 @@ resources:
   - ./factorio/ks.yaml
   - ./minecraft/ks.yaml
   - ./sandstorm/ks.yaml
+  - ./ark-sa/ks.yaml
   - ./valheim/ks.yaml
