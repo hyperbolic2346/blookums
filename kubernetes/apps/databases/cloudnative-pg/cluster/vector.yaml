@@ -11,24 +11,24 @@ spec:
   primaryUpdateStrategy: unsupervised
   bootstrap:
     recovery:
-      source: pgvector
+      source: pgvector-recovery
   externalClusters:
-    - name: pgvector
+    - name: pgvector-recovery
       barmanObjectStore:
         data:
           compression: bzip2
         wal:
           compression: bzip2
           maxParallel: 8
-        destinationPath: s3://blookums-databases-oct-25/pgvector
+        destinationPath: s3://blookums-databases/pgvector
         endpointURL: ${SECRET_DATABASE_S3}
-        serverName: pgvector
+        serverName: pgvector-v2
         s3Credentials:
           accessKeyId:
-            key: AWS_BACKUP_ACCESS_KEY_ID
+            key: AWS_ACCESS_KEY_ID
             name: cloudnative-pg-secret
           secretAccessKey:
-            key: AWS_BACKUP_SECRET_ACCESS_KEY
+            key: AWS_SECRET_ACCESS_KEY
             name: cloudnative-pg-secret
   env:
   - name: TZ
@@ -54,7 +54,7 @@ spec:
         maxParallel: 8
       destinationPath: s3://blookums-databases/pgvector
       endpointURL: ${SECRET_DATABASE_S3}
-      serverName: pgvector
+      serverName: pgvector-v2
       s3Credentials:
         accessKeyId:
           key: AWS_ACCESS_KEY_ID
