@@ -45,8 +45,7 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  httpGet:
-                    path: /api/system/status
+                  tcpSocket:
                     port: &port 6767
                   initialDelaySeconds: 0
                   periodSeconds: 10
