@@ -79,15 +79,11 @@ spec:
                 port: *mqtt
 
     persistence:
-      data:
+      mosquitto:
         enabled: true
         existingClaim: mosquitto-nfs
         globalMounts:
           - path: /mosquitto/data
             subPath: data
-      config:
-        enabled: true
-        existingClaim: mosquitto-nfs
-        globalMounts:
           - path: /mosquitto/config
             subPath: config
