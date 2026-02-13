@@ -66,6 +66,18 @@ spec:
             port: 9001
             protocol: TCP
 
+    route:
+      main:
+        hostnames: ["mqtt.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: internal
+            namespace: kube-system
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: main
+                port: *mqtt
+
     persistence:
       data:
         enabled: true
