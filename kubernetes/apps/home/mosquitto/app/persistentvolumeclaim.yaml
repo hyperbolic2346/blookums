@@ -1,0 +1,14 @@
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: mosquitto-nfs
+  namespace: home
+spec:
+  storageClassName: ''
+  volumeName: mosquitto-nfs
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

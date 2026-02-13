@@ -1,0 +1,81 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: mosquitto
+  namespace: home
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: mosquitto
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    controllers:
+      main:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          main:
+            image:
+              repository: eclipse-mosquitto
+              tag: 2.0.18
+            env:
+              TZ: ${TIMEZONE}
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: &mqtt 8883
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              readiness: *probes
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                memory: 64Mi
+
+    service:
+      main:
+        controller: main
+        type: LoadBalancer
+        annotations:
+          lbipam.cilium.io/ips: ${MOSQUITTO_LB_IP}
+        ports:
+          mqtt:
+            port: *mqtt
+            protocol: TCP
+          websocket:
+            port: 9001
+            protocol: TCP
+
+    persistence:
+      data:
+        enabled: true
+        existingClaim: mosquitto-nfs
+        globalMounts:
+          - path: /mosquitto/data
+            subPath: data
+      config:
+        enabled: true
+        existingClaim: mosquitto-nfs
+        globalMounts:
+          - path: /mosquitto/config
+            subPath: config
