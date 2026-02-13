@@ -1,0 +1,91 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: nut-server
+  namespace: kube-system
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: nut-server
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    controllers:
+      nut-server:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          main:
+            image:
+              repository: ghcr.io/jr0dd/network-ups-tools
+              tag: v2.8.3@sha256:9f8e14d155c6ef05940cee6f8861e259e951eb11750aeddd02539d986dac1ca0
+            resources:
+              requests:
+                cpu: 25m
+                memory: 64Mi
+              limits:
+                memory: 128Mi
+          exporter:
+            image:
+              repository: ghcr.io/druggeri/nut_exporter
+              tag: 3.2.3@sha256:a9e6c0100ebc0e8ec2c7a46de8af1366df8abd5d794f175b8ee6b2361819ee6e
+            env:
+              NUT_EXPORTER_SERVER: localhost
+              NUT_EXPORTER_SERVERPORT: "3493"
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                memory: 64Mi
+        pod:
+          securityContext:
+            fsGroup: 568
+
+    service:
+      main:
+        controller: nut-server
+        type: LoadBalancer
+        annotations:
+          lbipam.cilium.io/ips: ${NUT_LB_IP}
+        ports:
+          nut:
+            port: 3493
+            protocol: TCP
+      metrics:
+        controller: nut-server
+        ports:
+          metrics:
+            port: 9199
+            protocol: TCP
+
+    serviceMonitor:
+      main:
+        serviceName: nut-server-metrics
+        endpoints:
+          - port: metrics
+            interval: 30s
+            scrapeTimeout: 10s
+
+    persistence:
+      config:
+        type: secret
+        name: nut-server-secret
+        globalMounts:
+          - path: /etc/nut
+            readOnly: true
+      # usb:
+      #   type: hostPath
+      #   hostPath: /dev/bus/usb
+      #   globalMounts:
+      #     - path: /dev/bus/usb

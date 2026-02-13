@@ -1,0 +1,49 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/prometheusrule_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: nut-server-rules
+spec:
+  groups:
+    - name: nut-server.rules
+      rules:
+        - alert: UPSOnBattery
+          expr: |
+            nut_ups_status{flag="OL"} == 0
+          for: 30s
+          annotations:
+            summary: >-
+              UPS {{ $labels.ups }} is running on battery power
+          labels:
+            severity: warning
+
+        - alert: UPSBatteryLow
+          expr: |
+            nut_battery_charge_percent < 20
+          for: 30s
+          annotations:
+            summary: >-
+              UPS {{ $labels.ups }} battery charge is critically low at {{ $value }}%
+          labels:
+            severity: critical
+
+        - alert: UPSBatteryReplace
+          expr: |
+            nut_ups_status{flag="RB"} == 1
+          for: 5m
+          annotations:
+            summary: >-
+              UPS {{ $labels.ups }} battery needs replacement
+          labels:
+            severity: warning
+
+        - alert: UPSUnavailable
+          expr: |
+            absent(nut_ups_status) == 1
+          for: 5m
+          annotations:
+            summary: >-
+              NUT UPS metrics are unavailable - check NUT server connectivity
+          labels:
+            severity: critical
