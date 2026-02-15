@@ -21,18 +21,24 @@ spec:
           ports:
             - containerPort: 9094
               name: http
-          env:
-            - name: DISCORD_WEBHOOK
-              valueFrom:
-                secretKeyRef:
-                  name: alertmanager-secret
-                  key: DISCORD_WEBHOOK_URL
+          volumeMounts:
+            - name: config
+              mountPath: /config.yaml
+              subPath: config.yaml
+              readOnly: true
           resources:
             requests:
               cpu: 10m
               memory: 32Mi
             limits:
               memory: 64Mi
+      volumes:
+        - name: config
+          secret:
+            secretName: alertmanager-secret
+            items:
+              - key: config.yaml
+                path: config.yaml
 ---
 apiVersion: v1
 kind: Service
