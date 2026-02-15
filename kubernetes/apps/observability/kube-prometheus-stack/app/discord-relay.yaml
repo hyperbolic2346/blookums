@@ -19,7 +19,7 @@ spec:
         - name: alertmanager-discord
           image: docker.io/masgustavos/alertmanager-discord:0.2.3
           ports:
-            - containerPort: 9094
+            - containerPort: 8080
               name: http
           volumeMounts:
             - name: config
