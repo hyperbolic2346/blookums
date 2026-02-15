@@ -27,8 +27,8 @@ spec:
         containers:
           main:
             image:
-              repository: ghcr.io/jr0dd/network-ups-tools
-              tag: v2.8.3@sha256:9f8e14d155c6ef05940cee6f8861e259e951eb11750aeddd02539d986dac1ca0
+              repository: instantlinux/nut-upsd
+              tag: 2.8.3-r3@sha256:edadf0d18b7e240fba0e4073dfcc13f19f93839de0656f4b39752c0cad880cd5
             resources:
               requests:
                 cpu: 25m
@@ -82,8 +82,7 @@ spec:
         type: secret
         name: nut-server-secret
         globalMounts:
-          - path: /etc/nut
-            readOnly: true
+          - path: /etc/nut/local
       # usb:
       #   type: hostPath
       #   hostPath: /dev/bus/usb
