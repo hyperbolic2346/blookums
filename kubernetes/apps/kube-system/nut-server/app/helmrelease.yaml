@@ -24,6 +24,12 @@ spec:
       nut-server:
         annotations:
           reloader.stakater.com/auto: "true"
+        initContainers:
+          copy-config:
+            image:
+              repository: busybox
+              tag: latest
+            command: ["sh", "-c", "cp /tmp/nut-secret/* /etc/nut/local/"]
         containers:
           main:
             image:
@@ -78,13 +84,19 @@ spec:
             scrapeTimeout: 10s
 
     persistence:
-      config:
+      secret:
         type: secret
         name: nut-server-secret
-        globalMounts:
-          - path: /etc/nut/local
-      # usb:
-      #   type: hostPath
-      #   hostPath: /dev/bus/usb
-      #   globalMounts:
-      #     - path: /dev/bus/usb
+        advancedMounts:
+          nut-server:
+            copy-config:
+              - path: /tmp/nut-secret
+                readOnly: true
+      config:
+        type: emptyDir
+        advancedMounts:
+          nut-server:
+            copy-config:
+              - path: /etc/nut/local
+            main:
+              - path: /etc/nut/local
