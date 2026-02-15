@@ -76,12 +76,24 @@ spec:
             protocol: TCP
 
     serviceMonitor:
-      main:
+      apc-1500:
         serviceName: nut-server-metrics
         endpoints:
           - port: metrics
             interval: 30s
             scrapeTimeout: 10s
+            path: /ups_metrics
+            params:
+              ups: ["apc-1500"]
+      apc-3000:
+        serviceName: nut-server-metrics
+        endpoints:
+          - port: metrics
+            interval: 30s
+            scrapeTimeout: 10s
+            path: /ups_metrics
+            params:
+              ups: ["apc-3000"]
 
     persistence:
       secret:
