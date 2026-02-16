@@ -10,7 +10,7 @@ spec:
       rules:
         - alert: UPSOnBattery
           expr: |
-            nut_ups_status{flag="OL"} == 0
+            network_ups_tools_ups_status{flag="OL"} == 0
           for: 30s
           annotations:
             summary: >-
@@ -20,7 +20,7 @@ spec:
 
         - alert: UPSBatteryLow
           expr: |
-            nut_battery_charge_percent < 20
+            network_ups_tools_battery_charge < 20
           for: 30s
           annotations:
             summary: >-
@@ -30,7 +30,7 @@ spec:
 
         - alert: UPSBatteryReplace
           expr: |
-            nut_ups_status{flag="RB"} == 1
+            network_ups_tools_ups_status{flag="RB"} == 1
           for: 5m
           annotations:
             summary: >-
@@ -40,7 +40,7 @@ spec:
 
         - alert: UPSUnavailable
           expr: |
-            absent(nut_ups_status) == 1
+            absent(network_ups_tools_ups_status) == 1
           for: 5m
           annotations:
             summary: >-
