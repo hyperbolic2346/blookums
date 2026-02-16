@@ -830,7 +830,7 @@ spec:
           ]
         },
         {
-          "title": "Door/Window States",
+          "title": "Door States",
           "type": "state-timeline",
           "gridPos": { "h": 8, "w": 24, "x": 0, "y": 23 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
