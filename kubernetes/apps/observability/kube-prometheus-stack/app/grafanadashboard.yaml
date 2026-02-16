@@ -1134,3 +1134,327 @@ spec:
       "title": "Minecraft Overview",
       "uid": "minecraft-overview"
     }
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/grafana.integreatly.org/grafanadashboard_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: application-status
+spec:
+  allowCrossNamespaceImport: true
+  instanceSelector:
+    matchLabels:
+      grafana.internal/instance: grafana
+  datasources:
+    - datasourceName: prometheus
+      inputName: DS_PROMETHEUS
+  json: |
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "links": [],
+      "panels": [
+        {
+          "type": "row",
+          "title": "Game Servers",
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+        },
+        {
+          "title": "Server Status",
+          "type": "stat",
+          "gridPos": { "h": 5, "w": 24, "x": 0, "y": 1 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "options": { "0": { "color": "green", "index": 0, "text": "UP" } }, "type": "value" },
+                { "options": { "from": 1, "to": 999, "result": { "color": "red", "index": 1, "text": "DOWN" } }, "type": "range" }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value", "wideLayout": false },
+          "targets": [
+            { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gaming\", deployment=\"armadillo-minecraft\"}", "legendFormat": "Armadillo (MC)", "refId": "A" },
+            { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gaming\", deployment=\"bedrock-minecraft-bedrock\"}", "legendFormat": "Bedrock (MC)", "refId": "B" },
+            { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gaming\", deployment=\"cicada-minecraft\"}", "legendFormat": "Cicada (MC)", "refId": "C" },
+            { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gaming\", deployment=\"newworld2023-minecraft\"}", "legendFormat": "NewWorld (MC)", "refId": "D" },
+            { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gaming\", deployment=\"scorpion-minecraft\"}", "legendFormat": "Scorpion (MC)", "refId": "E" },
+            { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gaming\", deployment=\"skyblock-minecraft\"}", "legendFormat": "SkyBlock (MC)", "refId": "F" },
+            { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gaming\", deployment=\"clean-slate-factorio-server-charts\"}", "legendFormat": "Factorio", "refId": "G" },
+            { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gaming\", deployment=\"minion-valheim\"}", "legendFormat": "Valheim", "refId": "H" },
+            { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gaming\", deployment=\"sandstorm\"}", "legendFormat": "Sandstorm", "refId": "I" },
+            { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gaming\", deployment=\"ark-sa\"}", "legendFormat": "ARK: SA", "refId": "J" }
+          ]
+        },
+        {
+          "title": "Minecraft Players Online",
+          "type": "stat",
+          "gridPos": { "h": 3, "w": 24, "x": 0, "y": 6 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }, { "color": "green", "value": 1 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value", "wideLayout": false },
+          "targets": [
+            { "expr": "minecraft_status_players_online_count{server_host=~\"cicada.*\"}", "legendFormat": "Cicada", "refId": "A" },
+            { "expr": "minecraft_status_players_online_count{server_host=~\"armadillo.*\"}", "legendFormat": "Armadillo", "refId": "B" },
+            { "expr": "minecraft_status_players_online_count{server_host=~\"bedrock.*\"}", "legendFormat": "Bedrock", "refId": "C" }
+          ]
+        },
+        {
+          "title": "Game Server Details",
+          "type": "table",
+          "gridPos": { "h": 7, "w": 14, "x": 0, "y": 9 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "custom": { "filterable": false }
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "Status" },
+                "properties": [
+                  { "id": "mappings", "value": [
+                    { "options": { "0": { "color": "green", "index": 0, "text": "Available" } }, "type": "value" },
+                    { "options": { "from": 1, "to": 999, "result": { "color": "red", "index": 1, "text": "Unavailable" } }, "type": "range" }
+                  ]},
+                  { "id": "custom.displayMode", "value": "color-background" }
+                ]
+              },
+              {
+                "matcher": { "id": "byName", "options": "Restarts (24h)" },
+                "properties": [
+                  { "id": "decimals", "value": 0 },
+                  { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }] } },
+                  { "id": "custom.displayMode", "value": "color-background" }
+                ]
+              }
+            ]
+          },
+          "options": { "showHeader": true, "footer": { "show": false }, "sortBy": [{ "displayName": "Server", "desc": false }] },
+          "transformations": [
+            { "id": "merge", "options": {} },
+            { "id": "organize", "options": { "excludeByName": { "Time": true, "Time 1": true, "Time 2": true, "__name__": true, "job": true, "instance": true, "container": true, "endpoint": true, "namespace": true, "pod": true, "service": true, "uid": true }, "renameByName": { "deployment": "Server", "Value #A": "Status", "Value #B": "Restarts (24h)" } } }
+          ],
+          "targets": [
+            {
+              "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gaming\"}",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
+            },
+            {
+              "expr": "sum by(deployment)(increase(kube_pod_container_status_restarts_total{namespace=\"gaming\"}[24h]) * on(pod) group_left(deployment) label_replace(kube_pod_info{namespace=\"gaming\"}, \"deployment\", \"$1\", \"created_by_name\", \"(.*)-[a-z0-9]+\"))",
+              "format": "table",
+              "instant": true,
+              "refId": "B"
+            }
+          ]
+        },
+        {
+          "title": "Backup Status",
+          "type": "stat",
+          "gridPos": { "h": 7, "w": 10, "x": 14, "y": 9 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "options": { "0": { "color": "green", "index": 0, "text": "Synced" } }, "type": "value" },
+                { "options": { "1": { "color": "red", "index": 1, "text": "Out of Sync" } }, "type": "value" }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value", "wideLayout": false },
+          "targets": [
+            {
+              "expr": "volsync_volume_out_of_sync{obj_namespace=\"gaming\", role=\"source\"}",
+              "legendFormat": "{{ obj_name }}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "Server Uptime",
+          "type": "state-timeline",
+          "gridPos": { "h": 7, "w": 24, "x": 0, "y": 16 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "options": { "0": { "color": "red", "index": 0, "text": "Down" } }, "type": "value" },
+                { "options": { "from": 1, "to": 999, "result": { "color": "green", "index": 1, "text": "Up" } }, "type": "range" }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] },
+              "custom": { "fillOpacity": 80, "lineWidth": 0 }
+            },
+            "overrides": []
+          },
+          "options": { "showValue": "never", "mergeValues": true, "alignValue": "left", "legend": { "displayMode": "list", "placement": "bottom" } },
+          "targets": [
+            { "expr": "kube_deployment_status_replicas_available{namespace=\"gaming\", deployment=\"armadillo-minecraft\"}", "legendFormat": "Armadillo (MC)", "refId": "A" },
+            { "expr": "kube_deployment_status_replicas_available{namespace=\"gaming\", deployment=\"bedrock-minecraft-bedrock\"}", "legendFormat": "Bedrock (MC)", "refId": "B" },
+            { "expr": "kube_deployment_status_replicas_available{namespace=\"gaming\", deployment=\"cicada-minecraft\"}", "legendFormat": "Cicada (MC)", "refId": "C" },
+            { "expr": "kube_deployment_status_replicas_available{namespace=\"gaming\", deployment=\"newworld2023-minecraft\"}", "legendFormat": "NewWorld (MC)", "refId": "D" },
+            { "expr": "kube_deployment_status_replicas_available{namespace=\"gaming\", deployment=\"scorpion-minecraft\"}", "legendFormat": "Scorpion (MC)", "refId": "E" },
+            { "expr": "kube_deployment_status_replicas_available{namespace=\"gaming\", deployment=\"skyblock-minecraft\"}", "legendFormat": "SkyBlock (MC)", "refId": "F" },
+            { "expr": "kube_deployment_status_replicas_available{namespace=\"gaming\", deployment=\"clean-slate-factorio-server-charts\"}", "legendFormat": "Factorio", "refId": "G" },
+            { "expr": "kube_deployment_status_replicas_available{namespace=\"gaming\", deployment=\"minion-valheim\"}", "legendFormat": "Valheim", "refId": "H" },
+            { "expr": "kube_deployment_status_replicas_available{namespace=\"gaming\", deployment=\"sandstorm\"}", "legendFormat": "Sandstorm", "refId": "I" },
+            { "expr": "kube_deployment_status_replicas_available{namespace=\"gaming\", deployment=\"ark-sa\"}", "legendFormat": "ARK: SA", "refId": "J" }
+          ]
+        },
+        {
+          "type": "row",
+          "title": "Home Services",
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 }
+        },
+        {
+          "title": "Service Status",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 24, "x": 0, "y": 24 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "options": { "0": { "color": "green", "index": 0, "text": "UP" } }, "type": "value" },
+                { "options": { "from": 1, "to": 999, "result": { "color": "red", "index": 1, "text": "DOWN" } }, "type": "range" }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value", "wideLayout": false },
+          "targets": [
+            { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"home\", deployment=\"home-assistant\"}", "legendFormat": "Home Assistant", "refId": "A" },
+            { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"home\", deployment=\"frigate\"}", "legendFormat": "Frigate", "refId": "B" },
+            { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"home\", deployment=\"zwave-js-ui\"}", "legendFormat": "Z-Wave JS UI", "refId": "C" },
+            { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"home\", deployment=\"mosquitto\"}", "legendFormat": "Mosquitto", "refId": "D" },
+            { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"home\", deployment=\"appdaemon\"}", "legendFormat": "AppDaemon", "refId": "E" }
+          ]
+        },
+        {
+          "title": "Backup Status",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 24, "x": 0, "y": 28 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "options": { "0": { "color": "green", "index": 0, "text": "Synced" } }, "type": "value" },
+                { "options": { "1": { "color": "red", "index": 1, "text": "Out of Sync" } }, "type": "value" }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value", "wideLayout": false },
+          "targets": [
+            {
+              "expr": "volsync_volume_out_of_sync{obj_namespace=\"home\", role=\"source\"}",
+              "legendFormat": "{{ obj_name }}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "Service Uptime",
+          "type": "state-timeline",
+          "gridPos": { "h": 6, "w": 24, "x": 0, "y": 32 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "options": { "0": { "color": "red", "index": 0, "text": "Down" } }, "type": "value" },
+                { "options": { "from": 1, "to": 999, "result": { "color": "green", "index": 1, "text": "Up" } }, "type": "range" }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] },
+              "custom": { "fillOpacity": 80, "lineWidth": 0 }
+            },
+            "overrides": []
+          },
+          "options": { "showValue": "never", "mergeValues": true, "alignValue": "left", "legend": { "displayMode": "list", "placement": "bottom" } },
+          "targets": [
+            { "expr": "kube_deployment_status_replicas_available{namespace=\"home\", deployment=\"home-assistant\"}", "legendFormat": "Home Assistant", "refId": "A" },
+            { "expr": "kube_deployment_status_replicas_available{namespace=\"home\", deployment=\"frigate\"}", "legendFormat": "Frigate", "refId": "B" },
+            { "expr": "kube_deployment_status_replicas_available{namespace=\"home\", deployment=\"zwave-js-ui\"}", "legendFormat": "Z-Wave JS UI", "refId": "C" },
+            { "expr": "kube_deployment_status_replicas_available{namespace=\"home\", deployment=\"mosquitto\"}", "legendFormat": "Mosquitto", "refId": "D" },
+            { "expr": "kube_deployment_status_replicas_available{namespace=\"home\", deployment=\"appdaemon\"}", "legendFormat": "AppDaemon", "refId": "E" }
+          ]
+        },
+        {
+          "type": "row",
+          "title": "Gate",
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 38 }
+        },
+        {
+          "title": "Service Status",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 24, "x": 0, "y": 39 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "options": { "0": { "color": "green", "index": 0, "text": "UP" } }, "type": "value" },
+                { "options": { "from": 1, "to": 999, "result": { "color": "red", "index": 1, "text": "DOWN" } }, "type": "range" }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value", "wideLayout": false },
+          "targets": [
+            { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gate\", deployment=\"gate-gate\"}", "legendFormat": "Gate App", "refId": "A" },
+            { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gate\", deployment=\"gate-motion\"}", "legendFormat": "Motion Detector", "refId": "B" },
+            { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gate\", deployment=\"gate-celery\"}", "legendFormat": "Celery Workers", "refId": "C" },
+            { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gate\", deployment=\"gate-mysql\"}", "legendFormat": "MySQL", "refId": "D" },
+            { "expr": "kube_statefulset_replicas{namespace=\"gate\", statefulset=\"gate-rabbitmq-server\"} - kube_statefulset_status_replicas_ready{namespace=\"gate\", statefulset=\"gate-rabbitmq-server\"}", "legendFormat": "RabbitMQ", "refId": "E" }
+          ]
+        },
+        {
+          "title": "Service Uptime",
+          "type": "state-timeline",
+          "gridPos": { "h": 6, "w": 24, "x": 0, "y": 43 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "options": { "0": { "color": "red", "index": 0, "text": "Down" } }, "type": "value" },
+                { "options": { "from": 1, "to": 999, "result": { "color": "green", "index": 1, "text": "Up" } }, "type": "range" }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] },
+              "custom": { "fillOpacity": 80, "lineWidth": 0 }
+            },
+            "overrides": []
+          },
+          "options": { "showValue": "never", "mergeValues": true, "alignValue": "left", "legend": { "displayMode": "list", "placement": "bottom" } },
+          "targets": [
+            { "expr": "kube_deployment_status_replicas_available{namespace=\"gate\", deployment=\"gate-gate\"}", "legendFormat": "Gate App", "refId": "A" },
+            { "expr": "kube_deployment_status_replicas_available{namespace=\"gate\", deployment=\"gate-motion\"}", "legendFormat": "Motion Detector", "refId": "B" },
+            { "expr": "kube_deployment_status_replicas_available{namespace=\"gate\", deployment=\"gate-celery\"}", "legendFormat": "Celery Workers", "refId": "C" },
+            { "expr": "kube_deployment_status_replicas_available{namespace=\"gate\", deployment=\"gate-mysql\"}", "legendFormat": "MySQL", "refId": "D" },
+            { "expr": "kube_statefulset_status_replicas_ready{namespace=\"gate\", statefulset=\"gate-rabbitmq-server\"}", "legendFormat": "RabbitMQ", "refId": "E" }
+          ]
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 39,
+      "tags": ["applications", "status"],
+      "templating": { "list": [] },
+      "time": { "from": "now-12h", "to": "now" },
+      "timepicker": {},
+      "timezone": "",
+      "title": "Application Status",
+      "uid": "application-status"
+    }
