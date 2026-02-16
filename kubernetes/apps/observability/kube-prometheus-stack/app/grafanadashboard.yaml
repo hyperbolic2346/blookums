@@ -315,7 +315,7 @@ spec:
           "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
           "targets": [
             {
-              "expr": "count(homeassistant_binary_sensor_state{entity=~\".*(door|window).*\", entity!~\".*(garage).*\"} == 1) or vector(0)",
+              "expr": "count(homeassistant_binary_sensor_state{entity=~\".*(door|window).*\", entity!~\".*(doorbell|garage|is_closed|tilt_position|regular_position|tampering).*\"} == 1) or vector(0)",
               "legendFormat": "Open",
               "refId": "A"
             }
@@ -539,11 +539,11 @@ spec:
           },
           "options": { "showHeader": true, "footer": { "show": false } },
           "transformations": [
-            { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true, "container": true, "endpoint": true, "namespace": true, "pod": true, "service": true, "domainname": true, "machine": true, "release": true, "sysname": true, "version": true }, "renameByName": { "nodename": "Node", "Value": "Status" } } }
+            { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "job": true, "container": true, "endpoint": true, "namespace": true, "pod": true, "service": true, "domainname": true, "machine": true, "release": true, "sysname": true, "version": true }, "renameByName": { "nodename": "Node", "instance": "Instance", "Value": "Status" } } }
           ],
           "targets": [
             {
-              "expr": "max by(instance)(up{job=~\".*node.?exporter.*\"}) * on(instance) group_left(nodename) max by(instance, nodename)(node_uname_info)",
+              "expr": "max by(instance)(up{job=~\".*node.?exporter.*\"}) * on(instance) group_left(nodename) max by(instance, nodename)(node_uname_info) or label_replace(max by(instance)(up{job=~\".*node.?exporter.*\"} == 0), \"nodename\", \"$1\", \"instance\", \"(.*):.*\")",
               "format": "table",
               "instant": true,
               "refId": "A"
@@ -841,7 +841,7 @@ spec:
           "options": { "showValue": "auto", "mergeValues": true, "alignValue": "left", "legend": { "displayMode": "list", "placement": "bottom" } },
           "targets": [
             {
-              "expr": "homeassistant_binary_sensor_state{entity=~\".*(door|window).*\", entity!~\".*(garage).*\"} == 1",
+              "expr": "homeassistant_binary_sensor_state{entity=~\".*(door|window).*\", entity!~\".*(doorbell|garage|is_closed|tilt_position|regular_position|tampering).*\"} == 1",
               "legendFormat": "{{ friendly_name }}",
               "refId": "A"
             }
