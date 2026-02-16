@@ -932,7 +932,7 @@ spec:
           "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
           "targets": [
             {
-              "expr": "minecraft_status_healthy{server_host=\"cicada\"}",
+              "expr": "minecraft_status_healthy{server_host=~\"cicada.*\"}",
               "legendFormat": "Cicada",
               "refId": "A"
             }
@@ -956,7 +956,7 @@ spec:
           "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
           "targets": [
             {
-              "expr": "minecraft_status_healthy{server_host=\"armadillo\"}",
+              "expr": "minecraft_status_healthy{server_host=~\"armadillo.*\"}",
               "legendFormat": "Armadillo",
               "refId": "A"
             }
@@ -980,7 +980,7 @@ spec:
           "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
           "targets": [
             {
-              "expr": "minecraft_status_healthy{server_host=\"bedrock\"}",
+              "expr": "minecraft_status_healthy{server_host=~\"bedrock.*\"}",
               "legendFormat": "Bedrock",
               "refId": "A"
             }
@@ -1000,7 +1000,7 @@ spec:
           "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
           "targets": [
             {
-              "expr": "minecraft_status_players_online_count{server_host=\"cicada\"}",
+              "expr": "minecraft_status_players_online_count{server_host=~\"cicada.*\"}",
               "legendFormat": "Cicada Players",
               "refId": "A"
             }
@@ -1020,7 +1020,7 @@ spec:
           "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
           "targets": [
             {
-              "expr": "minecraft_status_players_online_count{server_host=\"armadillo\"}",
+              "expr": "minecraft_status_players_online_count{server_host=~\"armadillo.*\"}",
               "legendFormat": "Armadillo Players",
               "refId": "A"
             }
@@ -1040,7 +1040,7 @@ spec:
           "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
           "targets": [
             {
-              "expr": "minecraft_status_players_online_count{server_host=\"bedrock\"}",
+              "expr": "minecraft_status_players_online_count{server_host=~\"bedrock.*\"}",
               "legendFormat": "Bedrock Players",
               "refId": "A"
             }
@@ -1061,8 +1061,8 @@ spec:
           "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
           "targets": [
             {
-              "expr": "minecraft_status_players_online_count",
-              "legendFormat": "{{ server_host }}",
+              "expr": "label_replace(minecraft_status_players_online_count, \"server\", \"$1\", \"server_host\", \"(.*?)-minecraft.*\")",
+              "legendFormat": "{{ server }}",
               "refId": "A"
             }
           ]
@@ -1082,8 +1082,8 @@ spec:
           "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "mean", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
           "targets": [
             {
-              "expr": "minecraft_status_response_time_seconds",
-              "legendFormat": "{{ server_host }}",
+              "expr": "label_replace(minecraft_status_response_time_seconds, \"server\", \"$1\", \"server_host\", \"(.*?)-minecraft.*\")",
+              "legendFormat": "{{ server }}",
               "refId": "A"
             }
           ]
@@ -1112,11 +1112,11 @@ spec:
           },
           "options": { "showHeader": true, "footer": { "show": false } },
           "transformations": [
-            { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true, "server_port": true }, "renameByName": { "server_host": "Host", "server_edition": "Edition", "server_version": "Version", "Value": "Status" } } }
+            { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true, "server_port": true, "server_host": true, "endpoint": true, "namespace": true, "pod": true, "service": true }, "renameByName": { "server": "Host", "server_edition": "Edition", "server_version": "Version", "Value": "Status" } } }
           ],
           "targets": [
             {
-              "expr": "minecraft_status_healthy",
+              "expr": "label_replace(minecraft_status_healthy, \"server\", \"$1\", \"server_host\", \"(.*?)-minecraft.*\")",
               "format": "table",
               "instant": true,
               "refId": "A"
