@@ -720,16 +720,17 @@ spec:
       "panels": [
         {
           "title": "Motion Sensor Activity",
+          "description": "Per-sensor motion detection timeline. Each row shows when a sensor detected motion.",
           "type": "state-timeline",
-          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+          "gridPos": { "h": 10, "w": 24, "x": 0, "y": 0 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
-                { "options": { "1": { "color": "red", "index": 0, "text": "Motion" } }, "type": "value" },
-                { "options": { "0": { "color": "transparent", "index": 1, "text": "Clear" } }, "type": "value" }
+                { "options": { "1": { "color": "orange", "index": 0, "text": "Motion" } }, "type": "value" },
+                { "options": { "0": { "color": "#2a2a3d", "index": 1, "text": "Clear" } }, "type": "value" }
               ],
-              "thresholds": { "mode": "absolute", "steps": [{ "color": "transparent", "value": null }, { "color": "red", "value": 1 }] },
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "#2a2a3d", "value": null }, { "color": "orange", "value": 1 }] },
               "custom": { "fillOpacity": 80, "lineWidth": 0 }
             },
             "overrides": []
@@ -737,7 +738,7 @@ spec:
           "options": { "showValue": "never", "mergeValues": true, "alignValue": "left", "legend": { "displayMode": "list", "placement": "bottom" } },
           "targets": [
             {
-              "expr": "homeassistant_binary_sensor_state{entity=~\".*motion.*\"} == 1",
+              "expr": "homeassistant_binary_sensor_state{entity=~\".*motion.*\", entity!~\".*(detections_motion|tampering|sensor_state).*\"}",
               "legendFormat": "{{ friendly_name }}",
               "refId": "A"
             }
@@ -745,16 +746,17 @@ spec:
         },
         {
           "title": "Motion by Floor",
+          "description": "Aggregated motion per floor - shows activity when any sensor on that floor detects motion.",
           "type": "state-timeline",
-          "gridPos": { "h": 6, "w": 24, "x": 0, "y": 8 },
+          "gridPos": { "h": 5, "w": 24, "x": 0, "y": 10 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
-                { "options": { "1": { "color": "red", "index": 0, "text": "Motion" } }, "type": "value" },
-                { "options": { "0": { "color": "transparent", "index": 1, "text": "Clear" } }, "type": "value" }
+                { "options": { "1": { "color": "orange", "index": 0, "text": "Motion" } }, "type": "value" },
+                { "options": { "0": { "color": "#2a2a3d", "index": 1, "text": "Clear" } }, "type": "value" }
               ],
-              "thresholds": { "mode": "absolute", "steps": [{ "color": "transparent", "value": null }, { "color": "red", "value": 1 }] },
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "#2a2a3d", "value": null }, { "color": "orange", "value": 1 }] },
               "custom": { "fillOpacity": 80, "lineWidth": 0 }
             },
             "overrides": []
@@ -762,30 +764,35 @@ spec:
           "options": { "showValue": "never", "mergeValues": true, "alignValue": "left", "legend": { "displayMode": "list", "placement": "bottom" } },
           "targets": [
             {
-              "expr": "max(homeassistant_binary_sensor_state{entity=~\".*(basement).*motion.*\"} == 1)",
-              "legendFormat": "Basement",
+              "expr": "max(homeassistant_binary_sensor_state{entity=~\".*(laundry_room|downstairs|stair).*motion.*\", entity!~\".*(detections_motion|tampering|sensor_state).*\"})",
+              "legendFormat": "Basement / Stairs",
               "refId": "A"
             },
             {
-              "expr": "max(homeassistant_binary_sensor_state{entity=~\".*(first|living|kitchen|dining|entry|front|back|main).*motion.*\"} == 1)",
+              "expr": "max(homeassistant_binary_sensor_state{entity=~\".*(entry|kitchen|guest_bath).*motion.*\", entity!~\".*(detections_motion|tampering|sensor_state).*\"})",
               "legendFormat": "First Floor",
               "refId": "B"
             },
             {
-              "expr": "max(homeassistant_binary_sensor_state{entity=~\".*(second|upstairs|bedroom|office|bath|nursery|loft).*motion.*\"} == 1)",
+              "expr": "max(homeassistant_binary_sensor_state{entity=~\".*(master|upstairs_hall).*motion.*\", entity!~\".*(detections_motion|tampering|sensor_state).*\"})",
               "legendFormat": "Second Floor",
               "refId": "C"
+            },
+            {
+              "expr": "max(homeassistant_binary_sensor_state{entity=~\".*(back_drive|south_drive|gatecamera|doorbell|utility_room).*motion.*\", entity!~\".*(detections_motion|tampering|sensor_state).*\"})",
+              "legendFormat": "Outdoor",
+              "refId": "D"
             }
           ]
         },
         {
           "title": "Room Temperatures",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
-              "unit": "celsius",
+              "unit": "fahrenheit",
               "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10, "pointSize": 5, "showPoints": "never", "spanNulls": true }
             },
             "overrides": []
@@ -793,7 +800,7 @@ spec:
           "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "min", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
           "targets": [
             {
-              "expr": "{__name__=~\"homeassistant_sensor_temperature.*\", entity=~\".*temperature.*\"}",
+              "expr": "{__name__=~\"homeassistant_sensor_temperature.*\", entity=~\".*temperature.*\"} * 9/5 + 32",
               "legendFormat": "{{ friendly_name }}",
               "refId": "A"
             }
@@ -802,7 +809,7 @@ spec:
         {
           "title": "Room Humidity",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -816,7 +823,7 @@ spec:
           "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "min", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
           "targets": [
             {
-              "expr": "homeassistant_sensor_humidity_percent{entity=~\".*humidity.*\"}",
+              "expr": "homeassistant_sensor_humidity_percent{entity=~\".*humidity.*\", entity!~\".*laundry_room.*\"} < 100",
               "legendFormat": "{{ friendly_name }}",
               "refId": "A"
             }
@@ -825,7 +832,7 @@ spec:
         {
           "title": "Door/Window States",
           "type": "state-timeline",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 23 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -841,41 +848,17 @@ spec:
           "options": { "showValue": "auto", "mergeValues": true, "alignValue": "left", "legend": { "displayMode": "list", "placement": "bottom" } },
           "targets": [
             {
-              "expr": "homeassistant_binary_sensor_state{entity=~\".*(door|window).*\", entity!~\".*(doorbell|garage|is_closed|tilt_position|regular_position|tampering).*\"} == 1",
+              "expr": "homeassistant_binary_sensor_state{entity=~\".*(door|window).*is_open$|.*(door|window).*is_open_[0-9]+$\"}",
               "legendFormat": "{{ friendly_name }}",
               "refId": "A"
             }
           ]
         },
         {
-          "title": "Lock States",
-          "type": "state-timeline",
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "fieldConfig": {
-            "defaults": {
-              "mappings": [
-                { "options": { "1": { "color": "red", "index": 0, "text": "Unlocked" } }, "type": "value" },
-                { "options": { "0": { "color": "green", "index": 1, "text": "Locked" } }, "type": "value" }
-              ],
-              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] },
-              "custom": { "fillOpacity": 80, "lineWidth": 0 }
-            },
-            "overrides": []
-          },
-          "options": { "showValue": "auto", "mergeValues": true, "alignValue": "left", "legend": { "displayMode": "list", "placement": "bottom" } },
-          "targets": [
-            {
-              "expr": "homeassistant_entity_state{domain=\"lock\", state=\"unlocked\"} == bool 1 or homeassistant_entity_state{domain=\"lock\", state=\"locked\"} * 0",
-              "legendFormat": "{{ friendly_name }}",
-              "refId": "A"
-            }
-          ]
-        },
-        {
-          "title": "Last Motion Events (24h)",
+          "title": "Motion Event Count (24h)",
+          "description": "Total number of motion events detected by each sensor in the last 24 hours.",
           "type": "barchart",
-          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 30 },
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 31 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -891,7 +874,7 @@ spec:
           ],
           "targets": [
             {
-              "expr": "changes(homeassistant_binary_sensor_state{entity=~\".*motion.*\"}[24h]) / 2",
+              "expr": "changes(homeassistant_binary_sensor_state{entity=~\".*motion.*\", entity!~\".*(detections_motion|tampering|sensor_state).*\"}[24h]) / 2",
               "legendFormat": "{{ friendly_name }}",
               "instant": true,
               "refId": "A"
