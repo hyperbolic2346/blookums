@@ -188,7 +188,7 @@ spec:
         {
           "title": "Locks",
           "type": "stat",
-          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+          "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -212,7 +212,7 @@ spec:
         {
           "title": "Lights On",
           "type": "stat",
-          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+          "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -232,7 +232,7 @@ spec:
         {
           "title": "Garage Doors",
           "type": "stat",
-          "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+          "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -247,8 +247,56 @@ spec:
           "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
           "targets": [
             {
-              "expr": "count(homeassistant_cover_state{entity=~\".*garage.*\"} != 0) or vector(0)",
+              "expr": "count(homeassistant_cover_state{entity=~\".*(garage|bay).*door.*\", state=\"open\"} == 1) or vector(0)",
               "legendFormat": "Open Garage Doors",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "Wilson Gate",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "options": { "0": { "color": "green", "index": 0, "text": "CLOSED" } }, "type": "value" },
+                { "options": { "1": { "color": "red", "index": 1, "text": "OPEN" } }, "type": "value" }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
+          "targets": [
+            {
+              "expr": "homeassistant_cover_state{entity=\"cover.wilson_gate\", state=\"open\"}",
+              "legendFormat": "Wilson Gate",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "Brigman Gate",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "options": { "0": { "color": "green", "index": 0, "text": "CLOSED" } }, "type": "value" },
+                { "options": { "1": { "color": "blue", "index": 1, "text": "OPEN" } }, "type": "value" }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "blue", "value": 1 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
+          "targets": [
+            {
+              "expr": "homeassistant_cover_state{entity=\"cover.brigman_gate\", state=\"open\"}",
+              "legendFormat": "Brigman Gate",
               "refId": "A"
             }
           ]
@@ -256,7 +304,7 @@ spec:
         {
           "title": "Doors/Windows Open",
           "type": "stat",
-          "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+          "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -281,18 +329,18 @@ spec:
           "fieldConfig": {
             "defaults": {
               "mappings": [
-                { "options": { "1": { "color": "green", "index": 0, "text": "ALL UP" } }, "type": "value" },
-                { "options": { "0": { "color": "red", "index": 1, "text": "DOWN" } }, "type": "value" }
+                { "options": { "0": { "color": "green", "index": 0, "text": "ALL UP" } }, "type": "value" },
+                { "options": { "from": 1, "to": 999, "result": { "color": "red", "index": 1, "text": "DOWN" } }, "type": "range" }
               ],
-              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }
             },
             "overrides": []
           },
           "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
           "targets": [
             {
-              "expr": "min(up{job=~\".*node.?exporter.*\"})",
-              "legendFormat": "Servers",
+              "expr": "count(up{job=~\".*node.?exporter.*\"} == 0) or vector(0)",
+              "legendFormat": "Servers Down",
               "refId": "A"
             }
           ]
@@ -315,7 +363,7 @@ spec:
           "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
           "targets": [
             {
-              "expr": "min(nut_ups_status{flag=\"OL\"})",
+              "expr": "min(network_ups_tools_ups_status{flag=\"OL\"})",
               "legendFormat": "UPS",
               "refId": "A"
             }
@@ -338,7 +386,7 @@ spec:
           "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showThresholdLabels": false, "showThresholdMarkers": true },
           "targets": [
             {
-              "expr": "min(nut_battery_charge_percent)",
+              "expr": "min(network_ups_tools_battery_charge)",
               "legendFormat": "Battery",
               "refId": "A"
             }
