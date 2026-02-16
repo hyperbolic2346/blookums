@@ -49,7 +49,7 @@ spec:
     - name: blackhole
     - name: discord
       webhookConfigs:
-        - url: http://alertmanager-discord.observability.svc.cluster.local:9094
+        - url: http://alertmanager-discord.observability.svc.cluster.local:9094/default
           sendResolved: true
     - name: pushover
       pushoverConfigs:
