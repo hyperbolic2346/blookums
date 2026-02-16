@@ -324,7 +324,7 @@ spec:
         {
           "title": "Servers",
           "type": "stat",
-          "gridPos": { "h": 4, "w": 4, "x": 0, "y": 4 },
+          "gridPos": { "h": 4, "w": 3, "x": 0, "y": 4 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -346,33 +346,51 @@ spec:
           ]
         },
         {
-          "title": "UPS Status",
+          "title": "APC 1500",
           "type": "stat",
-          "gridPos": { "h": 4, "w": 4, "x": 4, "y": 4 },
+          "gridPos": { "h": 4, "w": 3, "x": 3, "y": 4 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
-              "mappings": [
-                { "options": { "1": { "color": "green", "index": 0, "text": "ON LINE" } }, "type": "value" },
-                { "options": { "0": { "color": "red", "index": 1, "text": "ON BATTERY" } }, "type": "value" }
-              ],
-              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+              "unit": "m",
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 5 }, { "color": "yellow", "value": 15 }, { "color": "green", "value": 30 }] }
             },
             "overrides": []
           },
-          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value_and_name" },
           "targets": [
             {
-              "expr": "min(network_ups_tools_ups_status{flag=\"OL\"})",
-              "legendFormat": "UPS",
+              "expr": "network_ups_tools_battery_runtime{job=\"nut-server-apc-1500\"} / 60",
+              "legendFormat": "Runtime",
               "refId": "A"
             }
           ]
         },
         {
-          "title": "UPS Battery",
+          "title": "APC 3000",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 3, "x": 6, "y": 4 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "m",
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 5 }, { "color": "yellow", "value": 15 }, { "color": "green", "value": 30 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value_and_name" },
+          "targets": [
+            {
+              "expr": "network_ups_tools_battery_runtime{job=\"nut-server-apc-3000\"} / 60",
+              "legendFormat": "Runtime",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "APC 1500 Battery",
           "type": "gauge",
-          "gridPos": { "h": 4, "w": 4, "x": 8, "y": 4 },
+          "gridPos": { "h": 4, "w": 3, "x": 9, "y": 4 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -386,7 +404,30 @@ spec:
           "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showThresholdLabels": false, "showThresholdMarkers": true },
           "targets": [
             {
-              "expr": "min(network_ups_tools_battery_charge)",
+              "expr": "network_ups_tools_battery_charge{job=\"nut-server-apc-1500\"}",
+              "legendFormat": "Battery",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "APC 3000 Battery",
+          "type": "gauge",
+          "gridPos": { "h": 4, "w": 3, "x": 12, "y": 4 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 100,
+              "unit": "percent",
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 25 }, { "color": "yellow", "value": 50 }, { "color": "green", "value": 75 }] }
+            },
+            "overrides": []
+          },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showThresholdLabels": false, "showThresholdMarkers": true },
+          "targets": [
+            {
+              "expr": "network_ups_tools_battery_charge{job=\"nut-server-apc-3000\"}",
               "legendFormat": "Battery",
               "refId": "A"
             }
@@ -395,7 +436,7 @@ spec:
         {
           "title": "Internet",
           "type": "stat",
-          "gridPos": { "h": 4, "w": 4, "x": 12, "y": 4 },
+          "gridPos": { "h": 4, "w": 3, "x": 15, "y": 4 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -419,7 +460,7 @@ spec:
         {
           "title": "Home Assistant",
           "type": "stat",
-          "gridPos": { "h": 4, "w": 4, "x": 16, "y": 4 },
+          "gridPos": { "h": 4, "w": 3, "x": 18, "y": 4 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -443,7 +484,7 @@ spec:
         {
           "title": "Ceph Health",
           "type": "stat",
-          "gridPos": { "h": 4, "w": 4, "x": 20, "y": 4 },
+          "gridPos": { "h": 4, "w": 3, "x": 21, "y": 4 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
