@@ -1177,7 +1177,7 @@ spec:
             },
             "overrides": []
           },
-          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value", "wideLayout": false },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "name", "wideLayout": false },
           "targets": [
             { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gaming\", deployment=\"armadillo-minecraft\"}", "legendFormat": "Armadillo (MC)", "refId": "A" },
             { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gaming\", deployment=\"bedrock-minecraft-bedrock\"}", "legendFormat": "Bedrock (MC)", "refId": "B" },
@@ -1202,7 +1202,7 @@ spec:
             },
             "overrides": []
           },
-          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value", "wideLayout": false },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value_and_name", "wideLayout": false },
           "targets": [
             { "expr": "minecraft_status_players_online_count{server_host=~\"cicada.*\"}", "legendFormat": "Cicada", "refId": "A" },
             { "expr": "minecraft_status_players_online_count{server_host=~\"armadillo.*\"}", "legendFormat": "Armadillo", "refId": "B" },
@@ -1274,7 +1274,7 @@ spec:
             },
             "overrides": []
           },
-          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value", "wideLayout": false },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "name", "wideLayout": false},
           "targets": [
             {
               "expr": "volsync_volume_out_of_sync{obj_namespace=\"gaming\", role=\"source\"}",
@@ -1334,7 +1334,7 @@ spec:
             },
             "overrides": []
           },
-          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value", "wideLayout": false },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "name", "wideLayout": false},
           "targets": [
             { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"home\", deployment=\"home-assistant\"}", "legendFormat": "Home Assistant", "refId": "A" },
             { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"home\", deployment=\"frigate\"}", "legendFormat": "Frigate", "refId": "B" },
@@ -1358,7 +1358,7 @@ spec:
             },
             "overrides": []
           },
-          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value", "wideLayout": false },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "name", "wideLayout": false},
           "targets": [
             {
               "expr": "volsync_volume_out_of_sync{obj_namespace=\"home\", role=\"source\"}",
@@ -1413,7 +1413,7 @@ spec:
             },
             "overrides": []
           },
-          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value", "wideLayout": false },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "name", "wideLayout": false},
           "targets": [
             { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gate\", deployment=\"gate-gate\"}", "legendFormat": "Gate App", "refId": "A" },
             { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gate\", deployment=\"gate-motion\"}", "legendFormat": "Motion Detector", "refId": "B" },
