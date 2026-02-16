@@ -764,12 +764,12 @@ spec:
           "options": { "showValue": "never", "mergeValues": true, "alignValue": "left", "legend": { "displayMode": "list", "placement": "bottom" } },
           "targets": [
             {
-              "expr": "max(homeassistant_binary_sensor_state{entity=~\".*(laundry_room|downstairs|stair).*motion.*\", entity!~\".*(detections_motion|tampering|sensor_state).*\"})",
-              "legendFormat": "Basement / Stairs",
+              "expr": "max(homeassistant_binary_sensor_state{entity=~\".*(laundry_room|downstairs).*motion.*\", entity!~\".*(detections_motion|tampering|sensor_state).*\"})",
+              "legendFormat": "Basement",
               "refId": "A"
             },
             {
-              "expr": "max(homeassistant_binary_sensor_state{entity=~\".*(entry|kitchen|guest_bath).*motion.*\", entity!~\".*(detections_motion|tampering|sensor_state).*\"})",
+              "expr": "max(homeassistant_binary_sensor_state{entity=~\".*(entry|kitchen|guest_bath|stair).*motion.*\", entity!~\".*(detections_motion|tampering|sensor_state).*\"})",
               "legendFormat": "First Floor",
               "refId": "B"
             },
@@ -848,7 +848,7 @@ spec:
           "options": { "showValue": "auto", "mergeValues": true, "alignValue": "left", "legend": { "displayMode": "list", "placement": "bottom" } },
           "targets": [
             {
-              "expr": "homeassistant_binary_sensor_state{entity=~\".*(door|window).*is_open$|.*(door|window).*is_open_[0-9]+$\"}",
+              "expr": "homeassistant_binary_sensor_state{entity=~\"binary_sensor.basement_hall_door_window_door_is_open|binary_sensor.door_window_door_is_open\"}",
               "legendFormat": "{{ friendly_name }}",
               "refId": "A"
             }
