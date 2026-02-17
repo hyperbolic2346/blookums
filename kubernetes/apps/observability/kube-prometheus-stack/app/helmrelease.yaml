@@ -93,6 +93,9 @@ spec:
         folder: observability
         matchLabels:
           grafana.internal/instance: grafana
+    defaultRules:
+      disabled:
+        NodeMemoryHighUtilization: true
     additionalPrometheusRulesMap:
       dockerhub-rules:
         groups:
@@ -114,6 +117,18 @@ spec:
                 expr: (kube_pod_container_status_restarts_total - kube_pod_container_status_restarts_total offset 10m >= 1) and ignoring (reason) min_over_time(kube_pod_container_status_last_terminated_reason{reason="OOMKilled"}[10m]) == 1
                 labels:
                   severity: critical
+      node-memory-rules:
+        groups:
+          - name: node-memory-custom
+            rules:
+              - alert: NodeMemoryHighUtilization
+                annotations:
+                  description: Memory utilization on {{ $labels.instance }} is above 90% for more than 15 minutes. Actual value {{ $value | humanize }}%.
+                  summary: Host {{ $labels.instance }} is under high memory pressure.
+                expr: 100 - (node_memory_MemAvailable_bytes{job="node-exporter", instance!~"${SECRET_FILESERV_IP}:.*"} / node_memory_MemTotal_bytes{job="node-exporter", instance!~"${SECRET_FILESERV_IP}:.*"} * 100) > 90
+                for: 15m
+                labels:
+                  severity: warning
       zfs-rules:
         groups:
           - name: zfs
