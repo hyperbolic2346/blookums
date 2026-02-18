@@ -360,7 +360,7 @@ spec:
           "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value_and_name" },
           "targets": [
             {
-              "expr": "network_ups_tools_battery_runtime{job=\"nut-server-apc-1500\"} / 60",
+              "expr": "network_ups_tools_battery_runtime{ups=\"apc-1500\"} / 60",
               "legendFormat": "Runtime",
               "refId": "A"
             }
@@ -381,7 +381,7 @@ spec:
           "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value_and_name" },
           "targets": [
             {
-              "expr": "network_ups_tools_battery_runtime{job=\"nut-server-apc-3000\"} / 60",
+              "expr": "network_ups_tools_battery_runtime{ups=\"apc-3000\"} / 60",
               "legendFormat": "Runtime",
               "refId": "A"
             }
@@ -404,7 +404,7 @@ spec:
           "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showThresholdLabels": false, "showThresholdMarkers": true },
           "targets": [
             {
-              "expr": "network_ups_tools_battery_charge{job=\"nut-server-apc-1500\"}",
+              "expr": "network_ups_tools_battery_charge{ups=\"apc-1500\"}",
               "legendFormat": "Battery",
               "refId": "A"
             }
@@ -427,7 +427,7 @@ spec:
           "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showThresholdLabels": false, "showThresholdMarkers": true },
           "targets": [
             {
-              "expr": "network_ups_tools_battery_charge{job=\"nut-server-apc-3000\"}",
+              "expr": "network_ups_tools_battery_charge{ups=\"apc-3000\"}",
               "legendFormat": "Battery",
               "refId": "A"
             }
