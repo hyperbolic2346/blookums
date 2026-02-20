@@ -54,6 +54,7 @@ spec:
         key: WORDPRESS_DB_PASSWORD
 
   backup:
+    image: percona/percona-xtrabackup:8.4.0-5.1
     storages:
       s3-backup:
         type: s3
