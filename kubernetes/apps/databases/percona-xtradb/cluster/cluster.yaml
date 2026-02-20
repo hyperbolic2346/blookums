@@ -52,6 +52,12 @@ spec:
       passwordSecretRef:
         name: percona-xtradb-secret
         key: WORDPRESS_DB_PASSWORD
+    - name: oliverblog
+      db: oliverblog
+      withGrantOption: false
+      passwordSecretRef:
+        name: percona-xtradb-secret
+        key: OLIVERBLOG_DB_PASSWORD
 
   backup:
     image: percona/percona-xtrabackup:8.4.0-5.1

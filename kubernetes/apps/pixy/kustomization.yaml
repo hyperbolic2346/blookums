@@ -6,4 +6,5 @@ components:
   - ../../components/common
 resources:
   - ./fierypyropixy/ks.yaml
+  - ./oliverblog/ks.yaml
   - ./pixyblog/ks.yaml
