@@ -5,5 +5,6 @@ kind: Kustomization
 resources:
   - ./certificate.yaml
   - ./certificate-fierypyropixy.yaml
+  - ./certificate-joltwagon.yaml
   - ./external.yaml
   - ./internal.yaml

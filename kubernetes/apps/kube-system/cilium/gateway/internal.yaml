@@ -55,3 +55,14 @@ spec:
         certificateRefs:
           - kind: Secret
             name: fierypyropixy-com-production-tls
+    - name: https-joltwagon
+      protocol: HTTPS
+      port: 443
+      hostname: "joltwagon.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        certificateRefs:
+          - kind: Secret
+            name: joltwagon-com-production-tls

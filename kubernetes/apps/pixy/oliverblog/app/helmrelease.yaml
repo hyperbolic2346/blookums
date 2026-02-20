@@ -81,11 +81,11 @@ spec:
 
     route:
       main:
-        hostnames: ["oliver-blog.${SECRET_DOMAIN}"]
+        hostnames: ["joltwagon.com"]
         parentRefs:
           - name: internal
             namespace: kube-system
-            sectionName: https
+            sectionName: https-joltwagon
         rules:
           - backendRefs:
               - identifier: main

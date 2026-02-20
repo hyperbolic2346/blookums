@@ -15,4 +15,8 @@ ingress:
     service: *svc-internal
     originRequest:
       noTLSVerify: true
+  - hostname: "joltwagon.com"
+    service: *svc-internal
+    originRequest:
+      noTLSVerify: true
   - service: http_status:404
