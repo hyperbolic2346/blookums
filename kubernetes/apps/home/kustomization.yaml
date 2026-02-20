@@ -4,6 +4,16 @@ kind: Kustomization
 namespace: home
 components:
   - ../../components/common
+patches:
+  - target:
+      kind: Namespace
+    patch: |-
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: not-used
+        labels:
+          goldilocks.fairwinds.com/enabled: "true"
 resources:
   - ./appdaemon/ks.yaml
   - ./frigate/ks.yaml
