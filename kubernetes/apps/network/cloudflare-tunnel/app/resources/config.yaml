@@ -4,7 +4,11 @@ originRequest:
 
 ingress:
   - hostname: "${SECRET_DOMAIN}"
-    service: &svc https://cilium-gateway-external.kube-system.svc.cluster.local
+    service: &svc-external https://cilium-gateway-external.kube-system.svc.cluster.local
   - hostname: "*.${SECRET_DOMAIN}"
-    service: *svc
+    service: *svc-external
+  - hostname: "*.fierypyropixy.com"
+    service: &svc-internal https://cilium-gateway-internal.kube-system.svc.cluster.local
+    originRequest:
+      originServerName: "fierypyropixy.com"
   - service: http_status:404
