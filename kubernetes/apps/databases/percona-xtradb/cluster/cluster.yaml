@@ -18,7 +18,7 @@ spec:
         cpu: 300m
         memory: 1Gi
       limits:
-        memory: 2Gi
+        memory: 4Gi
     volumeSpec:
       persistentVolumeClaim:
         storageClassName: ${CLUSTER_STORAGE_BLOCK_SSD_3_REPLICA}
