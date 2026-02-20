@@ -9,11 +9,15 @@ components:
   - ../../components/common
 
 resources:
+  - ./exporters/bazarr-exporter/ks.yaml
   - ./exporters/graphite-exporter/ks.yaml
+  - ./exporters/lidarr-exporter/ks.yaml
   - ./exporters/minecraft/ks.yaml
+  - ./exporters/prowlarr-exporter/ks.yaml
   - ./exporters/radarr-exporter/ks.yaml
   - ./exporters/smartctl-exporter/ks.yaml
   - ./exporters/sonarr-exporter/ks.yaml
+  - ./goldilocks/ks.yaml
   - ./grafana/ks.yaml
   - ./kube-prometheus-stack/ks.yaml
   - ./unpoller/ks.yaml

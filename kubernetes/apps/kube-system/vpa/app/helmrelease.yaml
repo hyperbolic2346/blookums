@@ -1,0 +1,31 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: vpa
+  namespace: kube-system
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: vpa
+      version: 4.10.1
+      sourceRef:
+        kind: HelmRepository
+        name: fairwinds-charts
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    recommender:
+      enabled: true
+    updater:
+      enabled: false
+    admissionController:
+      enabled: false

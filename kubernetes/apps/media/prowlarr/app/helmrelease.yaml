@@ -1,0 +1,100 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: prowlarr
+  namespace: media
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: prowlarr
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    defaultPodOptions:
+      securityContext:
+        runAsUser: 568
+        runAsGroup: 568
+        fsGroup: 568
+        fsGroupChangePolicy: OnRootMismatch
+
+    controllers:
+      main:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        initContainers:
+          init-db:
+            image:
+              repository: ghcr.io/home-operations/postgres-init
+              tag: 18.2@sha256:ae89578925b480f5972f237dda2f7a37efe36aff500d3e7bd1d3a6a3181e4191
+            envFrom: &envFrom
+              - secretRef:
+                  name: prowlarr-secret
+        containers:
+          main:
+            image:
+              repository: ghcr.io/home-operations/prowlarr
+              tag: 2.3.2.5245@sha256:e2459e199564ab852c6e677e951cef36c172a8e71a0e1c90665631b5a0c57438
+            env:
+              TZ: ${TIMEZONE}
+              PROWLARR__AUTHENTICATION_METHOD: External
+              PROWLARR__AUTHENTICATION_REQUIRED: DisabledForLocalAddresses
+              PROWLARR__INSTANCE_NAME: Prowlarr
+              PROWLARR__PORT: &port 9696
+              PROWLARR__LOG_LEVEL: info
+              PROWLARR__THEME: dark
+            envFrom: *envFrom
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /ping
+                    port: *port
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              readiness: *probes
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                memory: 512Mi
+
+    service:
+      main:
+        controller: main
+        ports:
+          http:
+            port: *port
+
+    route:
+      main:
+        hostnames: ["prowlarr.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: internal
+            namespace: kube-system
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: main
+                port: *port
+
+    persistence:
+      config:
+        enabled: true
+        existingClaim: prowlarr-config
