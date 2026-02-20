@@ -44,3 +44,14 @@ spec:
         certificateRefs:
           - kind: Secret
             name: fierypyropixy-com-production-tls
+    - name: https-fierypyropixy-bare
+      protocol: HTTPS
+      port: 443
+      hostname: "fierypyropixy.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        certificateRefs:
+          - kind: Secret
+            name: fierypyropixy-com-production-tls

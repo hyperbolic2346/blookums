@@ -80,11 +80,11 @@ spec:
 
     route:
       main:
-        hostnames: ["fierypyropixy.${SECRET_DOMAIN}"]
+        hostnames: ["fierypyropixy.com"]
         parentRefs:
           - name: internal
             namespace: kube-system
-            sectionName: https
+            sectionName: https-fierypyropixy-bare
         rules:
           - backendRefs:
               - identifier: main

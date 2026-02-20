@@ -7,8 +7,12 @@ ingress:
     service: &svc-external https://cilium-gateway-external.kube-system.svc.cluster.local
   - hostname: "*.${SECRET_DOMAIN}"
     service: *svc-external
-  - hostname: "*.fierypyropixy.com"
+  - hostname: "fierypyropixy.com"
     service: &svc-internal https://cilium-gateway-internal.kube-system.svc.cluster.local
+    originRequest:
+      noTLSVerify: true
+  - hostname: "*.fierypyropixy.com"
+    service: *svc-internal
     originRequest:
       noTLSVerify: true
   - service: http_status:404
