@@ -52,9 +52,6 @@ spec:
               readiness: *probes
               startup:
                 enabled: false
-            securityContext:
-              runAsUser: 33
-              runAsGroup: 33
             resources:
               requests:
                 cpu: 100m
