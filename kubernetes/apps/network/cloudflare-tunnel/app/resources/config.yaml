@@ -10,5 +10,5 @@ ingress:
   - hostname: "*.fierypyropixy.com"
     service: &svc-internal https://cilium-gateway-internal.kube-system.svc.cluster.local
     originRequest:
-      originServerName: "fierypyropixy.com"
+      noTLSVerify: true
   - service: http_status:404
