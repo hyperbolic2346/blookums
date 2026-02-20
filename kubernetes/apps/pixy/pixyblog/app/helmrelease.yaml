@@ -1,0 +1,95 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: pixyblog
+  namespace: pixy
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: pixyblog
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    controllers:
+      main:
+        containers:
+          main:
+            image:
+              repository: docker.io/library/wordpress
+              tag: 6-apache
+            envFrom:
+              - secretRef:
+                  name: pixyblog-secret
+            env:
+              WORDPRESS_TABLE_PREFIX: "wp_"
+              WORDPRESS_CONFIG_EXTRA: |
+                define('FORCE_SSL_ADMIN', true);
+                if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+                    $_SERVER['HTTPS'] = 'on';
+                }
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /wp-login.php
+                    port: 80
+                  initialDelaySeconds: 15
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 3
+              readiness: *probes
+              startup:
+                enabled: false
+            securityContext:
+              runAsUser: 33
+              runAsGroup: 33
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                memory: 512Mi
+
+        annotations:
+          reloader.stakater.com/auto: "true"
+
+        pod:
+          securityContext:
+            fsGroup: 33
+
+    service:
+      main:
+        controller: main
+        ports:
+          http:
+            port: 80
+
+    persistence:
+      data:
+        existingClaim: pixyblog-data
+        globalMounts:
+          - path: /var/www/html/wp-content
+
+    route:
+      main:
+        hostnames: ["blog.fierypyropixy.com"]
+        parentRefs:
+          - name: internal
+            namespace: kube-system
+            sectionName: https-fierypyropixy
+        rules:
+          - backendRefs:
+              - identifier: main
+                port: 80

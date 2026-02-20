@@ -1,0 +1,37 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: pixyblog
+  namespace: pixy
+spec:
+  dependsOn:
+    - name: percona-xtradb-cluster
+      namespace: databases
+    - name: external-secrets-stores
+      namespace: kube-system
+    - name: volsync
+      namespace: volsync-system
+  components:
+    - ../../../../components/volsync
+  path: ./kubernetes/apps/pixy/pixyblog/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  wait: true
+  interval: 30m
+  retryInterval: 1m
+  timeout: 5m
+  postBuild:
+    substituteFrom:
+      - name: cluster-secrets
+        kind: Secret
+      - name: cluster-settings
+        kind: ConfigMap
+    substitute:
+      APP: pixyblog
+      VOLSYNC_CLAIM: pixyblog-data
+      VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
+      VOLSYNC_CAPACITY: 2Gi

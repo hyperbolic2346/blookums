@@ -1,0 +1,69 @@
+---
+apiVersion: pxc.percona.com/v1
+kind: PerconaXtraDBCluster
+metadata:
+  name: percona-xtradb
+  namespace: databases
+spec:
+  crVersion: "1.19.0"
+  allowUnsafeConfigurations: false
+  updateStrategy: SmartUpdate
+  secretsName: percona-xtradb-secret
+
+  pxc:
+    size: 3
+    image: percona/percona-xtradb-cluster:8.4.7-7.1
+    resources:
+      requests:
+        cpu: 300m
+        memory: 512Mi
+      limits:
+        memory: 1Gi
+    volumeSpec:
+      persistentVolumeClaim:
+        storageClassName: ${CLUSTER_STORAGE_BLOCK_SSD_3_REPLICA}
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+    affinity:
+      antiAffinityTopologyKey: kubernetes.io/hostname
+
+  haproxy:
+    enabled: true
+    size: 3
+    image: percona/haproxy:2.8.5
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
+    affinity:
+      antiAffinityTopologyKey: kubernetes.io/hostname
+
+  logcollector:
+    enabled: false
+
+  users:
+    - name: wordpress
+      db: wordpress
+      withGrantOption: false
+      passwordSecretRef:
+        name: percona-xtradb-secret
+        key: WORDPRESS_DB_PASSWORD
+
+  backup:
+    storages:
+      s3-backup:
+        type: s3
+        s3:
+          bucket: blookums-databases/percona-xtradb
+          credentialsSecret: percona-xtradb-secret
+          region: us-east-1
+          endpointUrl: ${SECRET_DATABASE_S3}
+    schedule:
+      - name: daily-backup
+        schedule: "0 0 * * *"
+        keep: 7
+        storageName: s3-backup
