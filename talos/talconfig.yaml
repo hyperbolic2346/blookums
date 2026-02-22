@@ -98,7 +98,7 @@ nodes:
   - hostname: "catbert"
     ipAddress: "10.0.14.14"
     installDiskSelector:
-      wwid: "naa.50014ee059b5df94"
+      model: "IDSDM"
     machineSpec:
       secureboot: false
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
@@ -116,7 +116,7 @@ nodes:
   - hostname: "wally"
     ipAddress: "10.0.14.16"
     installDiskSelector:
-      wwid: "naa.5001b448ba49e9d1"
+      model: "IDSDM"
     machineSpec:
       secureboot: false
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
@@ -134,7 +134,7 @@ nodes:
   - hostname: "phil"
     ipAddress: "10.0.14.17"
     installDiskSelector:
-      wwid: "naa.5000cca06cb1204c"
+      model: "IDSDM"
     machineSpec:
       secureboot: false
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
