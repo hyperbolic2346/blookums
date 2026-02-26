@@ -32,7 +32,7 @@ spec:
   haproxy:
     enabled: true
     size: 3
-    image: percona/haproxy:2.8.5
+    image: percona/haproxy:2.8.18
     resources:
       requests:
         cpu: 100m
