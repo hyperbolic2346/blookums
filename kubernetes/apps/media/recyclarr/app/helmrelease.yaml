@@ -65,3 +65,11 @@ spec:
         type: emptyDir
         globalMounts:
           - path: /config/state
+      logs:
+        type: emptyDir
+        globalMounts:
+          - path: /config/logs
+      repo:
+        type: emptyDir
+        globalMounts:
+          - path: /config/repo
