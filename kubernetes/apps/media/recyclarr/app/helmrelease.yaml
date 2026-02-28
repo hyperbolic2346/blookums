@@ -73,3 +73,7 @@ spec:
         type: emptyDir
         globalMounts:
           - path: /config/repo
+      configs:
+        type: emptyDir
+        globalMounts:
+          - path: /config/configs
