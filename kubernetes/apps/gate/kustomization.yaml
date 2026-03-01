@@ -17,3 +17,4 @@ patches:
 resources:
   - ./_pvc/ks.yaml
   - ./gate/ks.yaml
+  - ./gatehouse/ks.yaml

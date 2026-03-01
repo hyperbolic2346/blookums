@@ -1,0 +1,86 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: gatehouse
+  namespace: gate
+spec:
+  interval: 5m
+  chartRef:
+    kind: OCIRepository
+    name: gatehouse
+  values:
+    controllers:
+      main:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          main:
+            image:
+              repository: ghcr.io/hyperbolic2346/gatehouse
+              tag: latest
+            env:
+              PORT: "8080"
+              FRONTEND_DIR: /app/frontend-dist
+              FRIGATE_URL: http://frigate.home.svc.cluster.local:5000
+              MQTT_BROKER: tcp://mosquitto.home.svc.cluster.local:8883
+              ARDUINO_ADDR: http://10.0.1.25
+              DB_PATH: /data/gatehouse.db
+            envFrom:
+              - secretRef:
+                  name: gatehouse-secret
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 8080
+                  initialDelaySeconds: 5
+                  periodSeconds: 30
+                  timeoutSeconds: 3
+                  failureThreshold: 3
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 8080
+                  initialDelaySeconds: 2
+                  periodSeconds: 10
+                  timeoutSeconds: 3
+                  failureThreshold: 3
+            resources:
+              requests:
+                cpu: 50m
+                memory: 64Mi
+              limits:
+                memory: 256Mi
+
+    service:
+      main:
+        controller: main
+        ports:
+          http:
+            port: 8080
+
+    route:
+      main:
+        hostnames: ["gatehouse.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: external
+            namespace: kube-system
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: main
+                port: 8080
+
+    persistence:
+      data:
+        enabled: true
+        existingClaim: gatehouse-data
+        globalMounts:
+          - path: /data
