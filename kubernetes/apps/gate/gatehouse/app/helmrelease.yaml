@@ -24,7 +24,6 @@ spec:
               FRONTEND_DIR: /app/frontend-dist
               FRIGATE_URL: http://frigate.home.svc.cluster.local:5000
               MQTT_BROKER: tcp://mosquitto.home.svc.cluster.local:8883
-              ARDUINO_ADDR: http://10.0.1.25
               DB_PATH: /data/gatehouse.db
             envFrom:
               - secretRef:
