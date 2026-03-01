@@ -3,6 +3,13 @@
 auth:
   enabled: false  # Disable authentication for now to fix the 500 errors
 
+go2rtc:
+  streams:
+    gate:
+      - rtsp://10.0.1.1:7447/t9w1bowAkyyxiKim
+    gate-rear:
+      - rtsp://10.0.1.1:7447/RxYUnH7TWc9B5bj8
+
 detect:
   enabled: true
 
