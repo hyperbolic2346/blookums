@@ -54,6 +54,10 @@ spec:
                 memory: 128Mi
 
     persistence:
+      config-dir:
+        type: emptyDir
+        globalMounts:
+          - path: /config
       config:
         type: configMap
         name: recyclarr-config
@@ -61,19 +65,3 @@ spec:
           - path: /config/recyclarr.yml
             subPath: recyclarr.yml
             readOnly: true
-      state:
-        type: emptyDir
-        globalMounts:
-          - path: /config/state
-      logs:
-        type: emptyDir
-        globalMounts:
-          - path: /config/logs
-      repo:
-        type: emptyDir
-        globalMounts:
-          - path: /config/repo
-      configs:
-        type: emptyDir
-        globalMounts:
-          - path: /config/configs
