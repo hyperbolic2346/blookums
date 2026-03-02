@@ -61,6 +61,9 @@ spec:
           rtsp:
             enabled: true
             port: 8554
+          go2rtc:
+            enabled: true
+            port: 1984
 
     route:
       main:
