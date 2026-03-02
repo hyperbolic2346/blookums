@@ -49,9 +49,10 @@ objects:
 
 record:
   enabled: true
-  retain:
+  continuous:
     days: 3
-    mode: all
+  motion:
+    days: 3
   alerts:
     retain:
       days: 30
