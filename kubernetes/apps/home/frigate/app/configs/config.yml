@@ -35,7 +35,6 @@ objects:
   track:
     - amazon
     - bear
-    - bus
     - car
     - cat
     - cow
@@ -46,7 +45,6 @@ objects:
     - license_plate
     - package
     - person
-    - sheep
     - ups
 
 record:
@@ -68,7 +66,6 @@ review:
     labels:
       - amazon
       - bear
-      - bus
       - car
       - deer
       - dog
@@ -80,7 +77,6 @@ review:
     labels:
       - amazon
       - bear
-      - bus
       - car
       - cat
       - cow
@@ -91,7 +87,6 @@ review:
       - license_plate
       - package
       - person
-      - sheep
       - ups
 
 snapshots:
