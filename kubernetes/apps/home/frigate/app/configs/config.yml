@@ -103,6 +103,9 @@ snapshots:
 cameras:
   # --
   back-drive:
+    detect:
+      width: 1024
+      height: 576
     ffmpeg:
       inputs:
         - path: rtsp://10.0.1.1:7447/Oj6JuFE5mX5zBOHL
@@ -125,6 +128,9 @@ cameras:
         coordinates: 1280,437,1093,345,753,308,441,398,0,635,0,720,1280,720
   # --
   front-door:
+    detect:
+      width: 960
+      height: 720
     ffmpeg:
       inputs:
         - path: rtsps://10.0.1.1:7441/fGbT9roF3ehu1pD3?enableSrtp
@@ -135,6 +141,9 @@ cameras:
             - record
   # --
   gate:
+    detect:
+      width: 1024
+      height: 578
     ffmpeg:
       inputs:
         - path: rtsp://10.0.1.1:7447/t9w1bowAkyyxiKim
@@ -155,9 +164,12 @@ cameras:
             - 0.372,0.894,0.289,0.854,0.217,0.398,0.288,0.301,0.237,0.103,0.174,0.135,0.092,0.383,0.189,0.417,0.277,0.863,0.231,0.893,0.202,1,0.405,1
   # --
   south-drive:
+    detect:
+      width: 1024
+      height: 576
     ffmpeg:
       inputs:
-        - path: rtsps://10.0.1.1:7441/gGEHCUfKqJkUGVLX?enableSrtp
+        - path: rtsps://10.0.1.1:7441/PXdNXyUMYlTN10xu?enableSrtp
           roles:
             - detect
         - path: rtsps://10.0.1.1:7441/ZX52zu268Dp1Jf9f?enableSrtp
@@ -165,7 +177,9 @@ cameras:
             - record
   # --
   gate-rear:
-    enabled: false
+    detect:
+      width: 1024
+      height: 578
     ffmpeg:
       inputs:
         - path: rtsp://10.0.1.1:7447/RxYUnH7TWc9B5bj8
