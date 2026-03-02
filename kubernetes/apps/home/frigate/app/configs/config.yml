@@ -30,14 +30,21 @@ detectors:
 
 objects:
   track:
-    - person
-    - car
-    - bus
+    - amazon
     - bear
-    - sheep
-    - cow
-    - dog
+    - bus
+    - car
     - cat
+    - cow
+    - deer
+    - dog
+    - face
+    - fedex
+    - license_plate
+    - package
+    - person
+    - sheep
+    - ups
 
 record:
   enabled: true
@@ -56,18 +63,33 @@ record:
 review:
   alerts:
     labels:
-      - person
+      - amazon
       - bear
-      - dog
-      - car
       - bus
+      - car
+      - deer
+      - dog
+      - fedex
+      - package
+      - person
+      - ups
   detections:
     labels:
-      - person
+      - amazon
       - bear
-      - dog
-      - car
       - bus
+      - car
+      - cat
+      - cow
+      - deer
+      - dog
+      - face
+      - fedex
+      - license_plate
+      - package
+      - person
+      - sheep
+      - ups
 
 snapshots:
   enabled: true
@@ -132,6 +154,16 @@ cameras:
         person:
           mask:
             - 0.372,0.894,0.289,0.854,0.217,0.398,0.288,0.301,0.237,0.103,0.174,0.135,0.092,0.383,0.189,0.417,0.277,0.863,0.231,0.893,0.202,1,0.405,1
+  # --
+  south-drive:
+    ffmpeg:
+      inputs:
+        - path: rtsps://10.0.1.1:7441/gGEHCUfKqJkUGVLX?enableSrtp
+          roles:
+            - detect
+        - path: rtsps://10.0.1.1:7441/ZX52zu268Dp1Jf9f?enableSrtp
+          roles:
+            - record
   # --
   gate-rear:
     enabled: false
