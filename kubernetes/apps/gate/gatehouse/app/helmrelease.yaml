@@ -18,7 +18,7 @@ spec:
           main:
             image:
               repository: ghcr.io/hyperbolic2346/gatehouse
-              tag: a2e9e2bffbddc50340914b9a7922895c704c5bc8@sha256:2d376c33136491bbb49c6c41bca6c7bb6a2d4c58e65a782567eafa6662344ea7
+              tag: efcf568ee1a969d8ded9fdeb04b1d8e6b6d02e90@sha256:967cce7b880687f0b1bda27f33ad4731d606791374faf874a16ce858c0462aa4
             env:
               PORT: "8080"
               FRONTEND_DIR: /app/frontend-dist
