@@ -28,6 +28,9 @@ detectors:
     type: edgetpu
     device: usb
 
+model:
+  path: plus://35877a6045227082ca72e73d6d34c72a
+
 objects:
   track:
     - amazon
