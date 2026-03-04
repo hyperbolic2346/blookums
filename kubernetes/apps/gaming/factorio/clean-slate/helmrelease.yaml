@@ -40,11 +40,11 @@ spec:
     # Compute Resources required by the operator container
     resources: # +doc-gen:break
       requests:
-        memory: 1Gi
-        cpu: 1000m
-      limits:
-        cpu: 2000m
         memory: 4Gi
+        cpu: 2000m
+      limits:
+        cpu: 4000m
+        memory: 8Gi
     # Node labels for pod assignment
     # Example:
     # nodeSelector:
