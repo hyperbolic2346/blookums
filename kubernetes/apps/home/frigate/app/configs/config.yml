@@ -29,7 +29,7 @@ detectors:
     device: usb
 
 model:
-  path: plus://35877a6045227082ca72e73d6d34c72a
+  path: plus://1d3b4649fb522c5d9cde3c6650f7b06d
 
 objects:
   track:
