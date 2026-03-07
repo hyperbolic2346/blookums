@@ -33,6 +33,7 @@ spec:
       VOLSYNC_CLAIM: nextcloud-data
       VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
       VOLSYNC_CAPACITY: 250Gi
+      VOLSYNC_CACHE_CAPACITY: 5Gi
       VOLSYNC_STORAGECLASS: ceph-hdd-3-replica
     substituteFrom:
       - name: cluster-secrets

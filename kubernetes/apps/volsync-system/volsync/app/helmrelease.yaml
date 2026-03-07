@@ -25,8 +25,8 @@ spec:
     metrics:
       disableAuth: true
     image:
-      repository: &image ghcr.io/home-operations/volsync
-      tag: &tag 0.12.1@sha256:0483e545f9d9d9bd4bc97e2f7f6eceed1b302bb42d99d506e0bcf3bc6dcc9cc2
+      repository: &image quay.io/backube/volsync
+      tag: &tag 0.15.0@sha256:4fedd41b3101dde090542009c4177f703d241bf4760d1767bd9df08fd8fd93a4
     restic:
       repository: *image
       tag: *tag
