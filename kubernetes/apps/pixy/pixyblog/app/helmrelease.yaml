@@ -32,11 +32,18 @@ spec:
                   name: pixyblog-secret
             env:
               WORDPRESS_TABLE_PREFIX: "wp_"
+              UMAMI_WEBSITE_ID: "9d71d0ca-e81b-4e70-83b8-9eead29332a4"
               WORDPRESS_CONFIG_EXTRA: |
                 define('FORCE_SSL_ADMIN', true);
                 if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
                     $_SERVER['HTTPS'] = 'on';
                 }
+                add_action('wp_head', function() {
+                    $id = getenv('UMAMI_WEBSITE_ID');
+                    if ($id) {
+                        echo '<script defer src="https://umami.${SECRET_DOMAIN}/script.js" data-website-id="' . $id . '"></script>';
+                    }
+                });
             probes:
               liveness: &probes
                 enabled: true
