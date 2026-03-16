@@ -36,6 +36,9 @@ spec:
             image:
               repository: ghcr.io/hyperbolic2346/fierypyropixy
               tag: sha-735ef37
+            env:
+              UMAMI_WEBSITE_ID: "98c07e44-963d-49e8-b1bf-4da57deafb2a"
+              UMAMI_DOMAIN: "${SECRET_DOMAIN}"
             envFrom: *envFrom
             probes:
               liveness: &probes
