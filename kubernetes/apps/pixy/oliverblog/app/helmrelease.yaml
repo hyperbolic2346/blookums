@@ -93,7 +93,7 @@ spec:
           - path: /var/www/html/wp-content
       umami-tracking:
         type: configMap
-        name: oliverblog-umami-tracking
+        name: oliverblog
         globalMounts:
           - path: /var/www/html/wp-content/mu-plugins/umami-tracking.php
             subPath: umami-tracking.php
