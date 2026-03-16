@@ -38,12 +38,6 @@ spec:
                 if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
                     $_SERVER['HTTPS'] = 'on';
                 }
-                add_action('wp_head', function() {
-                    $id = getenv('UMAMI_WEBSITE_ID');
-                    if ($id) {
-                        echo '<script defer src="https://umami.${SECRET_DOMAIN}/script.js" data-website-id="' . $id . '"></script>';
-                    }
-                });
             probes:
               liveness: &probes
                 enabled: true
@@ -80,11 +74,30 @@ spec:
           http:
             port: 80
 
+    configMaps:
+      umami-tracking:
+        data:
+          umami-tracking.php: |
+            <?php
+            add_action('wp_head', function() {
+                $id = getenv('UMAMI_WEBSITE_ID');
+                if ($id) {
+                    echo '<script defer src="https://umami.${SECRET_DOMAIN}/script.js" data-website-id="' . esc_attr($id) . '"></script>';
+                }
+            });
+
     persistence:
       data:
         existingClaim: pixyblog-data
         globalMounts:
           - path: /var/www/html/wp-content
+      umami-tracking:
+        type: configMap
+        name: pixyblog-umami-tracking
+        globalMounts:
+          - path: /var/www/html/wp-content/mu-plugins/umami-tracking.php
+            subPath: umami-tracking.php
+            readOnly: true
 
     route:
       main:
