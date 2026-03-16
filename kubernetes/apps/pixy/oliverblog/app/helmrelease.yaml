@@ -32,11 +32,18 @@ spec:
                   name: oliverblog-secret
             env:
               WORDPRESS_TABLE_PREFIX: "wp_"
+              UMAMI_WEBSITE_ID: "0a50a3b4-22c6-4d97-9368-b5462db366aa"
               WORDPRESS_CONFIG_EXTRA: |
                 define('FORCE_SSL_ADMIN', true);
                 if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
                     $_SERVER['HTTPS'] = 'on';
                 }
+                add_action('wp_head', function() {
+                    $id = getenv('UMAMI_WEBSITE_ID');
+                    if ($id) {
+                        echo '<script defer src="https://umami.${SECRET_DOMAIN}/script.js" data-website-id="' . $id . '"></script>';
+                    }
+                });
             probes:
               liveness: &probes
                 enabled: true
