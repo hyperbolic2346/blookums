@@ -14,7 +14,7 @@ spec:
     replicaCount: 1
     image:
       repository: itzg/minecraft-bedrock-server
-      tag: 2026.2.2
+      tag: 2026.3.1
 
     resources:
       requests:
