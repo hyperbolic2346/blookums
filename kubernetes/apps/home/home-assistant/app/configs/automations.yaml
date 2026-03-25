@@ -1,0 +1,763 @@
+- id: '1624178420040'
+  alias: Laundry Light
+  description: ''
+  use_blueprint:
+    path: networkingcat/yet_another_motion_automation.yaml
+    input:
+      time_scene_night: '22:00:00'
+      motion_entity: binary_sensor.laundry_room_motion
+      scene_no_motion: scene.laundry_room_light_off
+      scene_night: scene.laundry_light_on
+      scene_evening: scene.laundry_light_on
+      scene_day: scene.laundry_light_on
+      scene_morning: scene.laundry_light_on
+      no_motion_blocker_boolean: false
+      time_scene_morning: 07:00:00
+      time_scene_day: '10:00:00'
+      time_scene_evening: '20:00:00'
+      light_target:
+        entity_id: light.upstairs_hallway_torus_upstairs_hallway_torus_dimmer
+      time_scene_ambient_end: '23:59:59'
+      time_scene_ambient_start: 00:00:00
+      no_motion_wait: 60
+      automation_blocker: input_boolean.disable_laundry_light
+- id: '1624230647328'
+  alias: Master Hall Motion Light
+  description: ''
+  use_blueprint:
+    path: networkingcat/yet_another_motion_automation.yaml
+    input:
+      time_scene_night: '22:00:00'
+      motion_entity: binary_sensor.master_hall_motion
+      automation_blocker_boolean: false
+      scene_evening: scene.master_hall_evening
+      scene_night: scene.master_hall_late_night
+      time_scene_evening: '18:00:00'
+      time_scene_day: 00:00:00
+      light_target:
+        device_id: ca0ca4d8d242c401ca521957e5c41272
+      no_motion_wait: 45
+      scene_no_motion: scene.master_hall_off
+- id: '1624249534636'
+  alias: Master Closet Motion
+  description: ''
+  use_blueprint:
+    path: networkingcat/yet_another_motion_automation.yaml
+    input:
+      time_scene_night: 01:00:00
+      motion_entity: group.master_closet
+      no_motion_wait: 45
+      time_scene_evening: '19:00:00'
+      scene_night: scene.master_closet_late
+      scene_no_motion: scene.master_closet_off
+      scene_evening: scene.master_closet_evening
+      time_scene_morning: 06:00:00
+      time_scene_day: '10:00:00'
+      time_scene_ambient_end: 00:00:00
+      scene_morning: scene.master_closet_morning
+      scene_day: scene.master_closet_day
+      time_scene_ambient_start: 0:00:00
+      light_target:
+        entity_id: light.master_closet_cans_dimmer
+- id: '1624254826709'
+  alias: Low battery level detection & notification for all battery sensors
+  description: ''
+  use_blueprint:
+    path: Sbyx/low-battery-level-detection-notification-for-all-battery-sensors.yaml
+    input:
+      threshold: 15
+      time: '2:00:00'
+      actions:
+      - service: notify.persistent_notification
+        data:
+          message: 'Low battery warning for: {{sensors}}'
+- id: '1624256064991'
+  alias: Master Bath Motion Lights
+  description: ''
+  use_blueprint:
+    path: networkingcat/yet_another_motion_automation.yaml
+    input:
+      time_scene_night: '21:00:00'
+      motion_entity: group.master_bath_motion
+      no_motion_wait: 300
+      scene_morning: scene.master_bath_morning
+      scene_day: scene.master_bath_day
+      scene_evening: scene.master_bath_evening
+      scene_night: scene.master_bath_late_night
+      time_scene_evening: '19:00:00'
+      time_scene_day: '11:00:00'
+      time_scene_morning: 06:00:00
+      light_target:
+        entity_id: light.cans_master_bath
+      time_scene_ambient_end: 00:00:00
+      scene_no_motion: scene.master_bath_off
+- id: '1624345700844'
+  alias: Basement Garage
+  description: ''
+  use_blueprint:
+    path: hyperbolic2346/gistfile1.yaml
+    input:
+      doorsensor_entity: cover.basement
+      light_target:
+        device_id: 8656b71c70c2dd88cc640952122769c0
+- id: '1625978305374'
+  alias: Kitchen
+  description: ''
+  use_blueprint:
+    path: networkingcat/yet_another_motion_automation.yaml
+    input:
+      time_scene_night: 02:00:00
+      motion_entity: group.kitchen_motion
+      scene_ambient: scene.kitchen_day_off
+      time_scene_ambient_start: '10:00:00'
+      time_scene_ambient_end: '2:00:00'
+      scene_morning: scene.kitchen_morning
+      time_scene_morning: '8:00:00'
+      scene_day: scene.kitchen_day
+      time_scene_day: '9:00:00'
+      scene_evening: scene.kitchen_evening
+      time_scene_evening: '19:00:00'
+      scene_night: scene.kitchen_late
+      scene_no_motion: scene.kitchen_late_off
+      light_target:
+        entity_id: light.kitchen_kitchen_cans_dimmer
+      no_motion_wait: 375
+- id: '1625978762510'
+  alias: Entryway
+  description: ''
+  use_blueprint:
+    path: networkingcat/yet_another_motion_automation.yaml
+    input:
+      time_scene_night: '23:00:00'
+      light_target:
+        entity_id: light.entryway_entryway_light_entryway_entryway_light_dimmer
+      motion_entity: group.entryway_motion
+      scene_morning: scene.entryway_night
+      scene_day: scene.entryway_day
+      scene_evening: scene.entryway_evening
+      scene_night: scene.entryway_late
+      scene_no_motion: scene.entryway_off
+      time_scene_morning: 06:00:00
+      time_scene_day: '10:00:00'
+      time_scene_evening: '19:00:00'
+      time_scene_ambient_end: 0:00:00
+- id: '1625990858299'
+  alias: Office Door Light
+  description: ''
+  use_blueprint:
+    path: hyperbolic2346/gistfile1.yaml
+    input:
+      light_target:
+        entity_id: switch.knobby_office_door_light_switch
+      doorsensor_entity: sensor.template_office_door
+- id: '1626077968388'
+  alias: Trigger alarm while armed away
+  description: ''
+  trigger:
+  - platform: state
+    entity_id: group.all_motion_sensors
+    from: standby
+    to: motion
+  - platform: state
+    entity_id: group.all_doors
+    to: open
+    from: closed
+  - platform: state
+    entity_id: cover.basement
+    from: closed
+    to: open
+  condition:
+  - condition: state
+    entity_id: alarm_control_panel.home_alarm
+    state: armed_away
+  action:
+  - service: alarm_control_panel.alarm_trigger
+    target:
+      entity_id: alarm_control_panel.home_alarm
+  mode: single
+- id: '1626078065317'
+  alias: Send notification when alarm triggered
+  description: ''
+  trigger:
+  - platform: state
+    entity_id: alarm_control_panel.home_alarm
+    to: triggered
+  condition: []
+  action:
+  - service: notify.notify
+    data:
+      message: ALARM! The alarm has been triggered
+  mode: single
+- id: '1626078155671'
+  alias: Send notification when alarm is Armed in Away mode
+  description: ''
+  trigger:
+  - platform: state
+    entity_id: alarm_control_panel.home_alarm
+    to: armed_away
+  condition: []
+  action:
+  - service: notify.notify
+    data:
+      message: ALARM! The alarm is armed in Away mode {{ states('sensor.date_time')
+        }}
+  mode: single
+- id: '1626078235070'
+  alias: Send notification when alarm is Armed in Home mode
+  description: ''
+  trigger:
+  - platform: state
+    entity_id: alarm_control_panel.home_alarm
+    to: armed_home
+  condition: []
+  action:
+  - service: notify.notify
+    data:
+      message: 'ALARM! The alarm is armed in Home mode {{ states(''sensor.date_time'')
+        }}
+
+        '
+  mode: single
+- id: '1626425829166'
+  alias: Delivery
+  description: ''
+  trigger:
+  - platform: time
+    at: 07:45:00
+  condition:
+  - condition: state
+    entity_id: input_boolean.delivery_tomorrow
+    state: 'on'
+  action:
+  - service: cover.open_cover
+    target:
+      entity_id: cover.wilson_gate
+    data: {}
+  - service: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.delivery_tomorrow
+    data: {}
+  mode: single
+- id: '1626488282499'
+  alias: Main Stair Light
+  description: ''
+  use_blueprint:
+    path: networkingcat/yet_another_motion_automation.yaml
+    input:
+      time_scene_night: 02:00:00
+      motion_entity: binary_sensor.stair_motion
+      scene_morning: scene.main_stair_light_on
+      scene_day: scene.main_stair_light_on
+      scene_evening: scene.main_stair_light_on
+      scene_night: scene.main_stair_light_on
+      scene_no_motion: scene.main_stair_light_off
+      time_scene_evening: '19:00:00'
+      time_scene_day: '11:00:00'
+      time_scene_morning: 06:00:00
+      light_target:
+        entity_id: light.stairs_sconce_stairs_sconce_dimmer
+      no_motion_wait: 330
+- id: '1626638162096'
+  alias: Guest Bath Motion Lights
+  description: ''
+  use_blueprint:
+    path: networkingcat/yet_another_motion_automation.yaml
+    input:
+      time_scene_night: 00:00:00
+      motion_entity: binary_sensor.guest_bath_motion
+      light_target:
+        entity_id: light.light
+      no_motion_wait: 300
+- id: '1628828883539'
+  alias: Master Bath Override
+  description: ''
+  use_blueprint:
+    path: hyperbolic2346/pir-disable.yaml
+    input:
+      light_target: light.master_bath_master_bath_cans_dimmer
+      auto_script: automation.master_bath_motion_lights
+- id: '1628829256809'
+  alias: Master Closet Override
+  description: ''
+  use_blueprint:
+    path: hyperbolic2346/pir-disable.yaml
+    input:
+      light_target: light.master_closet_master_closet_light_dimmer
+      auto_script: automation.yet_another_motion_automation
+- id: '1628829366483'
+  alias: Master Hall Override
+  description: ''
+  use_blueprint:
+    path: hyperbolic2346/pir-disable.yaml
+    input:
+      light_target: light.master_hall_master_hall_light_dimmer
+      auto_script: automation.master_hall_motion_light
+- id: '1638258300020'
+  alias: Front Door Light
+  description: ''
+  use_blueprint:
+    path: hyperbolic2346/gistfile1.yaml
+    input:
+      doorsensor_entity: binary_sensor.door_window_door_is_open
+      light_target:
+        entity_id: switch.porch_light_switch
+- id: '1700894964461'
+  alias: Car at the gate
+  description: Car at the gate
+  use_blueprint:
+    path: SgtBatten/Stable.yaml
+    input:
+      camera: camera.gate
+      notify_group: mikeandjolei
+      base_url: https://hass.burntsheep.com
+      ios_live_view: true
+      zones:
+      - wilson
+      labels:
+      - car
+      - bus
+      notify_device: 92d5ca6113694fe329d320923670a58e
+      zone_filter: true
+- id: '1701372880724'
+  alias: Bear at the gate
+  description: BEAR! at the gate
+  use_blueprint:
+    path: SgtBatten/Stable.yaml
+    input:
+      camera: camera.gate
+      notify_group: mikeandjolei
+      base_url: https://hass.burntsheep.com
+      ios_live_view: true
+      zones: []
+      labels:
+      - bear
+      notify_device: 92d5ca6113694fe329d320923670a58e
+      zone_filter: false
+- id: '1701382805155'
+  alias: BEAR at rear gate
+  description: BEAR! at the gate
+  use_blueprint:
+    path: SgtBatten/Stable.yaml
+    input:
+      camera: camera.gate_rear
+      notify_group: mikeandjolei
+      base_url: https://hass.burntsheep.com
+      ios_live_view: true
+      zones:
+      - wilson
+      labels:
+      - bear
+      notify_device: 92d5ca6113694fe329d320923670a58e
+      zone_filter: false
+- id: '1701382856754'
+  alias: BEAR! in backyard
+  description: BEAR! in the backyard
+  use_blueprint:
+    path: SgtBatten/Stable.yaml
+    input:
+      camera: camera.back_drive
+      notify_group: mikeandjolei
+      base_url: https://hass.burntsheep.com
+      ios_live_view: true
+      zones:
+      - wilson
+      labels:
+      - bear
+      notify_device: 92d5ca6113694fe329d320923670a58e
+      zone_filter: false
+- id: '1701382911466'
+  alias: BEAR! at the door
+  description: BEAR! at the door
+  use_blueprint:
+    path: SgtBatten/Stable.yaml
+    input:
+      camera: camera.front_door
+      notify_group: mikeandjolei
+      base_url: https://hass.burntsheep.com
+      ios_live_view: true
+      zones:
+      - wilson
+      labels:
+      - bear
+      notify_device: 92d5ca6113694fe329d320923670a58e
+      zone_filter: false
+- id: '1701383031148'
+  alias: Person at door
+  description: Person at the door
+  use_blueprint:
+    path: SgtBatten/Stable.yaml
+    input:
+      camera: camera.front_door
+      notify_group: mikeandjolei
+      base_url: https://hass.burntsheep.com
+      ios_live_view: true
+      zones:
+      - wilson
+      labels:
+      - person
+      notify_device: 92d5ca6113694fe329d320923670a58e
+      zone_filter: false
+- id: '1731377750086'
+  alias: Turn On Shower Cans with Fan
+  description: ''
+  triggers:
+  - entity_id:
+    - switch.master_bath_fan
+    from: 'off'
+    to: 'on'
+    trigger: state
+  conditions: []
+  actions:
+  - type: turn_on
+    device_id: 7df8a46956161b6cc07375270a0d008d
+    entity_id: 3ca5ab50a96c4ede5a1a702841fe38fa
+    domain: light
+  mode: single
+- id: '1731377858049'
+  alias: Turn Off Shower Cans with Fan
+  description: ''
+  triggers:
+  - entity_id:
+    - switch.master_bath_fan
+    from: 'on'
+    to: 'off'
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+    trigger: state
+  conditions: []
+  actions:
+  - type: turn_off
+    device_id: 7df8a46956161b6cc07375270a0d008d
+    entity_id: 3ca5ab50a96c4ede5a1a702841fe38fa
+    domain: light
+  mode: single
+- id: '1731377936099'
+  alias: Front Path On With Sunset
+  description: ''
+  trigger:
+  - platform: sun
+    event: sunset
+    offset: '-30'
+  condition: []
+  action:
+  - type: turn_on
+    device_id: d636064cb796ee6cc3b17c3f59d60ce0
+    entity_id: b4c7121ac025ef2f7e92af3e94b199fa
+    domain: switch
+  mode: single
+- id: '1731377966516'
+  alias: Front Path Off at 2AM
+  description: ''
+  trigger:
+  - platform: time
+    at: 02:00:00
+  condition: []
+  action:
+  - type: turn_off
+    device_id: d636064cb796ee6cc3b17c3f59d60ce0
+    entity_id: b4c7121ac025ef2f7e92af3e94b199fa
+    domain: switch
+  mode: single
+- id: '1741153754587'
+  alias: Bath Fan Off With Switch
+  description: Turns on the bath exhaust fan when shower cans are turned on
+  trigger:
+  - platform: device
+    type: turned_off
+    device_id: 10baba9758cdcb8d397225b952378f60
+    entity_id: 2890b5284d867ea17978a591528c78e3
+    domain: light
+  condition: []
+  action:
+  - service: switch.turn_off
+    target:
+      entity_id:
+      - switch.master_bath_fan
+    data: {}
+  mode: single
+- id: '1741570858495'
+  alias: Turn off Master Bath Automation
+  description: Double Tap Off on stair light to turn off Master Bath Automatic lights
+  trigger:
+  - platform: device
+    device_id: 2e2adfdf7d6adaa49f8c5f9374bbb41c
+    domain: zwave_js
+    type: event.value_notification.central_scene
+    property: scene
+    property_key: '001'
+    endpoint: 0
+    command_class: 91
+    subtype: Endpoint 0 Scene 001
+  condition: []
+  action:
+  - service: automation.turn_off
+    metadata: {}
+    data:
+      stop_actions: true
+    target:
+      entity_id: automation.master_bath_motion_lights
+  mode: single
+- id: '1741570894438'
+  alias: Turn On Master Bath Automations
+  description: Double Tap On stair light to turn on Master Bath Automatic lights
+  trigger:
+  - platform: device
+    device_id: 2e2adfdf7d6adaa49f8c5f9374bbb41c
+    domain: zwave_js
+    type: event.value_notification.central_scene
+    property: scene
+    property_key: '002'
+    endpoint: 0
+    command_class: 91
+    subtype: Endpoint 0 Scene 002
+  condition: []
+  action:
+  - service: automation.turn_on
+    target:
+      entity_id:
+      - automation.master_bath_motion_lights
+    data: {}
+  mode: single
+- id: '1741587391352'
+  alias: Roast Person At Door
+  description: ''
+  triggers:
+  - type: turned_on
+    device_id: c68837a0509ca3fb897d6e267a140e9a
+    entity_id: e543ad3eed93457856c3acbfd952ed32
+    domain: binary_sensor
+    trigger: device
+  conditions:
+  - type: is_not_open
+    condition: device
+    device_id: 9581427a7d8c6a3d18dc8ab72a36737a
+    entity_id: 3d8174a4ac8b815f2a0a65c7504445b8
+    domain: binary_sensor
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
+  actions:
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: camera.snapshot
+    metadata: {}
+    data:
+      filename: /config/www/tmp/doorbell-snap-person.jpg
+    target:
+      entity_id:
+      - camera.doorbell_high_resolution_channel
+  - action: llmvision.image_analyzer
+    metadata: {}
+    data:
+      remember: false
+      use_memory: false
+      include_filename: false
+      target_width: 1280
+      max_tokens: 100
+      temperature: 0.2
+      generate_title: false
+      expose_images: false
+      provider: 01JNZ9G43PF5FYB38BP6G0Q3JG
+      model: gemini-1.5-pro
+      message: Roast the person in the image. Keep it short and concise and use humor.
+      image_file: /config/www/tmp/doorbell-snap-person.jpg
+    response_variable: response
+  - action: notify.mikeandjolei
+    metadata: {}
+    data:
+      message: '{{response.response_text}}{{as_timestamp(states.binary_sensor.doorbell_detections_person.last_changed)     |
+        timestamp_custom("%-I:%M %p (%m-%d-%y)")}}'
+      title: Someone at the door!
+      data:
+        attachment:
+          content-type: jpeg
+          url: /config/www/tmp/doorbell-snap-person.jpg
+  mode: single
+- id: '1741645128777'
+  alias: Gate Notifications
+  description: ''
+  use_blueprint:
+    path: valentinfrlch/event_summary.yaml
+    input:
+      remember: true
+      notify_device:
+      - 92d5ca6113694fe329d320923670a58e
+      camera_entities:
+      - camera.gate
+      cooldown: 30
+      provider: 01JNZ9G43PF5FYB38BP6G0Q3JG
+      model: gemini-1.5-pro
+- id: '1742186876274'
+  alias: Master Bath Fan
+  description: ''
+  use_blueprint:
+    path: rohankapoorcom/inovelli-vzw31-sn-red-series-switch.yaml
+    input:
+      zwave_device:
+      - ba29b894ea86c68544b9284b31b5d479
+      button_a2:
+      - action: input_boolean.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: input_boolean.master_fan_override
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.master_bath_fan
+      button_b2:
+      - action: input_boolean.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: input_boolean.master_fan_override
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.master_bath_fan
+- id: '1757042780777'
+  alias: Bathroom Music
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.master_bath1_motion
+    from: 'off'
+    to: 'on'
+  conditions: []
+  actions:
+  - action: media_player.play_media
+    target:
+      entity_id: media_player.master_bathroom
+    data:
+      media_content_id: x-file-cifs://fileserv/pixy/itunes/itunes%20media/Music/Compilations/In%20The%20Zone/02%20(I%20Got%20That)%20Boom%20Boom.m4a
+      media_content_type: track
+    metadata:
+      title: (I Got That) Boom Boom
+      thumbnail: null
+      media_class: track
+      children_media_class:
+      navigateIds:
+      - {}
+      - media_content_type: library
+        media_content_id: ''
+      - media_content_type: track
+        media_content_id: A:TRACKS
+  - action: media_player.volume_set
+    metadata: {}
+    data:
+      volume_level: 0.6
+    target:
+      device_id: 7442640c9326071b8f20159cf7dadc4f
+  mode: single
+- id: '1763533309674'
+  alias: Low Battery Notifications & Actions
+  description: ''
+  use_blueprint:
+    path: Blackshome/low-battery-notifications-and-actions.yaml
+    input:
+      include_easy_notify: enable_easy_notify
+      notify_device:
+      - e10473c70f4c3a58f0158dcd5d784639
+- id: '1774413998172'
+  alias: Bathroom - Entrance Motion
+  description: Entrance sensor fired - could be entry or exit, set unknown
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.master_bath0_motion
+    to: 'on'
+  actions:
+  - action: input_select.select_option
+    target:
+      entity_id: input_select.master_bathroom_occupancy
+    data:
+      option: Unknown
+  mode: single
+- id: '1774414069387'
+  alias: Bathroom - Toilet Motion Detected
+  description: Inner sensor confirms someone is at the toilet - play Sound Princess
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.master_bath1_motion
+    to: 'on'
+  conditions:
+  - condition: not
+    conditions:
+    - condition: state
+      entity_id: input_select.master_bathroom_occupancy
+      state: Occupied
+  actions:
+  - action: input_select.select_option
+    target:
+      entity_id: input_select.master_bathroom_occupancy
+    data:
+      option: Occupied
+  - action: media_player.volume_set
+    target:
+      entity_id: media_player.master_bathroom
+    data:
+      volume_level: 0.25
+  - action: media_player.play_media
+    target:
+      entity_id: media_player.master_bathroom
+    data:
+      media:
+        media_content_id: https://hass.burntsheep.com/local/sound_princess.mp3
+        media_content_type: music
+        metadata: {}
+  - delay: 00:00:02
+  - action: media_player.repeat_set
+    target:
+      entity_id: media_player.master_bathroom
+    data:
+      repeat: all
+  mode: single
+- id: '1774414142604'
+  alias: Bathroom - Unknown Timeout
+  description: If state stays unknown for 2 min with no toilet motion, assume empty
+  triggers:
+  - trigger: state
+    entity_id: input_select.master_bathroom_occupancy
+    to: Unknown
+    for: 00:02:00
+  actions:
+  - action: media_player.media_stop
+    target:
+      entity_id: media_player.master_bathroom
+  - action: input_select.select_option
+    target:
+      entity_id: input_select.master_bathroom_occupancy
+    data:
+      option: Empty
+  mode: single
+- id: '1774414307172'
+  alias: Bathroom - Stop Sound on Exit
+  description: When occupied changes to unknown (door sensor), wait then stop if not
+    re-occupied
+  triggers:
+  - trigger: state
+    entity_id: input_select.bathroom_occupancy
+    from: Occupied
+    to: Unknown
+  actions:
+  - delay: 00:01:30
+  - condition: state
+    entity_id: input_select.bathroom_occupancy
+    state: Unknown
+  - action: media_player.media_stop
+    target:
+      entity_id: media_player.master_bathroom
+  - action: input_select.select_option
+    target:
+      entity_id: input_select.bathroom_occupancy
+    data:
+      option: Empty
+  mode: restart

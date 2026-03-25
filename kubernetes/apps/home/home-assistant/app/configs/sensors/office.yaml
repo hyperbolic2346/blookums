@@ -1,0 +1,9 @@
+- sensor:
+    - name: 'Office Door'
+      unique_id: office-door-template
+      state: >
+          {%- if is_state("binary_sensor.knobby_office_door_door_state", "on") -%}
+            open
+          {%- else -%}
+            closed
+          {%- endif %}

@@ -1,0 +1,6 @@
+- sensor:
+    - name: HAEnergy Consumption
+      state: "{{ states('sensor.emoncms_house_power_kwh') | float | round(2) }}"
+      unit_of_measurement: "kWh"
+      state_class: measurement
+      device_class: energy

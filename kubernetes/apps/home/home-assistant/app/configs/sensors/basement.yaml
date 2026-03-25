@@ -1,0 +1,9 @@
+- sensor:
+    - name: 'Basement Door'
+      unique_id: basement-door-template
+      state: >
+          {%- if is_state("binary_sensor.basment_hall_door_door_state", "on") -%}
+            open
+          {%- else -%}
+            closed
+          {%- endif %}

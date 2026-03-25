@@ -1,0 +1,49 @@
+master_closet:
+  name: Master Closet Motion Sensors
+  entities:
+    - binary_sensor.master_closet0_motion
+    - binary_sensor.master_closet1_motion
+master_bath_motion:
+  name: Master Bath Motion Sensors
+  entities:
+    - binary_sensor.master_bath0_motion
+    - binary_sensor.master_bath1_motion
+kitchen_motion:
+  name: Kitchen Motion Sensors
+  entities:
+    - binary_sensor.kitchen0_motion
+    - binary_sensor.kitchen1_motion
+    - binary_sensor.kitchen2_motion
+entryway_motion:
+  name: Entryway Motion Sensors
+  entities:
+    - binary_sensor.entry0_motion
+    - binary_sensor.entry1_motion
+hallway_motion:
+  name: Hallway Motion Sensors
+  entities:
+    - binary_sensor.stairs_downstairs_motion_stairs_downstairs_motion_any
+    - binary_sensor.upstairs_motion_sensor_state_any
+all_motion_sensors:
+   name: All Motion Sensors
+   entities:
+    - binary_sensor.master_closet0_motion
+    - binary_sensor.master_closet1_motion
+    - binary_sensor.master_bath0_motion
+    - binary_sensor.master_bath1_motion
+    - binary_sensor.kitchen0_motion
+    - binary_sensor.kitchen1_motion
+    - binary_sensor.kitchen2_motion
+    - binary_sensor.entry0_motion
+    - binary_sensor.entry1_motion
+    - binary_sensor.laundry_room_motion
+    - binary_sensor.master_hall_motion
+    - binary_sensor.upstairs_hall_motion
+    - binary_sensor.stairs_downstairs_motion_stairs_downstairs_motion_any
+    - binary_sensor.stairs_upstairs_motion_stairs_upstairs_motion_any
+all_doors:
+  name: All Doors
+  entities:
+    - template.template_front_door
+    - template.template_office_door
+    - template.template_basement_door

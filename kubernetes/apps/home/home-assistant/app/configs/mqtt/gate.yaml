@@ -1,0 +1,19 @@
+cover:
+  - command_topic: "home/gate/0/command"
+    state_topic: "home/gate/0/hold_status"
+    payload_open: "Hold"
+    payload_close: "Unhold"
+    state_open: "Held By Us"
+    state_closed: "Not Held"
+    name: Wilson Gate
+    unique_id: wilson_gate
+    device_class: gate
+  - command_topic: "home/gate/1/command"
+    state_topic: "home/gate/1/hold_status"
+    payload_open: "Hold"
+    payload_close: "Unhold"
+    state_open: "Held By Us"
+    state_closed: "Not Held"
+    name: Brigman Gate
+    unique_id: brigman_gate
+    device_class: gate

@@ -1,0 +1,9 @@
+- sensor:
+    - name: 'Front Door'
+      unique_id: front-door-template
+      state: >
+          {%- if is_state("binary_sensor.entryway_door_door_state", "on") -%}
+            open
+          {%- else -%}
+            closed
+          {%- endif %}

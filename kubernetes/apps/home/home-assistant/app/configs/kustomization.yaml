@@ -1,0 +1,31 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: home
+generatorOptions:
+  disableNameSuffixHash: true
+  annotations:
+    kustomize.toolkit.fluxcd.io/substitute: disabled
+configMapGenerator:
+  - name: home-assistant-config
+    files:
+      - configuration.yaml
+      - automations.yaml
+      - scripts.yaml
+      - scenes.yaml
+      - groups.yaml
+  - name: home-assistant-sensors
+    files:
+      - sensors/basement.yaml
+      - sensors/emoncms.yaml
+      - sensors/front_door.yaml
+      - sensors/office.yaml
+  - name: home-assistant-mqtt
+    files:
+      - mqtt/gate.yaml
+      - mqtt/sonoff-bathroom-fan.yaml
+  - name: home-assistant-dashboards
+    files:
+      - dashboards/dashboard_simple.yaml
+      - dashboards/dashboard_minimalist.yaml
+      - dashboards/map.yaml

@@ -1,0 +1,414 @@
+- id: '1624178048787'
+  name: Laundry Light On
+  entities:
+    switch.light:
+      friendly_name: Laundry Light
+      state: 'on'
+  metadata: {}
+- id: '1624178069441'
+  name: Laundry Room Light Off
+  entities:
+    switch.light:
+      friendly_name: Laundry Light
+      state: 'off'
+  metadata: {}
+- id: '1624230504962'
+  name: Master Hall Evening
+  entities:
+    light.cans_3:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 77
+      friendly_name: Master Hall Cans
+      supported_features: 32
+      state: 'on'
+  metadata: {}
+- id: '1624230583618'
+  name: Master Hall Late Night
+  entities:
+    light.cans_3:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 39
+      friendly_name: Master Hall Cans
+      supported_features: 32
+      state: 'on'
+  metadata: {}
+- id: '1624249443621'
+  name: Master Closet Evening
+  entities:
+    light.cans_4:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 52
+      friendly_name: Master Closet Cans
+      supported_features: 32
+      state: 'on'
+  metadata: {}
+- id: '1624249469302'
+  name: Master Closet Late
+  entities:
+    light.cans_4:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 39
+      friendly_name: Master Closet Cans
+      supported_features: 32
+      state: 'on'
+  metadata: {}
+- id: '1624255423483'
+  name: Master Bath Late Night
+  entities:
+    light.master_bath_cans:
+      supported_color_modes:
+      - brightness
+      color_mode:
+      brightness:
+      friendly_name: 'Master Bath Cans '
+      supported_features: 32
+      state: 'off'
+    light.master_bath_torus:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 108
+      friendly_name: 'Master Bath Torus '
+      supported_features: 32
+      state: 'on'
+  metadata: {}
+- id: '1624255510621'
+  name: Master Bath Evening
+  entities:
+    light.master_bath_cans:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 129
+      friendly_name: 'Master Bath Cans '
+      supported_features: 32
+      state: 'on'
+    light.master_bath_torus:
+      supported_color_modes:
+      - brightness
+      color_mode:
+      brightness:
+      friendly_name: 'Master Bath Torus '
+      supported_features: 32
+      state: 'off'
+  metadata: {}
+- id: '1624255781814'
+  name: Master Bath Morning
+  entities:
+    light.master_bath_cans:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 222
+      friendly_name: 'Master Bath Cans '
+      supported_features: 32
+      state: 'on'
+    light.master_bath_torus:
+      supported_color_modes:
+      - brightness
+      color_mode:
+      brightness:
+      friendly_name: 'Master Bath Torus '
+      supported_features: 32
+      state: 'off'
+  metadata: {}
+- id: '1624255819719'
+  name: Master Bath Day
+  entities:
+    light.master_bath_cans:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 222
+      friendly_name: 'Master Bath Cans '
+      supported_features: 32
+      state: 'on'
+    light.master_bath_torus:
+      supported_color_modes:
+      - brightness
+      color_mode:
+      brightness:
+      friendly_name: 'Master Bath Torus '
+      supported_features: 32
+      state: 'off'
+  metadata: {}
+- id: '1624341580819'
+  name: Master Bath Off
+  entities:
+    light.master_bath_cans:
+      supported_color_modes:
+      - brightness
+      color_mode:
+      brightness:
+      friendly_name: 'Master Bath Cans '
+      supported_features: 32
+      state: 'off'
+    light.master_bath_torus:
+      supported_color_modes:
+      - brightness
+      color_mode:
+      brightness:
+      friendly_name: 'Master Bath Torus '
+      supported_features: 32
+      state: 'off'
+  metadata: {}
+- id: '1625976277781'
+  name: Master Closet Day
+  entities:
+    light.cans_4:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 255
+      friendly_name: Master Closet Cans
+      supported_features: 32
+      state: 'on'
+  metadata: {}
+- id: '1625976301901'
+  name: Master Closet Morning
+  entities:
+    light.cans_4:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 77
+      friendly_name: Master Closet Cans
+      supported_features: 32
+      state: 'on'
+  metadata: {}
+- id: '1625976409605'
+  name: Master Closet Off
+  entities:
+    light.cans_4:
+      supported_color_modes:
+      - brightness
+      color_mode:
+      brightness:
+      friendly_name: Master Closet Cans
+      supported_features: 32
+      state: 'off'
+  metadata: {}
+- id: '1625977204637'
+  name: Kitchen Morning
+  entities:
+    light.pendants:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 90
+      friendly_name: 'pendants '
+      supported_features: 32
+      state: 'on'
+    light.kitchen_cans:
+      supported_color_modes:
+      - brightness
+      color_mode:
+      brightness:
+      friendly_name: 'kitchen_cans '
+      supported_features: 32
+      state: 'off'
+  metadata: {}
+- id: '1625977530413'
+  name: Kitchen Day
+  entities:
+    light.kitchen_cans:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 255
+      friendly_name: 'kitchen_cans '
+      supported_features: 32
+      state: 'on'
+    light.pendants:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 255
+      friendly_name: 'pendants '
+      supported_features: 32
+      state: 'on'
+  metadata: {}
+- id: '1625977596037'
+  name: Kitchen Evening
+  entities:
+    light.pendants:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 255
+      friendly_name: 'pendants '
+      supported_features: 32
+      state: 'on'
+    light.kitchen_cans:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 255
+      friendly_name: 'kitchen_cans '
+      supported_features: 32
+      state: 'on'
+  metadata: {}
+- id: '1625977632685'
+  name: Kitchen Late
+  entities:
+    light.pendants:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 152
+      friendly_name: 'pendants '
+      supported_features: 32
+      state: 'on'
+    light.kitchen_cans:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 103
+      friendly_name: 'kitchen_cans '
+      supported_features: 32
+      state: 'on'
+  metadata: {}
+- id: '1625977680277'
+  name: Kitchen Day Off
+  entities:
+    light.pendants:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 64
+      friendly_name: 'pendants '
+      supported_features: 32
+      state: 'on'
+    light.kitchen_cans:
+      supported_color_modes:
+      - brightness
+      color_mode:
+      brightness:
+      friendly_name: 'kitchen_cans '
+      supported_features: 32
+      state: 'off'
+  metadata: {}
+- id: '1625977697174'
+  name: Kitchen Late Off
+  entities:
+    light.pendants:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 26
+      friendly_name: 'pendants '
+      supported_features: 32
+      state: 'on'
+    light.kitchen_cans:
+      supported_color_modes:
+      - brightness
+      color_mode:
+      brightness:
+      friendly_name: 'kitchen_cans '
+      supported_features: 32
+      state: 'off'
+  metadata: {}
+- id: '1625978331245'
+  name: Entryway Morning
+  entities:
+    light.entryway_light:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 64
+      friendly_name: 'entryway_light '
+      supported_features: 32
+      state: 'on'
+  metadata: {}
+- id: '1625978347869'
+  name: Entryway Day
+  entities:
+    light.entryway_light:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 255
+      friendly_name: 'entryway_light '
+      supported_features: 32
+      state: 'on'
+  metadata: {}
+- id: '1625978368853'
+  name: Entryway Evening
+  entities:
+    light.entryway_light:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 103
+      friendly_name: 'entryway_light '
+      supported_features: 32
+      state: 'on'
+  metadata: {}
+- id: '1625978384685'
+  name: Entryway Late
+  entities:
+    light.entryway_light:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 44
+      friendly_name: 'entryway_light '
+      supported_features: 32
+      state: 'on'
+  metadata: {}
+- id: '1625978517750'
+  name: Entryway Off
+  entities:
+    light.entryway_light:
+      supported_color_modes:
+      - brightness
+      color_mode:
+      brightness:
+      friendly_name: 'entryway_light '
+      supported_features: 32
+      state: 'off'
+  metadata: {}
+- id: '1626488165891'
+  name: Main Stair Light On
+  entities:
+    light.sconces:
+      supported_color_modes:
+      - brightness
+      color_mode: brightness
+      brightness: 255
+      friendly_name: 'sconces '
+      supported_features: 32
+      state: 'on'
+  metadata: {}
+- id: '1626488179811'
+  name: Main Stair Light Off
+  entities:
+    light.sconces:
+      supported_color_modes:
+      - brightness
+      color_mode:
+      brightness:
+      friendly_name: 'sconces '
+      supported_features: 32
+      state: 'off'
+  metadata: {}
+- id: '1717915690656'
+  name: Master Hall Off
+  entities:
+    light.cans_3:
+      supported_color_modes:
+      - brightness
+      color_mode:
+      brightness:
+      friendly_name: Master Hall Cans
+      supported_features: 32
+      state: 'off'
+  metadata: {}

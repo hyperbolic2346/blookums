@@ -1,0 +1,23 @@
+goodnight_storms:
+  alias: Goodnight Storms
+  description: Play thunderstorm sounds on repeat in the bedroom
+  sequence:
+  - action: media_player.volume_set
+    target:
+      entity_id: media_player.master_bedroom
+    data:
+      volume_level: 0.2
+  - action: media_player.play_media
+    target:
+      entity_id: media_player.master_bedroom
+    data:
+      media_content_id: /local/pptwaves.mp3
+      media_content_type: music
+  - delay: 00:00:02
+  - action: media_player.repeat_set
+    target:
+      entity_id: media_player.master_bedroom
+    data:
+      repeat: all
+  mode: single
+  icon: mdi:weather-lightning-rainy

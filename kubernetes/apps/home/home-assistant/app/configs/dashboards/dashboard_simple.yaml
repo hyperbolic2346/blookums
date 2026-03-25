@@ -1,0 +1,378 @@
+views:
+- title: Garage
+  path: garage
+  icon: mdi:garage
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: horizontal-stack
+      cards:
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: cover.left_bay_door
+        name: Left Bay
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: cover.middle_bay_door
+        name: Middle Bay
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: cover.right_bay_door
+        name: Right Bay
+    - type: horizontal-stack
+      cards:
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: cover.basement_garage_door
+        name: Basement
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: cover.wilson_gate
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: cover.brigman_gate
+    - show_name: true
+      show_icon: true
+      type: button
+      tap_action:
+        action: toggle
+      entity: input_boolean.delivery_tomorrow
+- title: Master Bedroom
+  path: master-bedroom
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: horizontal-stack
+      cards:
+      - type: light
+        entity: light.torus
+        name: Torus
+      - type: light
+        entity: light.cans_3
+        name: Hall
+    - type: horizontal-stack
+      cards:
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        name: Knobby Bed Light
+        entity: light.knobby_light
+      - type: entities
+        entities:
+        - entity: fan.master_bedroom
+        - entity: light.torus
+        - entity: sensor.master_bedroom_temperature
+        - entity: switch.master_bedroom_whoosh
+        - entity: binary_sensor.master_bedroom_occupancy
+  - graph: line
+    type: sensor
+    entity: sensor.master_closet1_temperature
+    detail: 1
+    name: Master Closet
+    unit: F
+  - graph: line
+    type: sensor
+    entity: sensor.master_hall_temperature
+    detail: 1
+    name: Master Hall
+  - graph: line
+    type: sensor
+    entity: sensor.master_bedroom_temperature
+    detail: 1
+    name: Master Bedroom
+    unit: F
+  - show_name: true
+    show_icon: true
+    type: button
+    entity: script.goodnight_storms
+  - type: media-control
+    entity: media_player.master_bedroom
+  icon: mdi:bed-king
+  subview: false
+- title: Master Bath
+  path: master-bath
+  icon: mdi:bathtub
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: horizontal-stack
+      cards:
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: switch.master_bath_fan
+        name: Fan
+        icon: mdi:fan
+      - type: entities
+        entities:
+        - entity: binary_sensor.master_bath0_motion
+          name: Motion 0
+        - entity: binary_sensor.master_bath1_motion
+          name: Motion 1
+        - entity: sensor.master_bath1_humidity
+          name: Humidity
+    - type: horizontal-stack
+      cards:
+      - type: light
+        name: Cans
+        entity: light.master_bath_cans
+      - type: light
+        entity: light.master_bath_shower
+        name: Shower
+      - type: light
+        entity: light.master_bath_torus
+        name: Torus
+    - graph: line
+      type: sensor
+      entity: sensor.master_bath1_temperature
+      detail: 1
+      unit: F
+      name: Master Bath
+    - graph: line
+      type: sensor
+      entity: sensor.master_bath1_humidity
+      detail: 1
+      name: Master Bath Humidity
+    - graph: line
+      type: sensor
+      entity: sensor.master_closet1_humidity
+      detail: 1
+      name: Master Closet Humidity
+    - graph: line
+      type: sensor
+      entity: sensor.master_hall_humidity
+      detail: 1
+      name: Master Hall Humidity
+    - type: horizontal-stack
+      cards:
+      - type: entity
+        entity: automation.turn_on_shower_cans_with_fan
+        name: Shower Lights with Fan
+        icon: mdi:light-recessed
+        state_color: true
+      - type: entity
+        entity: automation.master_bath_motion_lights
+        state_color: true
+    - graph: line
+      type: sensor
+      entity: sensor.master_bathroom_humidity_derivative
+      detail: 1
+  - type: media-control
+    entity: media_player.master_bathroom
+  subview: false
+- title: Library
+  path: library
+  icon: mdi:bookshelf
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: horizontal-stack
+      cards:
+      - type: light
+        entity: light.cans
+        name: Cans
+      - type: light
+        entity: light.shelves
+        name: Shelves
+    - type: horizontal-stack
+      cards:
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: fan.library
+        name: Fan
+      - type: entities
+        entities:
+        - entity: light.library
+        - entity: binary_sensor.library_occupancy
+          name: Occupancy
+        - entity: sensor.library_temperature
+          name: Temp
+        - entity: switch.library_whoosh
+          name: Whoosh
+  subview: false
+- title: Knobby Office
+  path: knobby-office
+  icon: mdi:office-building
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: horizontal-stack
+      cards:
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: fan.library
+        name: Fan
+      - type: entities
+        entities:
+        - entity: light.cans_7
+          name: Light
+        - entity: binary_sensor.bailey_detections_motion
+          name: Occupancy
+        - entity: switch.office_whoosh
+          name: Whoosh
+    - type: horizontal-stack
+      cards:
+      - type: light
+        entity: light.cans_7
+        name: Cans
+      - type: light
+        entity: light.light_2
+        name: Apartment
+      - type: light
+        entity: light.door_light
+        name: Door
+    - graph: line
+      type: sensor
+      entity: sensor.office_temperature
+      detail: 1
+  subview: false
+- title: Laundry
+  path: laundry
+  icon: mdi:washing-machine
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: horizontal-stack
+      cards:
+      - type: entities
+        entities:
+        - entity: sensor.booster_electric_consumption_w
+          name: Booster
+        - entity: binary_sensor.laundry_room_motion
+          name: Motion
+        - entity: switch.light
+    - show_name: true
+      show_icon: true
+      type: button
+      tap_action:
+        action: toggle
+      entity: switch.light
+      name: Laundry
+      icon: mdi:lightbulb-fluorescent-tube-outline
+  - type: entities
+    entities:
+    - entity: switch.booster
+- title: Basement Garage
+  path: basement-garage
+  icon: mdi:home-floor-b
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: horizontal-stack
+      cards:
+      - type: entities
+        entities:
+        - entity: binary_sensor.750li_xdrive_door_lock_state
+        - entity: sensor.750li_xdrive_mileage
+        - entity: sensor.750li_xdrive_remaining_fuel
+        - entity: binary_sensor.750li_xdrive_windows
+        title: BMW Alpina
+      - show_name: false
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: button.alpina_xb7_activate_air_conditioning
+        icon: mdi:air-conditioner
+        show_state: true
+    - type: horizontal-stack
+      cards:
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: light.basement_garage_light
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: cover.basement_garage_door
+        name: Door
+    - type: entities
+      entities:
+      - entity: sensor.basement_hall_door_basement_hall_door_battery_level
+        name: Door Sensor Battery
+      - entity: binary_sensor.basement_hall_door_basement_hall_door_door_state_simple
+        name: Door
+        icon: mdi:door
+      - entity: binary_sensor.basement_garage_obstruction
+        name: Door Obstruction
+- type: sections
+  max_columns: 4
+  title: Outside
+  path: outside
+  icon: mdi:outdoor-lamp
+  sections:
+  - type: grid
+    cards:
+    - type: heading
+      heading: New section
+    - type: horizontal-stack
+      cards:
+      - type: light
+        entity: light.back_porch
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: switch.front_path_lights
+        icon: mdi:lightbulb
+- type: sections
+  max_columns: 4
+  icon: mdi:sofa
+  path: ''
+  sections:
+  - type: grid
+    cards:
+    - type: heading
+      heading: New section
+    - show_name: true
+      show_icon: true
+      type: button
+      entity: light.couch_cans
+      name: Couch Cans
+    - show_name: true
+      show_icon: true
+      type: button
+      entity: light.tv_cans
+      name: TV Cand
+    - show_name: true
+      show_icon: true
+      type: button
+      entity: media_player.living_room
+  header:
+    card:
+      type: markdown
+      text_only: true
+      content: '# Livingroom'

@@ -1,0 +1,142 @@
+# Configure a default setup of Home Assistant (frontend, api, etc)
+default_config:
+
+homeassistant:
+  customize_glob:
+    sensor.haenergy_*:
+      last_reset: "2021-08-05T08:05:00+00:00"
+      state_class: measurement
+
+# Text to speech
+tts:
+  - platform: google_translate
+
+group: !include groups.yaml
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 10.0.0.0/8
+
+template: !include_dir_merge_list sensors
+mqtt: !include_dir_merge_named mqtt
+
+alarm_control_panel:
+  - platform: manual
+    name: Home Alarm
+    arming_time: 30
+    delay_time: 20
+    trigger_time: 4
+    disarmed:
+      trigger_time: 0
+    armed_home:
+      arming_time: 0
+      delay_time: 0
+
+notify:
+  - name: mikeandjolei
+    platform: group
+    services:
+    - service: mobile_app_dumpster_fire
+    - service: mobile_app_joanna_s_iphone
+    - service: mobile_app_minionmama_51
+
+sensor:
+ - platform: emoncms
+   api_key: !secret emoncms_api_key
+   url: http://10.0.1.210/emoncms
+   id: 1
+ - platform: fortnite
+   name: Oliver's Fortnite Solo Stats
+   api_key: !secret fortnite_api_key
+   player_id: david croked
+   game_platform: "PC"
+   game_mode: "SOLO"
+ - platform: fortnite
+   name: Fortnite Duo Stats
+   api_key: !secret fortnite_api_key
+   player_id: david croked
+   game_platform: "PC"
+   game_mode: "DUO"
+ - platform: fortnite
+   name: Fortnite Squads Stats
+   api_key: !secret fortnite_api_key
+   player_id: david croked
+   game_platform: "PC"
+   game_mode: "SQUAD"
+
+anniversaries:
+  sensors:
+  - name: Knobby & Pixy Wedding
+    date: '2005-08-14'
+  - name: Knobby's Birthday
+    date: '1978-09-20'
+  - name: Pixy's Birthday
+    date: '1980-05-12'
+  - name: Oliver's Birthday
+    date: '2014-01-26'
+
+homekit:
+  - filter:
+      include_domains:
+        - alarm_control_panel
+        - light
+        - cover
+    entity_config:
+      alarm_control_panel.home:
+        code: !secret homekit_code
+      lock.front_door:
+        code: !secret homekit_code
+  - name: HASS Bridge 2
+    port: 21065
+    filter:
+      include_domains:
+        - light
+
+sonos:
+  media_player:
+    hosts:
+      - 10.0.1.169
+      - 10.0.1.62
+      - 10.0.1.93
+      - 10.0.1.47
+      - 10.0.1.133
+
+prometheus:
+  namespace: homeassistant
+  filter:
+    include_domains:
+      - binary_sensor
+      - sensor
+      - lock
+      - light
+      - switch
+      - cover
+      - climate
+      - person
+      - device_tracker
+
+lovelace:
+  mode: yaml
+  resources: []
+  dashboards:
+    dashboard-simple:
+      mode: yaml
+      title: Simple
+      icon: mdi:home
+      show_in_sidebar: true
+      filename: dashboards/dashboard_simple.yaml
+    dashboard-map:
+      mode: yaml
+      title: Map
+      icon: mdi:map
+      show_in_sidebar: true
+      filename: dashboards/map.yaml
+    dashboard-minimalist:
+      mode: yaml
+      title: Minimalist
+      icon: mdi:home-assistant
+      show_in_sidebar: true
+      filename: dashboards/dashboard_minimalist.yaml

@@ -1,0 +1,12 @@
+switch:
+  - name: "Master Bath Fan"
+    state_topic: "stat/masterbathfan/POWER"
+    command_topic: "cmnd/masterbathfan/POWER"
+    availability_topic: "tele/masterbathfan/LWT"
+    qos: 1
+    payload_on: "ON"
+    payload_off: "OFF"
+    payload_available: "Online"
+    payload_not_available: "Offline"
+    retain: false
+    unique_id: master-bath-sonoff-fan

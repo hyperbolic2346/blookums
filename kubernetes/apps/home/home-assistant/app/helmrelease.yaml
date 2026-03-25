@@ -90,3 +90,68 @@ spec:
       config:
         enabled: true
         existingClaim: home-assistant-config
+      config-yaml:
+        type: configMap
+        name: home-assistant-config
+        globalMounts:
+          - path: /config/configuration.yaml
+            subPath: configuration.yaml
+            readOnly: true
+          - path: /config/automations.yaml
+            subPath: automations.yaml
+            readOnly: true
+          - path: /config/scripts.yaml
+            subPath: scripts.yaml
+            readOnly: true
+          - path: /config/scenes.yaml
+            subPath: scenes.yaml
+            readOnly: true
+          - path: /config/groups.yaml
+            subPath: groups.yaml
+            readOnly: true
+      config-sensors:
+        type: configMap
+        name: home-assistant-sensors
+        globalMounts:
+          - path: /config/sensors/basement.yaml
+            subPath: basement.yaml
+            readOnly: true
+          - path: /config/sensors/emoncms.yaml
+            subPath: emoncms.yaml
+            readOnly: true
+          - path: /config/sensors/front_door.yaml
+            subPath: front_door.yaml
+            readOnly: true
+          - path: /config/sensors/office.yaml
+            subPath: office.yaml
+            readOnly: true
+      config-mqtt:
+        type: configMap
+        name: home-assistant-mqtt
+        globalMounts:
+          - path: /config/mqtt/gate.yaml
+            subPath: gate.yaml
+            readOnly: true
+          - path: /config/mqtt/sonoff-bathroom-fan.yaml
+            subPath: sonoff-bathroom-fan.yaml
+            readOnly: true
+      config-dashboards:
+        type: configMap
+        name: home-assistant-dashboards
+        globalMounts:
+          - path: /config/dashboards/dashboard_simple.yaml
+            subPath: dashboard_simple.yaml
+            readOnly: true
+          - path: /config/dashboards/dashboard_minimalist.yaml
+            subPath: dashboard_minimalist.yaml
+            readOnly: true
+          - path: /config/dashboards/map.yaml
+            subPath: map.yaml
+            readOnly: true
+      secrets-yaml:
+        type: secret
+        name: home-assistant-secret
+        globalMounts:
+          - path: /config/secrets.yaml
+            subPath: HASS_SECRETS_YAML
+            readOnly: true
