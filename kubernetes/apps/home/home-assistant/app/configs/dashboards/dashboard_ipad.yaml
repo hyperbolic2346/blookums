@@ -1,0 +1,449 @@
+views:
+- type: sections
+  max_columns: 3
+  title: Home
+  path: home
+  icon: mdi:home
+  sections:
+  # Column 1: Garage & Gates
+  - type: grid
+    cards:
+    - type: heading
+      heading: Garage & Gates
+      heading_style: title
+      icon: mdi:garage
+    - type: horizontal-stack
+      cards:
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: cover.left_bay_door
+        name: Left
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: cover.middle_bay_door
+        name: Middle
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: cover.right_bay_door
+        name: Right
+    - type: horizontal-stack
+      cards:
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: cover.basement_garage_door
+        name: Basement
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: cover.wilson_gate
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: cover.brigman_gate
+    - type: horizontal-stack
+      cards:
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: input_boolean.delivery_tomorrow
+        name: Delivery Tomorrow
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: light.basement_garage_light
+        name: Garage Light
+    - type: entities
+      title: BMW Alpina
+      entities:
+      - entity: binary_sensor.750li_xdrive_door_lock_state
+      - entity: sensor.750li_xdrive_mileage
+      - entity: sensor.750li_xdrive_remaining_fuel
+      - entity: binary_sensor.750li_xdrive_windows
+    - show_name: true
+      show_icon: true
+      type: button
+      tap_action:
+        action: toggle
+      entity: button.alpina_xb7_activate_air_conditioning
+      name: Start A/C
+      icon: mdi:air-conditioner
+      show_state: true
+
+  # Column 2: Living Spaces
+  - type: grid
+    cards:
+    - type: heading
+      heading: Living Spaces
+      heading_style: title
+      icon: mdi:sofa
+    - type: horizontal-stack
+      cards:
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: light.couch_cans
+        name: Couch Cans
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: light.tv_cans
+        name: TV Cans
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: media_player.living_room
+        name: Living Room
+    - type: heading
+      heading: Kitchen
+      heading_style: subtitle
+      icon: mdi:silverware-fork-knife
+    - type: entities
+      entities:
+      - entity: light.kitchen_cans
+        name: Cans
+      - entity: light.pendants
+        name: Pendants
+    - type: heading
+      heading: Entryway & Stairs
+      heading_style: subtitle
+      icon: mdi:door
+    - type: horizontal-stack
+      cards:
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: light.entryway_light
+        name: Entryway
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: light.sconces
+        name: Stairs
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: switch.porch_light_switch
+        name: Porch
+    - type: heading
+      heading: Outside
+      heading_style: subtitle
+      icon: mdi:outdoor-lamp
+    - type: horizontal-stack
+      cards:
+      - type: light
+        entity: light.back_porch
+        name: Back Porch
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: switch.front_path_lights
+        name: Front Path
+        icon: mdi:lightbulb
+    - type: heading
+      heading: Laundry
+      heading_style: subtitle
+      icon: mdi:washing-machine
+    - type: entities
+      entities:
+      - entity: switch.light
+        name: Light
+      - entity: switch.booster
+        name: Booster
+      - entity: sensor.booster_electric_consumption_w
+        name: Booster Power
+
+  # Column 3: Security & Climate
+  - type: grid
+    cards:
+    - type: heading
+      heading: Security
+      heading_style: title
+      icon: mdi:shield-home
+    - type: alarm-panel
+      entity: alarm_control_panel.home_alarm
+    - type: entities
+      title: Doors
+      show_header_toggle: false
+      entities:
+      - entity: binary_sensor.door_window_door_is_open
+        name: Front Door
+        icon: mdi:door
+      - entity: binary_sensor.basement_hall_door_basement_hall_door_door_state_simple
+        name: Basement Door
+        icon: mdi:door
+      - entity: binary_sensor.basement_garage_obstruction
+        name: Garage Obstruction
+    - type: heading
+      heading: Basement Garage
+      heading_style: subtitle
+      icon: mdi:home-floor-b
+    - type: entities
+      entities:
+      - entity: sensor.basement_hall_door_basement_hall_door_battery_level
+        name: Door Sensor Battery
+
+- type: sections
+  max_columns: 3
+  title: Upstairs
+  path: upstairs
+  icon: mdi:home-floor-2
+
+  sections:
+  # Column 1: Master Bedroom
+  - type: grid
+    cards:
+    - type: heading
+      heading: Master Bedroom
+      heading_style: title
+      icon: mdi:bed-king
+    - type: horizontal-stack
+      cards:
+      - type: light
+        entity: light.torus
+        name: Torus
+      - type: light
+        entity: light.cans_3
+        name: Hall
+    - show_name: true
+      show_icon: true
+      type: button
+      tap_action:
+        action: toggle
+      name: Knobby Bed Light
+      entity: light.knobby_light
+    - type: entities
+      entities:
+      - entity: fan.master_bedroom
+      - entity: switch.master_bedroom_whoosh
+        name: Whoosh
+      - entity: binary_sensor.master_bedroom_occupancy
+        name: Occupancy
+      - entity: sensor.master_bedroom_temperature
+        name: Temperature
+    - type: media-control
+      entity: media_player.master_bedroom
+    - show_name: true
+      show_icon: true
+      type: button
+      entity: script.goodnight_storms
+      name: Goodnight Storms
+      icon: mdi:weather-lightning-rainy
+    - type: heading
+      heading: Temperature
+      heading_style: subtitle
+    - graph: line
+      type: sensor
+      entity: sensor.master_bedroom_temperature
+      detail: 2
+      name: Bedroom
+      hours_to_show: 24
+    - graph: line
+      type: sensor
+      entity: sensor.master_closet1_temperature
+      detail: 2
+      name: Closet
+      hours_to_show: 24
+
+  # Column 2: Master Bath
+  - type: grid
+    cards:
+    - type: heading
+      heading: Master Bath
+      heading_style: title
+      icon: mdi:bathtub
+    - type: horizontal-stack
+      cards:
+      - type: light
+        name: Cans
+        entity: light.master_bath_cans
+      - type: light
+        entity: light.master_bath_shower
+        name: Shower
+      - type: light
+        entity: light.master_bath_torus
+        name: Torus
+    - type: horizontal-stack
+      cards:
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: toggle
+        entity: switch.master_bath_fan
+        name: Fan
+        icon: mdi:fan
+      - type: entity
+        entity: automation.turn_on_shower_cans_with_fan
+        name: Shower+Cans
+        icon: mdi:light-recessed
+        state_color: true
+      - type: entity
+        entity: automation.master_bath_motion_lights
+        name: Auto Lights
+        state_color: true
+    - type: entities
+      entities:
+      - entity: binary_sensor.master_bath0_motion
+        name: Entrance Motion
+      - entity: binary_sensor.master_bath1_motion
+        name: Toilet Motion
+      - entity: input_select.master_bathroom_occupancy
+        name: Occupancy
+    - type: media-control
+      entity: media_player.master_bathroom
+    - type: heading
+      heading: Climate
+      heading_style: subtitle
+    - graph: line
+      type: sensor
+      entity: sensor.master_bath1_temperature
+      detail: 2
+      name: Temperature
+      hours_to_show: 24
+    - graph: line
+      type: sensor
+      entity: sensor.master_bath1_humidity
+      detail: 2
+      name: Humidity
+      hours_to_show: 24
+    - graph: line
+      type: sensor
+      entity: sensor.master_bathroom_humidity_derivative
+      detail: 2
+      name: Humidity Rate
+      hours_to_show: 24
+    - type: heading
+      heading: Nearby Humidity
+      heading_style: subtitle
+    - graph: line
+      type: sensor
+      entity: sensor.master_closet1_humidity
+      detail: 2
+      name: Master Closet
+      hours_to_show: 24
+    - graph: line
+      type: sensor
+      entity: sensor.master_hall_humidity
+      detail: 2
+      name: Master Hall
+      hours_to_show: 24
+
+  # Column 3: Library, Office, Closet
+  - type: grid
+    cards:
+    - type: heading
+      heading: Library
+      heading_style: title
+      icon: mdi:bookshelf
+    - type: horizontal-stack
+      cards:
+      - type: light
+        entity: light.cans
+        name: Cans
+      - type: light
+        entity: light.shelves
+        name: Shelves
+    - type: entities
+      entities:
+      - entity: fan.library
+        name: Fan
+      - entity: switch.library_whoosh
+        name: Whoosh
+      - entity: binary_sensor.library_occupancy
+        name: Occupancy
+      - entity: sensor.library_temperature
+        name: Temperature
+    - type: heading
+      heading: Knobby's Office
+      heading_style: title
+      icon: mdi:desktop-classic
+    - type: horizontal-stack
+      cards:
+      - type: light
+        entity: light.cans_7
+        name: Cans
+      - type: light
+        entity: light.light_2
+        name: Apartment
+      - type: light
+        entity: light.door_light
+        name: Door
+    - type: entities
+      entities:
+      - entity: fan.library
+        name: Fan
+      - entity: switch.office_whoosh
+        name: Whoosh
+      - entity: binary_sensor.bailey_detections_motion
+        name: Occupancy
+    - graph: line
+      type: sensor
+      entity: sensor.office_temperature
+      detail: 2
+      name: Office Temp
+      hours_to_show: 24
+    - type: heading
+      heading: Master Closet
+      heading_style: title
+      icon: mdi:hanger
+    - type: horizontal-stack
+      cards:
+      - type: light
+        entity: light.cans_4
+        name: Closet Cans
+    - type: heading
+      heading: Upstairs Hall
+      heading_style: title
+      icon: mdi:walk
+    - type: horizontal-stack
+      cards:
+      - show_name: true
+        show_icon: true
+        type: button
+        entity: light.upstairs_hallway_torus_upstairs_hallway_torus_dimmer
+        name: Hallway
+      - show_name: true
+        show_icon: true
+        type: button
+        entity: light.stairs_sconce_stairs_sconce_dimmer
+        name: Stairs
+    - graph: line
+      type: sensor
+      entity: sensor.master_hall_temperature
+      detail: 2
+      name: Hall Temp
+      hours_to_show: 24

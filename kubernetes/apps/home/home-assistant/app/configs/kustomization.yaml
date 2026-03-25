@@ -28,4 +28,5 @@ configMapGenerator:
     files:
       - dashboards/dashboard_simple.yaml
       - dashboards/dashboard_minimalist.yaml
+      - dashboards/dashboard_ipad.yaml
       - dashboards/map.yaml

@@ -145,6 +145,9 @@ spec:
           - path: /config/dashboards/dashboard_minimalist.yaml
             subPath: dashboard_minimalist.yaml
             readOnly: true
+          - path: /config/dashboards/dashboard_ipad.yaml
+            subPath: dashboard_ipad.yaml
+            readOnly: true
           - path: /config/dashboards/map.yaml
             subPath: map.yaml
             readOnly: true

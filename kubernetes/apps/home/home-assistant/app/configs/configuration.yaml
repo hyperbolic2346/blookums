@@ -140,3 +140,9 @@ lovelace:
       icon: mdi:home-assistant
       show_in_sidebar: true
       filename: dashboards/dashboard_minimalist.yaml
+    dashboard-ipad:
+      mode: yaml
+      title: iPad
+      icon: mdi:tablet
+      show_in_sidebar: true
+      filename: dashboards/dashboard_ipad.yaml
