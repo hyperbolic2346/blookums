@@ -1,0 +1,223 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/grafana.integreatly.org/grafanadashboard_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: home-power
+spec:
+  allowCrossNamespaceImport: true
+  instanceSelector:
+    matchLabels:
+      grafana.internal/instance: grafana
+  datasources:
+    - datasourceName: prometheus
+      inputName: DS_PROMETHEUS
+  json: |
+    {
+      "title": "Home Power",
+      "uid": "home-power",
+      "timezone": "browser",
+      "refresh": "30s",
+      "time": { "from": "now-24h", "to": "now" },
+      "templating": { "list": [] },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Whole House Power (W)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+          "datasource": { "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "watt",
+              "custom": {
+                "fillOpacity": 15,
+                "lineWidth": 2,
+                "spanNulls": true
+              }
+            },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "House Total" }, "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "Left Panel" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "Right Panel" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "homeassistant_sensor_state{entity=\"sensor.emoncms_10_0_1_210_emoncms_house_power\"}",
+              "legendFormat": "House Total"
+            },
+            {
+              "expr": "homeassistant_sensor_state{entity=\"sensor.emoncms_10_0_1_210_emoncms_left_side_panel_power\"}",
+              "legendFormat": "Left Panel"
+            },
+            {
+              "expr": "homeassistant_sensor_state{entity=\"sensor.emoncms_10_0_1_210_emoncms_right_side_panel_power\"}",
+              "legendFormat": "Right Panel"
+            }
+          ],
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max", "lastNotNull"] }
+          }
+        },
+        {
+          "id": 2,
+          "title": "Current Power",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 8, "x": 0, "y": 8 },
+          "datasource": { "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": { "unit": "watt", "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 2000 }, { "color": "red", "value": 4000 }] } }
+          },
+          "targets": [
+            { "expr": "homeassistant_sensor_state{entity=\"sensor.emoncms_10_0_1_210_emoncms_house_power\"}", "legendFormat": "House Total" }
+          ],
+          "options": { "graphMode": "area", "textMode": "auto" }
+        },
+        {
+          "id": 3,
+          "title": "Left Panel",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 8, "x": 8, "y": 8 },
+          "datasource": { "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": { "unit": "watt", "thresholds": { "steps": [{ "color": "blue", "value": null }, { "color": "yellow", "value": 2000 }, { "color": "red", "value": 3000 }] } }
+          },
+          "targets": [
+            { "expr": "homeassistant_sensor_state{entity=\"sensor.emoncms_10_0_1_210_emoncms_left_side_panel_power\"}", "legendFormat": "Left Panel" }
+          ],
+          "options": { "graphMode": "area", "textMode": "auto" }
+        },
+        {
+          "id": 4,
+          "title": "Right Panel",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 8, "x": 16, "y": 8 },
+          "datasource": { "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": { "unit": "watt", "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 2000 }, { "color": "red", "value": 3000 }] } }
+          },
+          "targets": [
+            { "expr": "homeassistant_sensor_state{entity=\"sensor.emoncms_10_0_1_210_emoncms_right_side_panel_power\"}", "legendFormat": "Right Panel" }
+          ],
+          "options": { "graphMode": "area", "textMode": "auto" }
+        },
+        {
+          "id": 5,
+          "title": "Cumulative Energy (kWh)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
+          "datasource": { "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "kwatth",
+              "custom": {
+                "fillOpacity": 0,
+                "lineWidth": 2,
+                "spanNulls": true
+              },
+              "decimals": 1
+            },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "House Total" }, "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "Left Panel" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "Right Panel" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "homeassistant_sensor_state{entity=\"sensor.emoncms_10_0_1_210_emoncms_house_power_kwh\"}",
+              "legendFormat": "House Total"
+            },
+            {
+              "expr": "homeassistant_sensor_state{entity=\"sensor.emoncms_10_0_1_210_emoncms_left_side_panel_power_kwh\"}",
+              "legendFormat": "Left Panel"
+            },
+            {
+              "expr": "homeassistant_sensor_state{entity=\"sensor.emoncms_10_0_1_210_emoncms_right_side_panel_power_kwh\"}",
+              "legendFormat": "Right Panel"
+            }
+          ],
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "legend": { "displayMode": "table", "placement": "right", "calcs": ["min", "max", "diff"] }
+          }
+        },
+        {
+          "id": 6,
+          "title": "Daily Energy Usage (kWh/day)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 },
+          "datasource": { "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "kwatth",
+              "custom": {
+                "drawStyle": "bars",
+                "fillOpacity": 50,
+                "lineWidth": 0,
+                "barAlignment": 0,
+                "spanNulls": true
+              },
+              "decimals": 1
+            },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "House Total" }, "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "Left Panel" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
+              { "matcher": { "id": "byName", "options": "Right Panel" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "increase(homeassistant_sensor_state{entity=\"sensor.emoncms_10_0_1_210_emoncms_house_power_kwh\"}[1d])",
+              "legendFormat": "House Total",
+              "interval": "1d"
+            },
+            {
+              "expr": "increase(homeassistant_sensor_state{entity=\"sensor.emoncms_10_0_1_210_emoncms_left_side_panel_power_kwh\"}[1d])",
+              "legendFormat": "Left Panel",
+              "interval": "1d"
+            },
+            {
+              "expr": "increase(homeassistant_sensor_state{entity=\"sensor.emoncms_10_0_1_210_emoncms_right_side_panel_power_kwh\"}[1d])",
+              "legendFormat": "Right Panel",
+              "interval": "1d"
+            }
+          ],
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "sum"] }
+          }
+        },
+        {
+          "id": 7,
+          "title": "Per-Device Power (W)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 28 },
+          "datasource": { "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "watt",
+              "custom": {
+                "fillOpacity": 20,
+                "lineWidth": 1,
+                "spanNulls": true,
+                "stacking": { "mode": "normal" }
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "homeassistant_sensor_power_w",
+              "legendFormat": "{{ friendly_name }}"
+            }
+          ],
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max", "lastNotNull"], "sortBy": "Mean", "sortDesc": true }
+          }
+        }
+      ],
+      "schemaVersion": 39
+    }
