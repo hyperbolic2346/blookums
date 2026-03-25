@@ -72,22 +72,6 @@ views:
           action: toggle
         entity: light.basement_garage_light
         name: Garage Light
-    - type: entities
-      title: BMW Alpina
-      entities:
-      - entity: binary_sensor.750li_xdrive_door_lock_state
-      - entity: sensor.750li_xdrive_mileage
-      - entity: sensor.750li_xdrive_remaining_fuel
-      - entity: binary_sensor.750li_xdrive_windows
-    - show_name: true
-      show_icon: true
-      type: button
-      tap_action:
-        action: toggle
-      entity: button.alpina_xb7_activate_air_conditioning
-      name: Start A/C
-      icon: mdi:air-conditioner
-      show_state: true
 
   # Column 2: Living Spaces
   - type: grid
@@ -154,7 +138,7 @@ views:
         type: button
         tap_action:
           action: toggle
-        entity: switch.porch_light_switch
+        entity: light.light_3
         name: Porch
     - type: heading
       heading: Outside
@@ -202,7 +186,7 @@ views:
       - entity: binary_sensor.door_window_door_is_open
         name: Front Door
         icon: mdi:door
-      - entity: binary_sensor.basement_hall_door_basement_hall_door_door_state_simple
+      - entity: binary_sensor.basement_hall_door_window_door_is_open
         name: Basement Door
         icon: mdi:door
       - entity: binary_sensor.basement_garage_obstruction
@@ -213,8 +197,8 @@ views:
       icon: mdi:home-floor-b
     - type: entities
       entities:
-      - entity: sensor.basement_hall_door_basement_hall_door_battery_level
-        name: Door Sensor Battery
+      - entity: sensor.basement_hall_last_seen
+        name: Door Sensor Last Seen
 
 - type: sections
   max_columns: 3
@@ -434,12 +418,12 @@ views:
       - show_name: true
         show_icon: true
         type: button
-        entity: light.upstairs_hallway_torus_upstairs_hallway_torus_dimmer
+        entity: light.torus_3
         name: Hallway
       - show_name: true
         show_icon: true
         type: button
-        entity: light.stairs_sconce_stairs_sconce_dimmer
+        entity: light.sconces
         name: Stairs
     - graph: line
       type: sensor
