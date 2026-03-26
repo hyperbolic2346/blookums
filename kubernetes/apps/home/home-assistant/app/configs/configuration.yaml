@@ -23,6 +23,9 @@ input_select:
     name: Bathroom Sound
     options:
       - waterfall
+      - white_noise_waterfall
+      - heavy_rain
+      - rainstorm
       - forest_creek
     initial: waterfall
     icon: mdi:music-note
