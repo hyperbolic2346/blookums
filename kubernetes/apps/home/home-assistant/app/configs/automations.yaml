@@ -709,10 +709,8 @@
     target:
       entity_id: media_player.master_bathroom
     data:
-      media:
-        media_content_id: https://hass.burntsheep.com/local/sound_princess.mp3
-        media_content_type: music
-        metadata: {}
+      media_content_id: "https://hass.burntsheep.com/local/{{ states('input_select.bathroom_sound') }}.mp3"
+      media_content_type: music
   - delay: 00:00:02
   - action: media_player.repeat_set
     target:

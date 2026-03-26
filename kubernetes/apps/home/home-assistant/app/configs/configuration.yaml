@@ -11,6 +11,22 @@ homeassistant:
 tts:
   - platform: google_translate
 
+input_select:
+  master_bathroom_occupancy:
+    name: Master Bathroom Occupancy
+    options:
+      - Empty
+      - Unknown
+      - Occupied
+    initial: Empty
+  bathroom_sound:
+    name: Bathroom Sound
+    options:
+      - waterfall
+      - forest_creek
+    initial: waterfall
+    icon: mdi:music-note
+
 group: !include groups.yaml
 automation: !include automations.yaml
 script: !include scripts.yaml

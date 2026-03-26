@@ -307,6 +307,8 @@ views:
         name: Toilet Motion
       - entity: input_select.master_bathroom_occupancy
         name: Occupancy
+      - entity: input_select.bathroom_sound
+        name: Sound
     - type: media-control
       entity: media_player.master_bathroom
     - type: heading
