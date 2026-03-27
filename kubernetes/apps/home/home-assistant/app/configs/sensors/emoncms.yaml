@@ -1,6 +1,42 @@
 - sensor:
-    - name: HAEnergy Consumption
-      state: "{{ states('sensor.emoncms_house_power_kwh') | float | round(2) }}"
+    - name: "House Energy"
+      unique_id: house_energy_kwh
+      state: "{{ states('sensor.emoncms_10_0_1_210_emoncms_house_power_kwh') | float(0) | round(2) }}"
       unit_of_measurement: "kWh"
-      state_class: measurement
+      state_class: total_increasing
       device_class: energy
+
+    - name: "House Power"
+      unique_id: house_power_w
+      state: "{{ states('sensor.emoncms_10_0_1_210_emoncms_house_power') | float(0) | round(0) }}"
+      unit_of_measurement: "W"
+      state_class: measurement
+      device_class: power
+
+    - name: "Left Panel Energy"
+      unique_id: left_panel_energy_kwh
+      state: "{{ states('sensor.emoncms_10_0_1_210_emoncms_left_side_panel_power_kwh') | float(0) | round(2) }}"
+      unit_of_measurement: "kWh"
+      state_class: total_increasing
+      device_class: energy
+
+    - name: "Left Panel Power"
+      unique_id: left_panel_power_w
+      state: "{{ states('sensor.emoncms_10_0_1_210_emoncms_left_side_panel_power') | float(0) | round(0) }}"
+      unit_of_measurement: "W"
+      state_class: measurement
+      device_class: power
+
+    - name: "Right Panel Energy"
+      unique_id: right_panel_energy_kwh
+      state: "{{ states('sensor.emoncms_10_0_1_210_emoncms_right_side_panel_power_kwh') | float(0) | round(2) }}"
+      unit_of_measurement: "kWh"
+      state_class: total_increasing
+      device_class: energy
+
+    - name: "Right Panel Power"
+      unique_id: right_panel_power_w
+      state: "{{ states('sensor.emoncms_10_0_1_210_emoncms_right_side_panel_power') | float(0) | round(0) }}"
+      unit_of_measurement: "W"
+      state_class: measurement
+      device_class: power
