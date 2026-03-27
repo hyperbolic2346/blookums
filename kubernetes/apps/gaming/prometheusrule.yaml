@@ -1,0 +1,42 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/prometheusrule_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: gaming-server-rules
+spec:
+  groups:
+    - name: gaming.rules
+      rules:
+        - alert: GameServerDown
+          expr: |
+            kube_deployment_status_ready_replicas{namespace="gaming"}
+              < kube_deployment_spec_replicas{namespace="gaming"}
+          for: 10m
+          annotations:
+            summary: >-
+              Game server {{ $labels.deployment }} has been down for more than 10 minutes
+          labels:
+            severity: critical
+
+        - alert: GameServerCrashLooping
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace="gaming"}[1h]) > 3
+          for: 5m
+          annotations:
+            summary: >-
+              Game server {{ $labels.pod }} is crash-looping ({{ $value | humanize }} restarts in the last hour)
+          labels:
+            severity: critical
+
+        - alert: GameServerHighMemory
+          expr: |
+            container_memory_working_set_bytes{namespace="gaming", container!=""}
+              / on(namespace, pod, container) kube_pod_container_resource_limits{namespace="gaming", resource="memory"}
+              > 0.9
+          for: 15m
+          annotations:
+            summary: >-
+              Game server {{ $labels.pod }} is using more than 90% of its memory limit
+          labels:
+            severity: warning

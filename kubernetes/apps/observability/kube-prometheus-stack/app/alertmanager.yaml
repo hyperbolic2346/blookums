@@ -23,8 +23,8 @@ spec:
       - receiver: pushover
         matchers:
           - name: severity
-            value: critical
-            matchType: =
+            value: critical|warning
+            matchType: =~
     groupBy:
       - alertname
       - cluster

@@ -5,6 +5,7 @@ namespace: gaming
 components:
   - ../../components/common
 resources:
+  - ./prometheusrule.yaml
   - ./factorio/ks.yaml
   - ./minecraft/ks.yaml
   - ./sandstorm/ks.yaml
