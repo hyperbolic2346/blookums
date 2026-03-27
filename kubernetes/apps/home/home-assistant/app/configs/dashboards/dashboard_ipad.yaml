@@ -309,6 +309,8 @@ views:
         name: Occupancy
       - entity: input_select.bathroom_sound
         name: Sound
+      - entity: input_number.bathroom_sound_volume
+        name: Volume
     - type: media-control
       entity: media_player.master_bathroom
     - type: heading

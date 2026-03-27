@@ -704,7 +704,7 @@
     target:
       entity_id: media_player.master_bathroom
     data:
-      volume_level: 0.25
+      volume_level: "{{ states('input_number.bathroom_sound_volume') | float }}"
   - action: media_player.play_media
     target:
       entity_id: media_player.master_bathroom

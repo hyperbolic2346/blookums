@@ -31,6 +31,15 @@ input_select:
     initial: sound_princess
     icon: mdi:music-note
 
+input_number:
+  bathroom_sound_volume:
+    name: Bathroom Sound Volume
+    min: 0.05
+    max: 0.5
+    step: 0.05
+    initial: 0.2
+    icon: mdi:volume-medium
+
 group: !include groups.yaml
 automation: !include automations.yaml
 script: !include scripts.yaml
