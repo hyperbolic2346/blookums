@@ -22,12 +22,13 @@ input_select:
   bathroom_sound:
     name: Bathroom Sound
     options:
+      - sound_princess
       - waterfall
       - white_noise_waterfall
       - heavy_rain
       - rainstorm
       - forest_creek
-    initial: waterfall
+    initial: sound_princess
     icon: mdi:music-note
 
 group: !include groups.yaml
