@@ -759,16 +759,3 @@
     data:
       option: Empty
   mode: restart
-- id: '1774500000001'
-  alias: Billing Cycle - Snapshot Meter on Date Change
-  description: When billing cycle start date is updated, snapshot the current meter reading
-  triggers:
-  - trigger: state
-    entity_id: input_datetime.billing_cycle_start
-  actions:
-  - action: input_number.set_value
-    target:
-      entity_id: input_number.billing_cycle_start_kwh
-    data:
-      value: "{{ states('sensor.house_energy') | float(0) }}"
-  mode: single

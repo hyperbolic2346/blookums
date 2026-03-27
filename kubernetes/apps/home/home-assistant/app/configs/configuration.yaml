@@ -40,22 +40,19 @@ input_number:
     initial: 0.2
     icon: mdi:volume-medium
 
-input_datetime:
-  billing_cycle_start:
-    name: Billing Cycle Start
-    has_date: true
-    has_time: false
-    icon: mdi:calendar-clock
-
-input_number:
-  billing_cycle_start_kwh:
-    name: Billing Cycle Start kWh
-    min: 0
-    max: 999999
-    step: 0.01
-    mode: box
-    icon: mdi:meter-electric
-    unit_of_measurement: "kWh"
+utility_meter:
+  monthly_house_energy:
+    source: sensor.house_energy
+    name: Monthly House Energy
+    cycle: monthly
+  monthly_left_panel_energy:
+    source: sensor.left_panel_energy
+    name: Monthly Left Panel Energy
+    cycle: monthly
+  monthly_right_panel_energy:
+    source: sensor.right_panel_energy
+    name: Monthly Right Panel Energy
+    cycle: monthly
 
 group: !include groups.yaml
 automation: !include automations.yaml
