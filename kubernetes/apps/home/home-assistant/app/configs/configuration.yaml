@@ -40,6 +40,26 @@ input_number:
     initial: 0.2
     icon: mdi:volume-medium
 
+utility_meter:
+  monthly_house_energy:
+    source: sensor.house_energy
+    name: Monthly House Energy
+    cycle: monthly
+    offset:
+      days: 27
+  monthly_left_panel_energy:
+    source: sensor.left_panel_energy
+    name: Monthly Left Panel Energy
+    cycle: monthly
+    offset:
+      days: 27
+  monthly_right_panel_energy:
+    source: sensor.right_panel_energy
+    name: Monthly Right Panel Energy
+    cycle: monthly
+    offset:
+      days: 27
+
 group: !include groups.yaml
 automation: !include automations.yaml
 script: !include scripts.yaml

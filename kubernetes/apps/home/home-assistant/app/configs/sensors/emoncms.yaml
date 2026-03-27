@@ -40,3 +40,45 @@
       unit_of_measurement: "W"
       state_class: measurement
       device_class: power
+
+    - name: "Electric Rate"
+      unique_id: electric_rate
+      state: >
+        {% set usage = states('sensor.monthly_house_energy') | float(0) %}
+        {% if usage <= 800 %}
+          0.126223
+        {% else %}
+          0.116230
+        {% endif %}
+      unit_of_measurement: "$/kWh"
+      icon: mdi:currency-usd
+
+    - name: "Electric Bill Estimate"
+      unique_id: electric_bill_estimate
+      state: >
+        {% set usage = states('sensor.monthly_house_energy') | float(0) %}
+        {% set tier1_rate = 0.126223 %}
+        {% set tier2_rate = 0.116230 %}
+        {% set tier1_limit = 800 %}
+        {% if usage <= tier1_limit %}
+          {{ (usage * tier1_rate) | round(2) }}
+        {% else %}
+          {{ ((tier1_limit * tier1_rate) + ((usage - tier1_limit) * tier2_rate)) | round(2) }}
+        {% endif %}
+      unit_of_measurement: "$"
+      device_class: monetary
+      icon: mdi:lightning-bolt
+
+    - name: "Billing Cycle Usage"
+      unique_id: billing_cycle_usage
+      state: "{{ states('sensor.monthly_house_energy') | float(0) | round(1) }}"
+      unit_of_measurement: "kWh"
+      icon: mdi:meter-electric
+
+    - name: "Tier 1 Remaining"
+      unique_id: tier1_remaining
+      state: >
+        {% set usage = states('sensor.monthly_house_energy') | float(0) %}
+        {{ [800 - usage, 0] | max | round(1) }}
+      unit_of_measurement: "kWh"
+      icon: mdi:gauge
