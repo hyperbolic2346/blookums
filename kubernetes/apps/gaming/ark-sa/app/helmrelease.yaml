@@ -63,6 +63,10 @@ spec:
             enabled: true
             port: 7778
             protocol: UDP
+          query:
+            enabled: true
+            port: 27015
+            protocol: UDP
           rcon:
             enabled: true
             port: 27020
