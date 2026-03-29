@@ -674,6 +674,12 @@
   - trigger: state
     entity_id: binary_sensor.master_bath0_motion
     to: 'on'
+  conditions:
+  - condition: not
+    conditions:
+    - condition: state
+      entity_id: input_select.master_bathroom_occupancy
+      state: Unknown
   actions:
   - action: input_select.select_option
     target:
@@ -683,23 +689,22 @@
   mode: single
 - id: '1774414069387'
   alias: Bathroom - Toilet Motion Detected
-  description: Inner sensor confirms someone is at the toilet - play Sound Princess
+  description: Inner sensor confirms someone is at the toilet - start sound only if not already playing
   triggers:
   - trigger: state
     entity_id: binary_sensor.master_bath1_motion
     to: 'on'
-  conditions:
-  - condition: not
-    conditions:
-    - condition: state
-      entity_id: input_select.master_bathroom_occupancy
-      state: Occupied
   actions:
   - action: input_select.select_option
     target:
       entity_id: input_select.master_bathroom_occupancy
     data:
       option: Occupied
+  - condition: not
+    conditions:
+    - condition: state
+      entity_id: media_player.master_bathroom
+      state: playing
   - action: media_player.volume_set
     target:
       entity_id: media_player.master_bathroom
@@ -738,24 +743,23 @@
   mode: single
 - id: '1774414307172'
   alias: Bathroom - Stop Sound on Exit
-  description: When occupied changes to unknown (door sensor), wait then stop if not
-    re-occupied
+  description: When occupied changes to unknown (entrance sensor), wait then stop if not re-occupied
   triggers:
   - trigger: state
-    entity_id: input_select.bathroom_occupancy
+    entity_id: input_select.master_bathroom_occupancy
     from: Occupied
     to: Unknown
   actions:
   - delay: 00:01:30
   - condition: state
-    entity_id: input_select.bathroom_occupancy
+    entity_id: input_select.master_bathroom_occupancy
     state: Unknown
   - action: media_player.media_stop
     target:
       entity_id: media_player.master_bathroom
   - action: input_select.select_option
     target:
-      entity_id: input_select.bathroom_occupancy
+      entity_id: input_select.master_bathroom_occupancy
     data:
       option: Empty
   mode: restart
