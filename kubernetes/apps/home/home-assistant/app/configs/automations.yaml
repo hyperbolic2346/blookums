@@ -716,12 +716,12 @@
     data:
       media_content_id: "https://hass.burntsheep.com/local/{{ states('input_select.bathroom_sound') }}.mp3"
       media_content_type: music
-  - delay: 00:00:02
+  - delay: 00:00:03
   - action: media_player.repeat_set
     target:
       entity_id: media_player.master_bathroom
     data:
-      repeat: all
+      repeat: one
   mode: single
 - id: '1774414142604'
   alias: Bathroom - Unknown Timeout
