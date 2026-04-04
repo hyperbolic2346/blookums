@@ -648,12 +648,12 @@
       entity_id: scene.master_bath_off
   mode: single
 - id: '1774414069387'
-  alias: Bathroom - Start Sound on Occupied
-  description: When occupancy becomes Occupied (set by AppDaemon), start privacy sound
+  alias: Bathroom - Start Sound on Toilet Motion
+  description: Start privacy sound when toilet sensor fires, not on room entry
   triggers:
   - trigger: state
-    entity_id: input_select.master_bathroom_occupancy
-    to: Occupied
+    entity_id: binary_sensor.master_bath1_motion
+    to: 'on'
   conditions:
   - condition: not
     conditions:
