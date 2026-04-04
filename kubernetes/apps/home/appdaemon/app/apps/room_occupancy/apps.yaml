@@ -1,0 +1,18 @@
+master_bath_occupancy:
+  module: room_occupancy
+  class: RoomOccupancy
+  sensors:
+    - entity: binary_sensor.upstairs_hall_motion
+      zone: exterior
+    - entity: binary_sensor.master_bath0_motion
+      zone: boundary
+    - entity: binary_sensor.master_bath1_motion
+      zone: interior
+  # Seconds to correlate sequential sensor hits for direction detection
+  direction_window: 10
+  # Seconds to wait after exit detected before confirming (in case they come back)
+  exit_grace_period: 90
+  # Failsafe: max seconds to stay occupied with zero sensor activity
+  safety_timeout: 1800
+  # HA entity to write occupancy state to (Empty / Occupied / Pending Exit)
+  occupancy_entity: input_select.master_bathroom_occupancy

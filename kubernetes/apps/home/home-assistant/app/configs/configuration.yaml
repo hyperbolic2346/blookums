@@ -18,6 +18,7 @@ input_select:
       - Empty
       - Unknown
       - Occupied
+      - Pending Exit
     initial: Empty
   bathroom_sound:
     name: Bathroom Sound

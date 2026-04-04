@@ -71,26 +71,6 @@
       - service: notify.persistent_notification
         data:
           message: 'Low battery warning for: {{sensors}}'
-- id: '1624256064991'
-  alias: Master Bath Motion Lights
-  description: ''
-  use_blueprint:
-    path: networkingcat/yet_another_motion_automation.yaml
-    input:
-      time_scene_night: '21:00:00'
-      motion_entity: group.master_bath_motion
-      no_motion_wait: 300
-      scene_morning: scene.master_bath_morning
-      scene_day: scene.master_bath_day
-      scene_evening: scene.master_bath_evening
-      scene_night: scene.master_bath_late_night
-      time_scene_evening: '19:00:00'
-      time_scene_day: '11:00:00'
-      time_scene_morning: 06:00:00
-      light_target:
-        entity_id: light.cans_master_bath
-      time_scene_ambient_end: 00:00:00
-      scene_no_motion: scene.master_bath_off
 - id: '1624345700844'
   alias: Basement Garage
   description: ''
@@ -623,41 +603,6 @@
         data: {}
         target:
           entity_id: switch.master_bath_fan
-- id: '1757042780777'
-  alias: Bathroom Music
-  description: ''
-  triggers:
-  - trigger: state
-    entity_id:
-    - binary_sensor.master_bath1_motion
-    from: 'off'
-    to: 'on'
-  conditions: []
-  actions:
-  - action: media_player.play_media
-    target:
-      entity_id: media_player.master_bathroom
-    data:
-      media_content_id: x-file-cifs://fileserv/pixy/itunes/itunes%20media/Music/Compilations/In%20The%20Zone/02%20(I%20Got%20That)%20Boom%20Boom.m4a
-      media_content_type: track
-    metadata:
-      title: (I Got That) Boom Boom
-      thumbnail: null
-      media_class: track
-      children_media_class:
-      navigateIds:
-      - {}
-      - media_content_type: library
-        media_content_id: ''
-      - media_content_type: track
-        media_content_id: A:TRACKS
-  - action: media_player.volume_set
-    metadata: {}
-    data:
-      volume_level: 0.6
-    target:
-      device_id: 7442640c9326071b8f20159cf7dadc4f
-  mode: single
 - id: '1763533309674'
   alias: Low Battery Notifications & Actions
   description: ''
@@ -667,44 +612,55 @@
       include_easy_notify: enable_easy_notify
       notify_device:
       - e10473c70f4c3a58f0158dcd5d784639
-- id: '1774413998172'
-  alias: Bathroom - Entrance Motion
-  description: Entrance sensor fired - could be entry or exit, set unknown
+- id: '1774415000001'
+  alias: Master Bath - Lights On (Occupied)
+  description: Turn on bathroom lights with time-of-day scene when occupancy becomes Occupied
   triggers:
   - trigger: state
-    entity_id: binary_sensor.master_bath0_motion
-    to: 'on'
+    entity_id: input_select.master_bathroom_occupancy
+    to: Occupied
   conditions:
-  - condition: not
-    conditions:
-    - condition: state
-      entity_id: input_select.master_bathroom_occupancy
-      state: Unknown
+  - condition: state
+    entity_id: light.cans_master_bath
+    state: 'off'
   actions:
-  - action: input_select.select_option
+  - action: scene.turn_on
     target:
-      entity_id: input_select.master_bathroom_occupancy
-    data:
-      option: Unknown
+      entity_id: >
+        {% set hour = now().hour %}
+        {% if hour >= 21 %}scene.master_bath_late_night
+        {% elif hour >= 19 %}scene.master_bath_evening
+        {% elif hour >= 11 %}scene.master_bath_day
+        {% elif hour >= 6 %}scene.master_bath_morning
+        {% else %}scene.master_bath_late_night
+        {% endif %}
+  mode: single
+- id: '1774415000002'
+  alias: Master Bath - Lights Off (Empty)
+  description: Turn off bathroom lights when occupancy becomes Empty
+  triggers:
+  - trigger: state
+    entity_id: input_select.master_bathroom_occupancy
+    to: Empty
+  actions:
+  - action: scene.turn_on
+    target:
+      entity_id: scene.master_bath_off
   mode: single
 - id: '1774414069387'
-  alias: Bathroom - Toilet Motion Detected
-  description: Inner sensor confirms someone is at the toilet - start sound only if not already playing
+  alias: Bathroom - Start Sound on Occupied
+  description: When occupancy becomes Occupied (set by AppDaemon), start privacy sound
   triggers:
   - trigger: state
-    entity_id: binary_sensor.master_bath1_motion
-    to: 'on'
-  actions:
-  - action: input_select.select_option
-    target:
-      entity_id: input_select.master_bathroom_occupancy
-    data:
-      option: Occupied
+    entity_id: input_select.master_bathroom_occupancy
+    to: Occupied
+  conditions:
   - condition: not
     conditions:
     - condition: state
       entity_id: media_player.master_bathroom
       state: playing
+  actions:
   - action: media_player.volume_set
     target:
       entity_id: media_player.master_bathroom
@@ -723,43 +679,19 @@
     data:
       repeat: one
   mode: single
-- id: '1774414142604'
-  alias: Bathroom - Unknown Timeout
-  description: If state stays unknown for 2 min with no toilet motion, assume empty
-  triggers:
-  - trigger: state
-    entity_id: input_select.master_bathroom_occupancy
-    to: Unknown
-    for: 00:02:00
-  actions:
-  - action: media_player.media_stop
-    target:
-      entity_id: media_player.master_bathroom
-  - action: input_select.select_option
-    target:
-      entity_id: input_select.master_bathroom_occupancy
-    data:
-      option: Empty
-  mode: single
 - id: '1774414307172'
-  alias: Bathroom - Stop Sound on Exit
-  description: When occupied changes to unknown (entrance sensor), wait then stop if not re-occupied
+  alias: Bathroom - Stop Sound on Empty
+  description: When occupancy becomes Empty (set by AppDaemon), stop privacy sound
   triggers:
   - trigger: state
     entity_id: input_select.master_bathroom_occupancy
-    from: Occupied
-    to: Unknown
-  actions:
-  - delay: 00:01:30
+    to: Empty
+  conditions:
   - condition: state
-    entity_id: input_select.master_bathroom_occupancy
-    state: Unknown
+    entity_id: media_player.master_bathroom
+    state: playing
+  actions:
   - action: media_player.media_stop
     target:
       entity_id: media_player.master_bathroom
-  - action: input_select.select_option
-    target:
-      entity_id: input_select.master_bathroom_occupancy
-    data:
-      option: Empty
-  mode: restart
+  mode: single
