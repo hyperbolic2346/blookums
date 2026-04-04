@@ -127,6 +127,8 @@ views:
         icon: mdi:fan
       - type: entities
         entities:
+        - entity: input_select.master_bathroom_occupancy
+          name: Occupancy
         - entity: binary_sensor.master_bath0_motion
           name: Motion 0
         - entity: binary_sensor.master_bath1_motion
@@ -165,16 +167,11 @@ views:
       entity: sensor.master_hall_humidity
       detail: 1
       name: Master Hall Humidity
-    - type: horizontal-stack
-      cards:
-      - type: entity
-        entity: automation.turn_on_shower_cans_with_fan
-        name: Shower Lights with Fan
-        icon: mdi:light-recessed
-        state_color: true
-      - type: entity
-        entity: automation.master_bath_motion_lights
-        state_color: true
+    - type: entity
+      entity: automation.turn_on_shower_cans_with_fan
+      name: Shower Lights with Fan
+      icon: mdi:light-recessed
+      state_color: true
     - graph: line
       type: sensor
       entity: sensor.master_bathroom_humidity_derivative

@@ -295,10 +295,6 @@ views:
         name: Shower+Cans
         icon: mdi:light-recessed
         state_color: true
-      - type: entity
-        entity: automation.master_bath_motion_lights
-        name: Auto Lights
-        state_color: true
     - type: entities
       entities:
       - entity: binary_sensor.master_bath0_motion
