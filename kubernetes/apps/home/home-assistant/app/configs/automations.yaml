@@ -621,7 +621,7 @@
     to: Occupied
   conditions:
   - condition: state
-    entity_id: light.cans_master_bath
+    entity_id: light.master_bath_cans
     state: 'off'
   actions:
   - choose:
