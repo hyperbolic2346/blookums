@@ -718,3 +718,54 @@
     target:
       entity_id: media_player.master_bathroom
   mode: single
+- id: '1775500000001'
+  alias: Bedtime Security Check
+  description: After 10pm, if office has been unoccupied for 15 min, notify about open doors/locks/garage
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.office_occupancy
+    to: 'off'
+    for: 00:15:00
+  conditions:
+  - condition: time
+    after: '22:00:00'
+    before: '04:00:00'
+  actions:
+  - variables:
+      issues: >
+        {% set ns = namespace(items=[]) %}
+        {% if is_state('lock.front_door', 'unlocked') %}
+          {% set ns.items = ns.items + ['Front door unlocked'] %}
+        {% endif %}
+        {% if is_state('cover.left_bay_door', 'open') %}
+          {% set ns.items = ns.items + ['Left bay door open'] %}
+        {% endif %}
+        {% if is_state('cover.middle_bay_door', 'open') %}
+          {% set ns.items = ns.items + ['Middle bay door open'] %}
+        {% endif %}
+        {% if is_state('cover.right_bay_door', 'open') %}
+          {% set ns.items = ns.items + ['Right bay door open'] %}
+        {% endif %}
+        {% if is_state('cover.basement', 'open') %}
+          {% set ns.items = ns.items + ['Basement garage open'] %}
+        {% endif %}
+        {% if is_state('cover.wilson_gate', 'open') %}
+          {% set ns.items = ns.items + ['Wilson gate open'] %}
+        {% endif %}
+        {% if is_state('cover.brigman_gate', 'open') %}
+          {% set ns.items = ns.items + ['Brigman gate open'] %}
+        {% endif %}
+        {% if is_state('sensor.template_office_door', 'open') %}
+          {% set ns.items = ns.items + ['Office door open'] %}
+        {% endif %}
+        {% if is_state('light.back_porch', 'on') %}
+          {% set ns.items = ns.items + ['Back porch light on'] %}
+        {% endif %}
+        {{ ns.items }}
+  - condition: template
+    value_template: "{{ issues | length > 0 }}"
+  - action: notify.mikeandjolei
+    data:
+      title: Bedtime Security Check
+      message: "{{ issues | join(', ') }}"
+  mode: single
