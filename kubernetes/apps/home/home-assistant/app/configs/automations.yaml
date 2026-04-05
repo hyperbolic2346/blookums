@@ -624,39 +624,15 @@
     entity_id: light.master_bath_cans
     state: 'off'
   actions:
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: "{{ now().hour >= 21 }}"
-      sequence:
-      - action: scene.turn_on
-        target:
-          entity_id: scene.master_bath_late_night
-    - conditions:
-      - condition: template
-        value_template: "{{ now().hour >= 19 }}"
-      sequence:
-      - action: scene.turn_on
-        target:
-          entity_id: scene.master_bath_evening
-    - conditions:
-      - condition: template
-        value_template: "{{ now().hour >= 11 }}"
-      sequence:
-      - action: scene.turn_on
-        target:
-          entity_id: scene.master_bath_day
-    - conditions:
-      - condition: template
-        value_template: "{{ now().hour >= 6 }}"
-      sequence:
-      - action: scene.turn_on
-        target:
-          entity_id: scene.master_bath_morning
-    default:
-    - action: scene.turn_on
-      target:
-        entity_id: scene.master_bath_late_night
+  - action: scene.turn_on
+    data:
+      entity_id: >
+        {% set hour = now().hour %}
+        {% if hour >= 21 %}scene.master_bath_late_night
+        {% elif hour >= 19 %}scene.master_bath_evening
+        {% elif hour >= 11 %}scene.master_bath_day
+        {% elif hour >= 6 %}scene.master_bath_morning
+        {% else %}scene.master_bath_late_night{% endif %}
   mode: single
 - id: '1774415000002'
   alias: Master Bath - Lights Off (Empty)
