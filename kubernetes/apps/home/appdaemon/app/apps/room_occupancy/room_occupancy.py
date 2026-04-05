@@ -84,29 +84,24 @@ class RoomOccupancy(hass.Hass):
 
     def _handle_occupied(self, zone, direction):
         self._reset_safety_timer()
-        if zone == ZONE_BOUNDARY:
-            # Door sensor fired while occupied — someone is at the door, possibly leaving.
-            # This is the ONLY signal that can start an exit. Exterior sensors are ignored
-            # while occupied (other people walking by in the hall).
+        # While occupied, only the exit SEQUENCE matters: boundary then exterior.
+        # Boundary alone just means someone is near the door (not necessarily leaving).
+        # Exterior alone is someone in the hall (ignored).
+        if zone == ZONE_EXTERIOR and direction == "exit":
+            # Exterior fired with a recent boundary hit — boundary→exterior = leaving
             self._set_occupancy(STATE_PENDING_EXIT)
             self.pending_exit_handle = self.run_in(
                 self._on_exit_confirmed, self.exit_grace_period
             )
 
     def _handle_pending_exit(self, zone, direction):
-        if zone == ZONE_INTERIOR:
-            # Interior sensor — they're still in the room, cancel exit
+        if zone == ZONE_INTERIOR or zone == ZONE_BOUNDARY:
+            # Still inside or at the door — cancel exit
             self._cancel(self.pending_exit_handle)
             self.pending_exit_handle = None
             self._set_occupancy(STATE_OCCUPIED)
             self._reset_safety_timer()
-        elif zone == ZONE_BOUNDARY:
-            # Door sensor again — could be lingering at the door, restart grace period
-            self._cancel(self.pending_exit_handle)
-            self.pending_exit_handle = self.run_in(
-                self._on_exit_confirmed, self.exit_grace_period
-            )
-        # Exterior sensor ignored — someone else in the hall
+        # Exterior sensor during pending exit — doesn't change anything
 
     # ── Direction detection ───────────────────────────────────────────
 
