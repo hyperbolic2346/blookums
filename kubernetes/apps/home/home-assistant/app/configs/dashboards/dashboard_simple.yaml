@@ -129,6 +129,9 @@ views:
         entities:
         - entity: input_select.master_bathroom_occupancy
           name: Occupancy
+        - entity: automation.bathroom_start_sound_on_toilet_motion
+          name: Potty Princess
+          icon: mdi:music-note-off
         - entity: binary_sensor.master_bath0_motion
           name: Motion 0
         - entity: binary_sensor.master_bath1_motion
