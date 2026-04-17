@@ -18,6 +18,7 @@ resources:
   - ./_pvc/ks.yaml
   - ./bazarr/ks.yaml
   - ./immich/ks.yaml
+  - ./jellyfin/ks.yaml
   - ./lidarr/ks.yaml
   - ./nextcloud/ks.yaml
   - ./overseerr/ks.yaml
