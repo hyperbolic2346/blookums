@@ -35,6 +35,7 @@ objects:
   track:
     - amazon
     - bear
+    - bird
     - car
     - cat
     - cow
@@ -42,9 +43,14 @@ objects:
     - dog
     - face
     - fedex
+    - fox
     - license_plate
     - package
     - person
+    - rabbit
+    - raccoon
+    - skunk
+    - squirrel
     - ups
 
 record:
@@ -67,17 +73,26 @@ review:
     labels:
       - amazon
       - bear
+      - bird
       - car
+      - cat
+      - cow
       - deer
       - dog
       - fedex
+      - fox
       - package
       - person
+      - rabbit
+      - raccoon
+      - skunk
+      - squirrel
       - ups
   detections:
     labels:
       - amazon
       - bear
+      - bird
       - car
       - cat
       - cow
@@ -85,9 +100,14 @@ review:
       - dog
       - face
       - fedex
+      - fox
       - license_plate
       - package
       - person
+      - rabbit
+      - raccoon
+      - skunk
+      - squirrel
       - ups
 
 snapshots:
@@ -99,6 +119,9 @@ snapshots:
     default: 365
     objects:
       bear: 3650
+      deer: 365
+      fox: 365
+      raccoon: 365
 
 cameras:
   # --
