@@ -33,4 +33,4 @@ spec:
       APP: jellyfin
       VOLSYNC_CLAIM: jellyfin-config
       VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
-      VOLSYNC_CAPACITY: 10Gi
+      VOLSYNC_CAPACITY: 50Gi
