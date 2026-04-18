@@ -1,16 +1,19 @@
 """
-RoomOccupancy - Direction-of-travel occupancy detection for Home Assistant.
+RoomOccupancy - Wasp-in-a-box occupancy detection for Home Assistant.
 
-Uses sensor zones (exterior/boundary/interior) to determine whether someone
-is entering or leaving a room. Writes occupancy state to an HA input_select
-entity so that HA automations can react (lights, sound, fans, etc.).
+Simple two-sensor model:
+  - Interior sensor fires → Occupied (something went in the box)
+  - Boundary sensor fires → Pending Exit (something crossed the door,
+    could be entering or leaving — we don't know)
+  - If Pending Exit holds long enough with no interior activity → Empty
 
-Reusable across rooms — configure sensors, zones, and timings in apps.yaml.
+Exterior sensors are ignored (too noisy / unreliable).
+
+Reusable across rooms — configure sensors and timings in apps.yaml.
 """
 
 import appdaemon.plugins.hass.hassapi as hass
-from collections import deque
-from datetime import datetime, timedelta
+from datetime import datetime
 
 
 STATE_EMPTY = "Empty"
@@ -27,27 +30,28 @@ ZONE_MAP = {"exterior": ZONE_EXTERIOR, "boundary": ZONE_BOUNDARY, "interior": ZO
 class RoomOccupancy(hass.Hass):
 
     def initialize(self):
-        self.sensor_hits = deque(maxlen=50)
         self.occupancy = STATE_EMPTY
         self.pending_exit_handle = None
         self.safety_handle = None
 
         # Config
         self.sensors = self.args.get("sensors", [])
-        self.direction_window = self.args.get("direction_window", 10)
-        self.exit_grace_period = self.args.get("exit_grace_period", 90)
+        self.exit_grace_period = self.args.get("exit_grace_period", 120)
         self.safety_timeout = self.args.get("safety_timeout", 1800)
         self.occupancy_entity = self.args["occupancy_entity"]
 
-        # Build sensor zone lookup
+        # Build sensor zone lookup and subscribe
         self.sensor_zones = {}
         for sensor in self.sensors:
             entity = sensor["entity"]
             zone = ZONE_MAP[sensor["zone"]]
             self.sensor_zones[entity] = zone
+            if zone == ZONE_EXTERIOR:
+                self.log(f"Skipping exterior sensor {entity} (ignored)")
+                continue
             self.listen_state(self._on_motion, entity, new="on")
 
-        # Sync state from HA entity on startup (in case of restart mid-occupancy)
+        # Sync state from HA entity on startup
         current = self.get_state(self.occupancy_entity)
         if current in (STATE_OCCUPIED, STATE_PENDING_EXIT):
             self.occupancy = STATE_OCCUPIED
@@ -55,72 +59,51 @@ class RoomOccupancy(hass.Hass):
             self.log(f"Restored state {current} from {self.occupancy_entity}")
 
         self.log(
-            f"Initialized: {len(self.sensors)} sensors, "
+            f"Initialized: sensors={[s['entity'] for s in self.sensors if ZONE_MAP[s['zone']] != ZONE_EXTERIOR]}, "
             f"state={self.occupancy}, entity={self.occupancy_entity}"
         )
 
-    # ── Sensor callbacks ──────────────────────────────────────────────
+    # ── Sensor callback ──────────────────────────────────────────────
 
     def _on_motion(self, entity, attribute, old, new, kwargs):
-        now = datetime.now()
         zone = self.sensor_zones[entity]
-        self.sensor_hits.append((now, entity, zone))
+        self.log(f"Motion: {entity} zone={zone} state={self.occupancy}")
 
-        direction = self._detect_direction(now, zone)
-        self.log(f"Motion: {entity} zone={zone} dir={direction} state={self.occupancy}")
+        if zone == ZONE_INTERIOR:
+            self._on_interior()
+        elif zone == ZONE_BOUNDARY:
+            self._on_boundary()
 
+    def _on_interior(self):
+        """Interior sensor fired — someone is definitely in the room."""
+        self._cancel(self.pending_exit_handle)
+        self.pending_exit_handle = None
+        if self.occupancy != STATE_OCCUPIED:
+            self._set_occupancy(STATE_OCCUPIED)
+        self._reset_safety_timer()
+
+    def _on_boundary(self):
+        """Boundary (door) sensor fired — someone crossed the threshold.
+        Could be entering or leaving. If we were occupied, start the
+        exit countdown. If empty, assume entry."""
         if self.occupancy == STATE_EMPTY:
-            self._handle_empty(zone, direction)
+            # Door sensor while empty — someone walking in
+            self._set_occupancy(STATE_OCCUPIED)
+            self._reset_safety_timer()
         elif self.occupancy == STATE_OCCUPIED:
-            self._handle_occupied(zone, direction)
-        elif self.occupancy == STATE_PENDING_EXIT:
-            self._handle_pending_exit(zone, direction)
-
-    def _handle_empty(self, zone, direction):
-        if zone == ZONE_EXTERIOR and direction != "entry":
-            return
-        self._set_occupancy(STATE_OCCUPIED)
-        self._reset_safety_timer()
-
-    def _handle_occupied(self, zone, direction):
-        self._reset_safety_timer()
-        # While occupied, only the exit SEQUENCE matters: boundary then exterior.
-        # Boundary alone just means someone is near the door (not necessarily leaving).
-        # Exterior alone is someone in the hall (ignored).
-        if zone == ZONE_EXTERIOR and direction == "exit":
-            # Exterior fired with a recent boundary hit — boundary→exterior = leaving
+            # Door sensor while occupied — might be leaving
             self._set_occupancy(STATE_PENDING_EXIT)
+            self._cancel(self.pending_exit_handle)
             self.pending_exit_handle = self.run_in(
                 self._on_exit_confirmed, self.exit_grace_period
             )
-
-    def _handle_pending_exit(self, zone, direction):
-        if zone == ZONE_INTERIOR or zone == ZONE_BOUNDARY:
-            # Still inside or at the door — cancel exit
+        elif self.occupancy == STATE_PENDING_EXIT:
+            # Door sensor again while pending — could be coming back
+            # Reset the exit timer to give more time
             self._cancel(self.pending_exit_handle)
-            self.pending_exit_handle = None
-            self._set_occupancy(STATE_OCCUPIED)
-            self._reset_safety_timer()
-        # Exterior sensor during pending exit — doesn't change anything
-
-    # ── Direction detection ───────────────────────────────────────────
-
-    def _detect_direction(self, now, current_zone):
-        window = timedelta(seconds=self.direction_window)
-        recent = [
-            (t, e, z)
-            for t, e, z in self.sensor_hits
-            if now - t <= window and z != current_zone
-        ]
-        if not recent:
-            return "unknown"
-
-        prev_zone = recent[-1][2]
-        if prev_zone < current_zone:
-            return "entry"
-        elif prev_zone > current_zone:
-            return "exit"
-        return "unknown"
+            self.pending_exit_handle = self.run_in(
+                self._on_exit_confirmed, self.exit_grace_period
+            )
 
     # ── Timer callbacks ───────────────────────────────────────────────
 
@@ -130,7 +113,7 @@ class RoomOccupancy(hass.Hass):
 
     def _on_safety_timeout(self, kwargs):
         self.safety_handle = None
-        self.log(f"Safety timeout after {self.safety_timeout}s - forcing empty")
+        self.log(f"Safety timeout after {self.safety_timeout}s — forcing empty")
         self._cancel(self.pending_exit_handle)
         self.pending_exit_handle = None
         self._set_occupancy(STATE_EMPTY)
