@@ -296,7 +296,7 @@
       labels:
       - car
       - bus
-      notify_device: 92d5ca6113694fe329d320923670a58e
+      notify_device: e10473c70f4c3a58f0158dcd5d784639
       zone_filter: true
 - id: '1701372880724'
   alias: Bear at the gate
@@ -311,7 +311,7 @@
       zones: []
       labels:
       - bear
-      notify_device: 92d5ca6113694fe329d320923670a58e
+      notify_device: e10473c70f4c3a58f0158dcd5d784639
       zone_filter: false
 - id: '1701382805155'
   alias: BEAR at rear gate
@@ -327,7 +327,7 @@
       - wilson
       labels:
       - bear
-      notify_device: 92d5ca6113694fe329d320923670a58e
+      notify_device: e10473c70f4c3a58f0158dcd5d784639
       zone_filter: false
 - id: '1701382856754'
   alias: BEAR! in backyard
@@ -343,7 +343,7 @@
       - wilson
       labels:
       - bear
-      notify_device: 92d5ca6113694fe329d320923670a58e
+      notify_device: e10473c70f4c3a58f0158dcd5d784639
       zone_filter: false
 - id: '1701382911466'
   alias: BEAR! at the door
@@ -359,7 +359,7 @@
       - wilson
       labels:
       - bear
-      notify_device: 92d5ca6113694fe329d320923670a58e
+      notify_device: e10473c70f4c3a58f0158dcd5d784639
       zone_filter: false
 - id: '1701383031148'
   alias: Person at door
@@ -375,7 +375,7 @@
       - wilson
       labels:
       - person
-      notify_device: 92d5ca6113694fe329d320923670a58e
+      notify_device: e10473c70f4c3a58f0158dcd5d784639
       zone_filter: false
 - id: '1731377750086'
   alias: Turn On Shower Cans with Fan
