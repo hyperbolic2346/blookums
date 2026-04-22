@@ -49,7 +49,7 @@ spec:
                 value: --concurrent=10
               - op: add
                 path: /spec/template/spec/containers/0/args/-
-                value: --requeue-dependency=5s
+                value: --requeue-dependency=30s
             target:
               kind: Deployment
               name: (kustomize-controller|helm-controller|source-controller)

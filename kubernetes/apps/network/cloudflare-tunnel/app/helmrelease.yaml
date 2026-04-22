@@ -44,10 +44,10 @@ spec:
                   httpGet:
                     path: /ready
                     port: &port 8080
-                  initialDelaySeconds: 0
+                  initialDelaySeconds: 10
                   periodSeconds: 10
-                  timeoutSeconds: 1
-                  failureThreshold: 3
+                  timeoutSeconds: 3
+                  failureThreshold: 10
               readiness: *probes
             securityContext:
               allowPrivilegeEscalation: false
