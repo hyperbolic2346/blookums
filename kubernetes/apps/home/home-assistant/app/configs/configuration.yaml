@@ -83,9 +83,9 @@ notify:
   - name: mikeandjolei
     platform: group
     services:
-    - service: mobile_app_dumpster_fire_2
+    - service: mobile_app_dumpster_fire
     - service: mobile_app_minionmama
-    - service: mobile_app_ipad
+    - service: mobile_app_joanna_s_iphone_new
 
 sensor:
  - platform: emoncms
