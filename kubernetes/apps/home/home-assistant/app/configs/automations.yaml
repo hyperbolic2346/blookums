@@ -567,7 +567,7 @@
     input:
       remember: true
       notify_device:
-      - 92d5ca6113694fe329d320923670a58e
+      - e10473c70f4c3a58f0158dcd5d784639
       camera_entities:
       - camera.gate
       cooldown: 30
