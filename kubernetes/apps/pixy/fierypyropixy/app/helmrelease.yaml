@@ -83,11 +83,14 @@ spec:
 
     route:
       main:
-        hostnames: ["fierypyropixy.com"]
+        hostnames: ["fierypyropixy.com", "www.fierypyropixy.com"]
         parentRefs:
           - name: internal
             namespace: kube-system
             sectionName: https-fierypyropixy-bare
+          - name: internal
+            namespace: kube-system
+            sectionName: https-fierypyropixy
         rules:
           - backendRefs:
               - identifier: main
