@@ -1,0 +1,8 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: skyhook-charts
+spec:
+  interval: 2h
+  url: https://skyhook-io.github.io/helm-charts

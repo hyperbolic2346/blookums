@@ -1,0 +1,39 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: radar
+  namespace: observability
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: radar
+      version: 1.5.9
+      sourceRef:
+        kind: HelmRepository
+        name: skyhook-charts
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    rbac:
+      create: true
+    auth:
+      mode: none
+    storage:
+      timeline: memory
+    persistence:
+      enabled: false
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 512Mi
