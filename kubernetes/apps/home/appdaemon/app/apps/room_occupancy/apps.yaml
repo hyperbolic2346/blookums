@@ -9,7 +9,7 @@ master_bath_occupancy:
     - entity: binary_sensor.master_bath1_motion
       zone: interior
   # Seconds to wait after door sensor before confirming empty (if no interior activity)
-  exit_grace_period: 120
+  exit_grace_period: 240
   # Failsafe: max seconds to stay occupied with zero sensor activity
   safety_timeout: 1800
   # HA entity to write occupancy state to (Empty / Occupied / Pending Exit)
