@@ -457,6 +457,22 @@
       - switch.master_bath_fan
     data: {}
   mode: single
+- id: '1747680000001'
+  alias: Clear Master Fan Override When Fan Off
+  description: Keeps input_boolean.master_fan_override in sync when the fan is turned
+    off via any path (UI, Sonoff button, voice, etc.), not just the Inovelli B2 scene
+    button. Without this, the override strands ON and silently disables BathFan.
+  trigger:
+  - platform: state
+    entity_id: switch.master_bath_fan
+    from: 'on'
+    to: 'off'
+  condition: []
+  action:
+  - service: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.master_fan_override
+  mode: single
 - id: '1741570858495'
   alias: Turn off Master Bath Automation
   description: Double Tap Off on stair light to turn off Master Bath Automatic lights
