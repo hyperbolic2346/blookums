@@ -10,4 +10,5 @@ resources:
   - ./minecraft/ks.yaml
   - ./sandstorm/ks.yaml
   - ./ark-sa/ks.yaml
+  - ./satisfactory/ks.yaml
   - ./valheim/ks.yaml
