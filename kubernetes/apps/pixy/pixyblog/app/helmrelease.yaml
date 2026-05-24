@@ -26,7 +26,7 @@ spec:
           main:
             image:
               repository: docker.io/library/wordpress
-              tag: 6-apache
+              tag: 7-apache
             envFrom:
               - secretRef:
                   name: pixyblog-secret
