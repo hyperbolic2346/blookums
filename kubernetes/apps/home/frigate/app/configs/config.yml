@@ -182,6 +182,12 @@ cameras:
         coordinates: 497,245,327,720,0,720,172,486,375,233,544,134,695,140
     objects:
       filters:
+        car:
+          # Reject the scene-sized blobs the model produces when rain+IR
+          # floods the wet driveway — those came in at 50-93% of frame
+          # last night, vs ~10-17% for real cars.
+          min_area: 6000
+          max_area: 240000
         person:
           mask:
             - 0.372,0.894,0.289,0.854,0.217,0.398,0.288,0.301,0.237,0.103,0.174,0.135,0.092,0.383,0.189,0.417,0.277,0.863,0.231,0.893,0.202,1,0.405,1
