@@ -1,0 +1,155 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: quartermaster
+  namespace: batcave
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: quartermaster
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    defaultPodOptions:
+      imagePullSecrets:
+        - name: ghcr-pull
+
+    controllers:
+      api:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        initContainers:
+          # 1) create the quartermaster database + role on the shared CNPG cluster
+          01-init-db:
+            image:
+              repository: ghcr.io/home-operations/postgres-init
+              tag: 18.4@sha256:5086f94abc783f1147d7c2a32c01db00ab594820026e4f6a82ac2af3dbde7fc7
+            envFrom: &envFrom
+              - secretRef:
+                  name: quartermaster-secret
+          # 2) seed legacy data from the mounted 1Password blob
+          #    (idempotent: skips if already populated)
+          02-db-seed:
+            image: &apiImage
+              repository: ghcr.io/hyperbolic2346/quartermaster-api
+              tag: 0.1.1
+            command: ["python", "-m", "app.seed.import_legacy"]
+            env:
+              QM_SEED_FILE: /seed/legacy_data.json
+            envFrom: *envFrom
+
+        containers:
+          main:
+            image: *apiImage
+            env:
+              QM_CANONICAL_HOST: "quartermaster.${SECRET_DOMAIN}"
+              QM_REDIRECT_HOSTS: "qm.${SECRET_DOMAIN}"
+              QM_SECURE_COOKIES: "true"
+              QM_CORS_ORIGINS: ""
+            envFrom: *envFrom
+            probes:
+              liveness: &apiProbe
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/health
+                    port: 8000
+                  initialDelaySeconds: 10
+                  periodSeconds: 15
+                  timeoutSeconds: 2
+                  failureThreshold: 3
+              readiness: *apiProbe
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 25m
+                memory: 128Mi
+              limits:
+                memory: 384Mi
+
+      web:
+        containers:
+          main:
+            image:
+              repository: ghcr.io/hyperbolic2346/quartermaster-web
+              tag: 0.1.1
+            probes:
+              liveness: &webProbe
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 80
+                  initialDelaySeconds: 5
+                  periodSeconds: 30
+                  timeoutSeconds: 2
+                  failureThreshold: 3
+              readiness: *webProbe
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                memory: 128Mi
+
+    persistence:
+      # 1Password-backed seed data, mounted only into the seed init container.
+      seed:
+        type: secret
+        name: quartermaster-data
+        advancedMounts:
+          api:
+            02-db-seed:
+              - path: /seed
+
+    service:
+      api:
+        controller: api
+        ports:
+          http:
+            port: 8000
+      web:
+        controller: web
+        ports:
+          http:
+            port: 80
+
+    route:
+      app:
+        hostnames: ["quartermaster.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: external
+            namespace: kube-system
+            sectionName: https
+        rules:
+          # /api -> FastAPI backend (more specific prefix wins per Gateway API)
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /api
+            backendRefs:
+              - identifier: api
+                port: 8000
+          # everything else -> the SvelteKit static app
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /
+            backendRefs:
+              - identifier: web
+                port: 80
