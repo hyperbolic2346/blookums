@@ -42,7 +42,7 @@ spec:
           02-db-seed:
             image: &apiImage
               repository: ghcr.io/hyperbolic2346/quartermaster-api
-              tag: 0.1.3
+              tag: 0.1.4
             command: ["python", "-m", "app.seed.import_legacy"]
             env:
               QM_SEED_FILE: /seed/legacy_data.json
@@ -84,7 +84,7 @@ spec:
           main:
             image:
               repository: ghcr.io/hyperbolic2346/quartermaster-web
-              tag: 0.1.3
+              tag: 0.1.4
             probes:
               liveness: &webProbe
                 enabled: true
