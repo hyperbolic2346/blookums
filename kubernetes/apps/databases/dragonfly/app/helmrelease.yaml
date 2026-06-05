@@ -18,6 +18,9 @@ spec:
       strategy: rollback
       retries: 3
   values:
+    defaultPodOptions:
+      # v5 changed the default; the operator needs in-cluster API access.
+      automountServiceAccountToken: true
     controllers:
       dragonfly-operator:
         strategy: RollingUpdate
