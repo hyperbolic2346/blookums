@@ -1,0 +1,19 @@
+---
+# 301 the short hostname (qm) to the canonical one (quartermaster).
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: quartermaster-redirect
+  namespace: batcave
+spec:
+  parentRefs:
+    - name: external
+      namespace: kube-system
+      sectionName: https
+  hostnames: ["qm.${SECRET_DOMAIN}"]
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            hostname: "quartermaster.${SECRET_DOMAIN}"
+            statusCode: 301
