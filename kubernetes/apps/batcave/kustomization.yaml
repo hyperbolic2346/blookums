@@ -9,3 +9,4 @@ components:
 
 resources:
   - ./quartermaster/ks.yaml
+  - ./stockpile/ks.yaml
