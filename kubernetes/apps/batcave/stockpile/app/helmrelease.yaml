@@ -22,7 +22,7 @@ spec:
   values:
     defaultPodOptions:
       imagePullSecrets:
-        - name: ghcr-pull
+        - name: stockpile-ghcr-pull
 
     controllers:
       api:
@@ -56,7 +56,7 @@ spec:
             command: ["node", "dist/main.js"]
             env:
               API_PORT: "8000"
-              REDIS_URL: "redis://dragonfly.databases.svc.cluster.local:6379"
+              REDIS_URL: "redis://stockpile-redis.batcave.svc.cluster.local:6379"
               AUTH_CALLBACK_URL: "https://stockpile.${SECRET_DOMAIN}/api/auth/google/callback"
               AUTH_SECURE_COOKIES: "true"
               AUTH_POST_LOGIN_REDIRECT: "/"
@@ -92,7 +92,7 @@ spec:
             image: *apiImage
             command: ["node", "dist/worker/main.js"]
             env:
-              REDIS_URL: "redis://dragonfly.databases.svc.cluster.local:6379"
+              REDIS_URL: "redis://stockpile-redis.batcave.svc.cluster.local:6379"
             envFrom: *envFrom
             probes:
               liveness:
@@ -139,6 +139,34 @@ spec:
               limits:
                 memory: 192Mi
 
+      # Dedicated ephemeral Redis for BullMQ (plain Redis is natively
+      # BullMQ-compatible; avoids the shared Dragonfly's emulated-cluster mode).
+      redis:
+        containers:
+          main:
+            image:
+              repository: public.ecr.aws/docker/library/redis
+              tag: 7-alpine
+            command: ["redis-server", "--save", "", "--appendonly", "no"]
+            probes:
+              liveness: &redisProbe
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 6379
+                  initialDelaySeconds: 5
+                  periodSeconds: 20
+              readiness: *redisProbe
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                memory: 128Mi
+
     service:
       api:
         controller: api
@@ -150,6 +178,11 @@ spec:
         ports:
           http:
             port: 3000
+      redis:
+        controller: redis
+        ports:
+          redis:
+            port: 6379
 
     route:
       app:
