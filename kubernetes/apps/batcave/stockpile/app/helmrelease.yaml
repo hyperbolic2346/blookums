@@ -146,7 +146,7 @@ spec:
           main:
             image:
               repository: public.ecr.aws/docker/library/redis
-              tag: 7-alpine
+              tag: 8-alpine
             command: ["redis-server", "--save", "", "--appendonly", "no"]
             probes:
               liveness: &redisProbe
