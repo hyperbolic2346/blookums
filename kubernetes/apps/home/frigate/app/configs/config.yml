@@ -185,9 +185,11 @@ cameras:
         car:
           # Reject the scene-sized blobs the model produces when rain+IR
           # floods the wet driveway — those came in at 50-93% of frame
-          # last night, vs ~10-17% for real cars.
+          # last night, vs ~10-17% for real cars. Also catches the IR
+          # spider/web false positives that come in around 40% of frame
+          # (~239k area at 1024x578) — those squeaked past the old 240000.
           min_area: 6000
-          max_area: 240000
+          max_area: 150000
         person:
           mask:
             - 0.372,0.894,0.289,0.854,0.217,0.398,0.288,0.301,0.237,0.103,0.174,0.135,0.092,0.383,0.189,0.417,0.277,0.863,0.231,0.893,0.202,1,0.405,1
