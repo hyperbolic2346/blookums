@@ -473,6 +473,30 @@
     target:
       entity_id: input_boolean.master_fan_override
   mode: single
+- id: '1782000000001'
+  alias: Failsafe - Clear Master Fan Override When Fan Confirmed Off
+  description: >-
+    Clears input_boolean.master_fan_override only when the fan is CONFIRMED off,
+    never on 'unavailable'. 'unavailable' = unknown state (the relay usually
+    holds last state, so the fan may still be running) — clearing then would
+    cancel a legit manual hold. On a real 'off' we clear so AppDaemon BathFan
+    re-engages and can re-assert the fan if the room is still humid. Pairs with
+    script.master_bath_fan_hold_on (the set-side fix).
+  trigger:
+  - platform: state
+    entity_id: switch.master_bath_fan
+    to: 'off'
+    for:
+      minutes: 1
+  condition:
+  - condition: state
+    entity_id: input_boolean.master_fan_override
+    state: 'on'
+  action:
+  - service: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.master_fan_override
+  mode: single
 - id: '1741570858495'
   alias: Turn off Master Bath Automation
   description: Double Tap Off on stair light to turn off Master Bath Automatic lights
@@ -598,16 +622,9 @@
       zwave_device:
       - ba29b894ea86c68544b9284b31b5d479
       button_a2:
-      - action: input_boolean.turn_on
+      - action: script.master_bath_fan_hold_on
         metadata: {}
         data: {}
-        target:
-          entity_id: input_boolean.master_fan_override
-      - action: switch.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id: switch.master_bath_fan
       button_b2:
       - action: input_boolean.turn_off
         metadata: {}

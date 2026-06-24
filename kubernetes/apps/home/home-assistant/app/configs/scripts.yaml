@@ -21,3 +21,26 @@ goodnight_storms:
       repeat: one
   mode: single
   icon: mdi:weather-lightning-rainy
+master_bath_fan_hold_on:
+  alias: Master Bath Fan - Manual Hold On
+  description: >-
+    A2 (manual hold-on) handler. Turns the fan on, waits up to 5s for the switch
+    to actually report 'on', and only then arms the override. If the device is
+    offline/unresponsive the fan never reports on, so the override is NOT armed
+    and cannot strand. The recovery side lives in automation 'Failsafe - Clear
+    Master Fan Override When Fan Confirmed Off'.
+  mode: single
+  sequence:
+  - action: switch.turn_on
+    target:
+      entity_id: switch.master_bath_fan
+  - wait_template: "{{ is_state('switch.master_bath_fan', 'on') }}"
+    timeout: "00:00:05"
+    continue_on_timeout: true
+  - condition: state
+    entity_id: switch.master_bath_fan
+    state: 'on'
+  - action: input_boolean.turn_on
+    target:
+      entity_id: input_boolean.master_fan_override
+  icon: mdi:fan
