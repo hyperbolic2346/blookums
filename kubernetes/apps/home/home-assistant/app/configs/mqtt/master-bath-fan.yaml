@@ -1,0 +1,23 @@
+# Master Bath exhaust fan switch.
+# Device: Shelly 1PM Mini Gen3 on STOCK firmware, native MQTT (replaced the old
+# 2019 Sonoff Basic/Tasmota). Shelly's native topic scheme: command/status live
+# under the configured MQTT prefix "masterbathfan"; availability is /online
+# (retained true|false). Non-optimistic: state is driven by the device's status
+# publish, which the A2 "confirm-before-arm" hold-on script relies on.
+# unique_id kept as master-bath-sonoff-fan ON PURPOSE so the entity_id stays
+# switch.master_bath_fan (AppDaemon BathFan + every automation depend on it).
+switch:
+  - name: "Master Bath Fan"
+    unique_id: master-bath-sonoff-fan
+    command_topic: "masterbathfan/command/switch:0"
+    payload_on: "on"
+    payload_off: "off"
+    state_topic: "masterbathfan/status/switch:0"
+    value_template: "{{ 'on' if value_json.output else 'off' }}"
+    state_on: "on"
+    state_off: "off"
+    availability_topic: "masterbathfan/online"
+    payload_available: "true"
+    payload_not_available: "false"
+    qos: 1
+    retain: false
