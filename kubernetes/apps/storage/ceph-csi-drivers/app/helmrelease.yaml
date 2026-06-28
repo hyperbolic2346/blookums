@@ -1,0 +1,56 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: ceph-csi-drivers
+  namespace: storage
+spec:
+  interval: 30m
+  timeout: 15m
+  chart:
+    spec:
+      chart: ceph-csi-drivers
+      version: 1.0.1
+      sourceRef:
+        kind: HelmRepository
+        name: ceph-csi-operator
+        namespace: storage
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  # Required by Rook v1.20: this chart provisions the CSI driver ServiceAccounts
+  # and RBAC (the rook-ceph operator chart no longer does). Values follow Rook's
+  # recommended ceph-csi-drivers/values.yaml with the operator namespace (rook-ceph)
+  # replaced by ours (storage). Driver names match the existing Driver CRs and the
+  # rook-csi-operator-image-set-configmap the operator already uses.
+  values:
+    operatorConfig:
+      namespace: storage
+      driverSpecDefaults:
+        imageSet:
+          name: rook-csi-operator-image-set-configmap
+        nodePlugin:
+          priorityClassName: system-node-critical
+        controllerPlugin:
+          priorityClassName: system-cluster-critical
+    drivers:
+      rbd:
+        enabled: true
+        name: storage.rbd.csi.ceph.com
+      cephfs:
+        enabled: true
+        name: storage.cephfs.csi.ceph.com
+      nfs:
+        enabled: false
+        name: storage.nfs.csi.ceph.com
+      nvmeof:
+        enabled: false
+        name: storage.nvmeof.csi.ceph.com
