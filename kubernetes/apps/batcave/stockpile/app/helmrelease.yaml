@@ -6,6 +6,9 @@ metadata:
   namespace: batcave
 spec:
   interval: 30m
+  # Cold image pulls + the init chain (init-db, migrate, seed) can exceed the
+  # 5m Helm default, which rolled back a good deploy once — give it room.
+  timeout: 10m
   chartRef:
     kind: OCIRepository
     name: stockpile
@@ -41,7 +44,7 @@ spec:
           02-migrate:
             image: &apiImage
               repository: ghcr.io/hyperbolic2346/stockpile-api
-              tag: main-9edca6d
+              tag: main-380fd1b
             command: ["npx", "prisma", "migrate", "deploy"]
             envFrom: *envFrom
           # 3) seed vendors/tenants/catalog (idempotent upserts)
@@ -113,7 +116,7 @@ spec:
           main:
             image:
               repository: ghcr.io/hyperbolic2346/stockpile-web
-              tag: main-9edca6d
+              tag: main-380fd1b
             env:
               PUBLIC_API_URL: "https://stockpile.${SECRET_DOMAIN}"
               PORT: "3000"
