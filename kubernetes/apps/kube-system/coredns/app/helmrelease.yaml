@@ -47,6 +47,15 @@ spec:
               fallthrough in-addr.arpa ip6.arpa
           - name: autopath
             parameters: "@kubernetes"
+          # Cluster pods are IPv4-only (no routable IPv6 egress). Cloudflare R2
+          # returns AAAA records, and restic/minio-go picks IPv6 first and fails
+          # with "network is unreachable" (broke volsync backups ~2026-06-09).
+          # Synthesize an empty NODATA response for AAAA so only A records are
+          # returned, forcing IPv4. Remove once IPv6 egress is restored.
+          - name: template
+            parameters: IN AAAA cloudflarestorage.com
+            configBlock: |-
+              rcode NOERROR
           - name: forward
             parameters: . /etc/resolv.conf
           - name: cache

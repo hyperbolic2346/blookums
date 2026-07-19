@@ -62,7 +62,9 @@ spec:
             cpu: 125m
             memory: 512Mi
           limits:
-            memory: 2Gi
+            # Bumped 2Gi->3Gi: standby mgr on Ceph 20.2.2 (tentacle) leaks and
+            # OOMKills at 2Gi; headroom until the upstream leak is resolved.
+            memory: 3Gi
         mon:
           requests:
             cpu: 50m
