@@ -1,0 +1,42 @@
+---
+# Write access for tag bumps: SSH deploy key (write) on the blookums repo,
+# private half in the blookums-deploy-key secret (identity / identity.pub /
+# known_hosts). The read path stays the anonymous https flux-system source.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: blookums-write
+  namespace: flux-system
+spec:
+  interval: 1h
+  url: ssh://git@github.com/hyperbolic2346/blookums.git
+  ref:
+    branch: main
+  secretRef:
+    name: blookums-deploy-key
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageUpdateAutomation
+metadata:
+  name: blookums
+  namespace: flux-system
+spec:
+  interval: 10m
+  sourceRef:
+    kind: GitRepository
+    name: blookums-write
+  git:
+    checkout:
+      ref:
+        branch: main
+    commit:
+      author:
+        email: flux@burntsheep.com
+        name: fluxcdbot
+      messageTemplate: |
+        chore(images): {{ range .Changed.Changes }}{{ print .OldValue }} -> {{ println .NewValue }}{{ end }}
+    push:
+      branch: main
+  update:
+    path: ./kubernetes/apps/batcave/stockpile
+    strategy: Setters
