@@ -35,6 +35,13 @@ spec:
           osd_class_update_on_start: "false" # quote
         mgr:
           mgr/crash/warn_recent_interval: "7200" #2h
+          # Workaround for mgr OOMKills on Ceph 20.2.2: the rook module logs full
+          # k8s API responses into the mgr's in-memory recent-log ring, which
+          # balloons to the memory limit in hours at the default of 10000.
+          # See https://github.com/rook/rook/issues/17786 and
+          # https://tracker.ceph.com/issues/78165 — fixed upstream but not yet
+          # backported to 20.2.x. REVERT to default once running a fixed release.
+          log_max_recent: "100"
       cleanupPolicy:
         wipeDevicesFromOtherClusters: true
       dashboard:
@@ -62,8 +69,9 @@ spec:
             cpu: 125m
             memory: 512Mi
           limits:
-            # Bumped 2Gi->3Gi: standby mgr on Ceph 20.2.2 (tentacle) leaks and
-            # OOMKills at 2Gi; headroom until the upstream leak is resolved.
+            # Bumped 2Gi->3Gi: active mgr on Ceph 20.2.2 (tentacle) retains huge
+            # rook-module log entries and OOMKills (rook#17786); log_max_recent
+            # above is the actual fix. Can drop back to 2Gi once confirmed stable.
             memory: 3Gi
         mon:
           requests:
