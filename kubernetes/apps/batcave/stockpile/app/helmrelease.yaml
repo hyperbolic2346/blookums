@@ -1,4 +1,3 @@
----
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -26,7 +25,6 @@ spec:
     defaultPodOptions:
       imagePullSecrets:
         - name: stockpile-ghcr-pull
-
     controllers:
       api:
         annotations:
@@ -44,7 +42,7 @@ spec:
           02-migrate:
             image: &apiImage
               repository: ghcr.io/hyperbolic2346/stockpile-api
-              tag: main-5bf79ba # {"$imagepolicy": "flux-system:stockpile-api:tag"}
+              tag: main-fc837b2-b37 # {"$imagepolicy": "flux-system:stockpile-api:tag"}
             command: ["npx", "prisma", "migrate", "deploy"]
             envFrom: *envFrom
           # 3) seed vendors/tenants/catalog (idempotent upserts)
@@ -54,7 +52,6 @@ spec:
             env:
               SUPER_ADMIN_EMAILS: "mike@batcaveballistics.com"
             envFrom: *envFrom
-
         containers:
           main:
             image: *apiImage
@@ -89,7 +86,6 @@ spec:
                 memory: 192Mi
               limits:
                 memory: 512Mi
-
       worker:
         annotations:
           reloader.stakater.com/auto: "true"
@@ -113,13 +109,12 @@ spec:
                 memory: 128Mi
               limits:
                 memory: 384Mi
-
       web:
         containers:
           main:
             image:
               repository: ghcr.io/hyperbolic2346/stockpile-web
-              tag: main-5bf79ba # {"$imagepolicy": "flux-system:stockpile-web:tag"}
+              tag: main-fc837b2-b37 # {"$imagepolicy": "flux-system:stockpile-web:tag"}
             env:
               PUBLIC_API_URL: "https://stockpile.${SECRET_DOMAIN}"
               PORT: "3000"
@@ -144,7 +139,6 @@ spec:
                 memory: 64Mi
               limits:
                 memory: 192Mi
-
       # Dedicated ephemeral Redis for BullMQ (plain Redis is natively
       # BullMQ-compatible; avoids the shared Dragonfly's emulated-cluster mode).
       redis:
@@ -172,7 +166,6 @@ spec:
                 memory: 32Mi
               limits:
                 memory: 128Mi
-
     service:
       api:
         controller: api
@@ -189,7 +182,6 @@ spec:
         ports:
           redis:
             port: 6379
-
     route:
       app:
         hostnames: ["stockpile.${SECRET_DOMAIN}"]
