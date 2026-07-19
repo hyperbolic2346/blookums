@@ -32,6 +32,10 @@ spec:
         - kustomize-controller
         - helm-controller
         - notification-controller
+        # Image automation: scan GHCR for new app builds and commit tag bumps
+        # back to this repo (see kubernetes/apps/flux-system/image-automation).
+        - image-reflector-controller
+        - image-automation-controller
       sync:
         kind: GitRepository
         url: "https://github.com/hyperbolic2346/blookums.git"
