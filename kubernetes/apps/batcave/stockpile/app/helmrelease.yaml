@@ -42,7 +42,7 @@ spec:
           02-migrate:
             image: &apiImage
               repository: ghcr.io/hyperbolic2346/stockpile-api
-              tag: main-fc837b2-b37 # {"$imagepolicy": "flux-system:stockpile-api:tag"}
+              tag: main-d95a4bd-b38 # {"$imagepolicy": "flux-system:stockpile-api:tag"}
             command: ["npx", "prisma", "migrate", "deploy"]
             envFrom: *envFrom
           # 3) seed vendors/tenants/catalog (idempotent upserts)
