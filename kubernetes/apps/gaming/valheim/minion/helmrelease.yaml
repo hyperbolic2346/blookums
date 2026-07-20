@@ -52,6 +52,12 @@ spec:
         controller: main
         type: LoadBalancer
         externalTrafficPolicy: Cluster
+        # Public AT&T static IP (opt-in to pool-public). Reachable at
+        # valheim.burntsheep.com:2456 once a grey-cloud A record points there.
+        labels:
+          io.cilium/lb-public: "true"
+        annotations:
+          io.cilium/lb-ipam-ips: "99.136.248.250"
         ports:
           steam1:
             port: 2456

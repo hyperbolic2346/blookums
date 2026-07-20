@@ -9,6 +9,23 @@ spec:
   blocks:
     - cidr: "192.168.14.0/24"
 ---
+# Public AT&T static /29 (usable .249-.253). OPT-IN ONLY: serviceSelector means a
+# service gets a public IP *only* if it carries io.cilium/lb-public=true. Everything
+# else keeps drawing private IPs from the pool above. Advertised to the UDM via the
+# existing BGP advertisement; the UDM forwards inbound un-NATted (verified 2026-07-19).
+apiVersion: cilium.io/v2alpha1
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: pool-public
+spec:
+  allowFirstLastIPs: "Yes"
+  serviceSelector:
+    matchLabels:
+      io.cilium/lb-public: "true"
+  blocks:
+    - start: "99.136.248.249"
+      stop: "99.136.248.253"
+---
 # yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/cilium.io/ciliuml2announcementpolicy_v2alpha1.json
 apiVersion: cilium.io/v2alpha1
 kind: CiliumL2AnnouncementPolicy
