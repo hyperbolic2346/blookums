@@ -6,3 +6,24 @@ resources:
   - ./externalsecret.yaml
   - ./helmrelease.yaml
   - ./ocirepository.yaml
+configMapGenerator:
+  - name: appdaemon-apps
+    files:
+      - apps/apps.yaml
+      - apps/bath_fan.py
+      - apps/battery.py
+      - apps/bedroom_lights.py
+      - apps/daynight_motion_lights.py
+      - apps/door_lights.py
+      - apps/gate_control.py
+      - apps/glass_break_notify.py
+      - apps/hello.py
+      - apps/motion_lights.py
+      - apps/motion_notify.py
+      - apps/night_light.py
+      - apps/room_occupancy.py
+    options:
+      # No hash suffix: the ConfigMap updates in place, kubelet refreshes the
+      # mounted files, and AppDaemon hot-reloads the changed app — no pod
+      # restart per change.
+      disableNameSuffixHash: true

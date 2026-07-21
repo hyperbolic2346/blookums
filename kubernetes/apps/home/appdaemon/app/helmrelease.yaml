@@ -22,6 +22,9 @@ spec:
               ELEVATION: ${SECRET_ALTITUDE}
               HA_URL: http://home-assistant:8123
               DASH_URL: http://0.0.0.0:5050
+              # /conf/apps is a read-only ConfigMap mount; don't try to write
+              # __pycache__ there.
+              PYTHONDONTWRITEBYTECODE: "1"
             envFrom:
               - secretRef:
                   name: appdaemon-secret
@@ -49,6 +52,14 @@ spec:
         existingClaim: appdaemon-config
         globalMounts:
           - path: /conf
+      # Apps come from git (kustomize configMapGenerator over ./apps), mounted
+      # over the PVC's old /conf/apps copies. Push to main to deploy; AppDaemon
+      # hot-reloads on the file change.
+      apps:
+        type: configMap
+        name: appdaemon-apps
+        globalMounts:
+          - path: /conf/apps
 
     addons:
       code:
@@ -84,3 +95,7 @@ spec:
         volumeMounts:
           - name: conf
             mountPath: /conf
+          # Same read-only apps view as AppDaemon — edits to apps go through
+          # git now.
+          - name: apps
+            mountPath: /conf/apps

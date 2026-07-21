@@ -1,0 +1,249 @@
+# AppDaemon apps — SOURCE OF TRUTH IS THIS DIRECTORY (git).
+# Deployed as the appdaemon-apps ConfigMap mounted read-only at /conf/apps;
+# push to main and AppDaemon hot-reloads within a couple of minutes. The old
+# PVC copies under /conf/apps on the appdaemon-config volume are shadowed by
+# the mount and kept only as a rollback.
+#Diningroom Light Early:
+#  module: motion_lights
+#  class: MotionLights
+#  constrain_start_time: sunset - 00:45:00
+#  constrain_end_time: '22:30:00'
+#  start_time: sunset - 00:45:00
+#  end_time: '22:30:00'
+#  sensor: sensor.bruh_sensor_1_pir
+#  entity_on: light.diningroom_light_level
+#  entity_off: light.diningroom_light_level
+#Diningroom Light Late:
+#  module: motion_lights
+#  class: MotionLights
+#  constrain_start_time: '22:30:01'
+#  constrain_end_time: sunrise + 00:46:00
+#  sensor: sensor.bruh_sensor_1_pir
+#  entity_on: light.diningroom_light_level
+#  entity_off: light.diningroom_light_level
+#  lux_sensor: sensor.bruh_sensor_1_ldr
+#  min_lux: 10
+#  delay: 300
+#Entryway Late:
+#  module: motion_lights
+#  class: MotionLights
+#  transitions:
+#    - turn_on: None
+#      turn_off: light.entryway_entryway_light_dimmer
+#      start_time: sunrise - 01:00:00
+#    - turn_on: scene.entryway_night
+#      turn_off: light.entryway_entryway_light_dimmer
+#      start_time: sunset - 00:45:00
+#  sensor: sensor.entry_motion_0,sensor.entry_motion_1
+#  constrain_input_boolean: input_boolean.entryway_motion_light
+#  delay: 300
+#Porch Night Light:
+#  module: night_light
+#  class: NightLight
+#  off_scene: scene.porch_day
+#  on_scene: scene.porch_night
+#  end_time: 02:00:00
+#Holiday:
+#  module: night_light
+#  class: NightLight
+#  off_scene: scene.holiday_off
+#  on_scene: scene.holiday_on
+#  end_time: 00:00:00
+#  constrain_input_boolean: input_boolean.christmas_lights
+#Laundry Room:
+#  module: motion_lights
+#  class: MotionLights
+#  transitions:
+#    - turn_on: switch.laundry_room_laundry_room_light
+#      turn_off: switch.laundry_room_laundry_room_light
+#  sensor: sensor.bruh_sensor_1_pir
+#  constrain_input_boolean: input_boolean.laundry_motion_light
+#  delay: 150
+#Master Closet:
+#  module: motion_lights
+#  class: MotionLights
+#  transitions:
+#    - turn_on: light.master_closet_master_closet_light_dimmer
+#      turn_off: light.master_closet_master_closet_light_dimmer
+#  sensor: sensor.master_closet_motion_0,sensor.master_closet_motion_1
+#  constrain_input_boolean: input_boolean.master_closet_motion_light
+#  delay: 150
+#Master Hall:
+#  module: motion_lights
+#  class: MotionLights
+#  transitions:
+#    - turn_on: None
+#      turn_off: light.master_hall_master_hall_light_dimmer
+#      start_time: sunrise + 00:30:00
+#    - turn_on: scene.master_hall_late
+#      turn_off: light.master_hall_master_hall_light_dimmer
+#      start_time: sunset - 00:60:00
+#  sensor:  sensor.master_hall_motion
+#  constrain_input_boolean: input_boolean.master_hall_motion_light
+#  delay: 150
+#Master Bath:
+#  module: motion_lights
+#  class: MotionLights
+#  transitions:
+#    - turn_on: light.master_bath_cans_dimmer
+#      turn_off: light.master_bath_cans_dimmer
+#      start_time: '06:30:00'
+#    - turn_on: scene.master_bath_late_night
+#      turn_off: light.master_bath_torus_dimmer
+#      start_time: '23:00:00'
+#  sensor: binary_sensor.master_bath0_motion,binary_sensor.master_bath1_motion
+#  constrain_input_boolean: input_boolean.master_bath_motion_light
+#  delay: 300
+#Guest Bath:
+#  module: motion_lights
+#  class: MotionLights
+#  transitions:
+#    - turn_on: scene.guest_bath_motion
+#      turn_off: light.guestbath_guestbath_light_dimmer
+#  sensor: sensor.guest_bath_motion
+#  constrain_input_boolean: input_boolean.guest_bath_motion_light
+#  delay: 300
+#Gate Control:
+#  class: GateControl
+#  module: gate_control
+#Glass Broken Notify:
+#  class: GlassNotification
+#  module: glass_break_notify
+#  sensor: group.glass_break_sensors
+#Hall Motion Light:
+#  class: MotionLights
+#  delay: '300'
+#  transitions:
+#    - turn_on: switch.main_stair_main_stair_light_switch
+#      turn_off: switch.main_stair_main_stair_light_switch
+#  ignore_if_on: 'false'
+#  module: motion_lights
+#  constrain_input_boolean: input_boolean.hallway_motion_light
+#  sensor: binary_sensor.main_stair_upper_motion_sensor_contact,binary_sensor.main_stair_bottom_motion_sensor_contact
+#Kitchen Motion:
+#  class: MotionLights
+#  delay: '600'
+#  transitions:
+#    - turn_on: scene.kitchen_day_motion
+#      turn_off: scene.kitchen_day
+#      start_time: sunrise
+#    - turn_on: scene.kitchen_night_motion
+#      turn_off: scene.kitchen_night
+#      start_time: sunset - 01:00:00
+#    - turn_on: scene.kitchen_night_motion
+#      turn_off: scene.kitchen_late
+#      start_time: 02:00:00
+#  ignore_if_on: 'false'
+#  module: motion_lights
+#  constrain_input_boolean: input_boolean.kitchen_motion_light
+#  sensor: sensor.kitchen_motion_0,sensor.kitchen_motion_1,sensor.kitchen_motion_2
+#Master Bedroom Light:
+#  class: MotionLights
+#  delay: '3600'
+#  end_time: 03:00:00
+#  entity_off: light.bedroom_light
+#  entity_on: light.bedroom_light
+#  ignore_if_sleeping: 'true'
+#  module: motion_lights
+#  sensor: sensor.template_master_bedroom_motion
+#  start_time: sunset - 00:45:00
+#Motion Notify:
+#  class: MotionNotification
+#  devices_to_watch: device_tracker.mikes_iphone,device_tracker.joannas_iphone
+#  module: motion_notify
+#  sensor: group.motion_sensors,group.door_sensors
+#Office Door Light:
+#  class: DoorLights
+#  constrain_end_time: sunrise + 00:46:00
+#  constrain_start_time: sunset - 00:45:00
+#  delay: '300'
+#  entity_off: switch.office_office_door_light_switch,light.basement_hall_basement_hall_door_light_dimmer
+#  entity_on: switch.office_office_door_light_switch,light.basement_hall_basement_hall_door_light_dimmer
+#  ignore_if_on: 'false'
+#  module: door_lights
+#  sensor: sensor.template_office_door
+#Basement Door Light:
+#  class: DoorLights
+#  constrain_end_time: sunrise + 00:46:00
+#  constrain_start_time: sunset - 00:45:00
+#  delay: '300'
+#  entity_off: light.basement_hall_basement_hall_door_light_dimmer,switch.office_office_door_light_switch
+#  entity_on: light.basement_hall_basement_hall_door_light_dimmer,switch.office_office_door_light_switch
+#  ignore_if_on: 'false'
+#  module: door_lights
+#  sensor: sensor.template_basement_door
+#Front Door Light:
+#  class: DoorLights
+#  constrain_end_time: sunrise + 00:45:00
+#  constrain_start_time: sunset - 00:45:00
+#  delay: '120'
+#  entity_off: switch.front_porch_front_porch_light_switch
+#  entity_on: switch.front_porch_front_porch_light_switch
+#  ignore_if_on: 'true'
+#  module: door_lights
+#  sensor: sensor.template_front_door
+#Upstairs Hall Motion Bedroom Light:
+#  class: MotionLights
+#  delay: '300'
+#  end_time: sunrise + 00:30:00
+#  entity_off: light.knobby_bedroom_light_level
+#  entity_on: scene.knobby_bedroom
+#  ignore_if_on: 'true'
+#  module: motion_lights
+#  require_oliver_home: 'true'
+#  sensor: binary_sensor.upstairs_hall_motion_sensor
+#  start_time: '21:30:00'
+#Upstairs Hall Motion Lights:
+#  class: MotionLights
+#  delay: '300'
+#  end_time: sunrise + 00:30:00
+#  entity_off: light.upstairs_hall_light_level
+#  entity_on: scene.upstairs_hall_night
+#  ignore_if_on: 'false'
+#  module: motion_lights
+#  require_oliver_gone: 'true'
+#  sensor: binary_sensor.upstairs_hall_motion_sensor
+#  start_time: sunset - 00:30:00
+#Upstairs Hall Motion Lights Oliver:
+#  class: MotionLights
+#  delay: '300'
+#  end_time: '21:30:00'
+#  entity_off: light.upstairs_hall_light_level
+#  entity_on: light.upstairs_hall_light_level
+#  ignore_if_on: 'false'
+#  module: motion_lights
+#  require_oliver_home: 'true'
+#  sensor: binary_sensor.upstairs_hall_motion_sensor
+#  start_time: sunset - 00:30:00
+Master Bath Fan:
+  class: BathFan
+  fan: switch.master_bath_fan
+  fan_sensor: sensor.master_bath1_humidity
+  light: light.master_bath_shower
+  override: input_boolean.master_fan_override
+  occupancy_entity: input_select.master_bathroom_occupancy
+  module: bath_fan
+  # 12pp above the rolling-window MEDIAN (v2.1): the real-shower signal is
+  # ~36pp; dip-rebound noise tops out ~9pp on a soupy day.
+  shower_spike_pp: 12
+  shower_spike_seconds: 180
+  post_exit_minutes: 15
+  max_runtime_minutes: 60
+  #Batteries:
+  #class: Battery
+  #module: battery
+  #threshold: 20
+
+Master Bath Occupancy:
+  module: room_occupancy
+  class: RoomOccupancy
+  sensors:
+    - entity: binary_sensor.upstairs_hall_motion
+      zone: exterior
+    - entity: binary_sensor.master_bath0_motion
+      zone: boundary
+    - entity: binary_sensor.master_bath1_motion
+      zone: interior
+  exit_grace_period: 240
+  safety_timeout: 1800
+  occupancy_entity: input_select.master_bathroom_occupancy
