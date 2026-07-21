@@ -32,7 +32,7 @@ spec:
     image:
       repository: factoriotools/factorio
       pullPolicy: IfNotPresent
-      tag: 2.0.77@sha256:c69c848e551e9e9a6360918a2bc74563636971e7a9af327a306e9a0c3316390f
+      tag: 2.0.77@sha256:7052b3cca8ca7790f99f4058617d5c8089df544de736b1baa23f2c5f58fb7f48
 
     service:
       type: LoadBalancer
