@@ -1,0 +1,18 @@
+# Reference snapshot of the live config. Like every AppDaemon app, the source
+# of truth is the appdaemon-config PVC (/conf/apps, edited via the
+# appdaemon-code code-server) — this copy is for version control only. Keep it
+# in sync when the live one changes.
+Master Bath Fan:
+  class: BathFan
+  fan: switch.master_bath_fan
+  fan_sensor: sensor.master_bath1_humidity
+  light: light.master_bath_shower
+  override: input_boolean.master_fan_override
+  occupancy_entity: input_select.master_bathroom_occupancy
+  module: bath_fan
+  # 12pp above the rolling-window MEDIAN (v2.1): the real-shower signal is
+  # ~36pp; dip-rebound noise tops out ~9pp on a soupy day.
+  shower_spike_pp: 12
+  shower_spike_seconds: 180
+  post_exit_minutes: 15
+  max_runtime_minutes: 60
