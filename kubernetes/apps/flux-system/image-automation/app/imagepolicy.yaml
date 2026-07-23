@@ -2,7 +2,7 @@
 # CI tags main-branch builds as main-<shortsha>-b<run#> (stockpile
 # .github/workflows/build.yaml); the run number gives a sortable ordering
 # that a bare short SHA can't.
-apiVersion: image.toolkit.fluxcd.io/v1beta2
+apiVersion: image.toolkit.fluxcd.io/v1
 kind: ImagePolicy
 metadata:
   name: stockpile-api
@@ -17,7 +17,7 @@ spec:
     numerical:
       order: asc
 ---
-apiVersion: image.toolkit.fluxcd.io/v1beta2
+apiVersion: image.toolkit.fluxcd.io/v1
 kind: ImagePolicy
 metadata:
   name: stockpile-web
