@@ -31,7 +31,7 @@ spec:
               # - "--log.level=debug"
             image:
               repository: quay.io/prometheus/graphite-exporter
-              tag: v0.16.0
+              tag: v0.17.0
             probes:
               liveness:
                 enabled: true
