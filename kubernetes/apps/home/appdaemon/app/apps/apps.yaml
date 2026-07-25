@@ -229,6 +229,9 @@ Master Bath Fan:
   shower_spike_seconds: 180
   post_exit_minutes: 15
   max_runtime_minutes: 60
+  # Manual override never auto-offs; nudge the phones instead of running all night.
+  notify: mikeandjolei
+  override_notify_minutes: 60
   #Batteries:
   #class: Battery
   #module: battery

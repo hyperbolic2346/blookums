@@ -14,9 +14,19 @@ import time
 # shower_spike_seconds: rolling window for shower detection (default 180)
 # post_exit_minutes: fan runtime after the bathroom empties (default 15)
 # max_runtime_minutes: absolute cap on a session regardless of occupancy (default 60)
+# notify (optional): HA notify service name (e.g. "mikeandjolei") to remind
+#                    when an override leaves the fan running past the session
+# override_notify_minutes: delay after an override-abandoned session before the
+#                          reminder fires, if the fan is still on (default 60)
 #
 # Release Notes
 #
+# Version 2.2:
+#   Override sessions never auto-off by design, which let a wall-switch press
+#   run the fan for 12+ hours unnoticed. Now, when a session ends but the
+#   override leaves the fan running, a reminder timer starts; if the fan is
+#   still on when it fires, send a notification with the total runtime.
+#   Turning the fan off (any way) cancels the reminder.
 # Version 2.1:
 #   Spikes are measured against the MEDIAN of the rolling window, not the
 #   minimum. Comparing against the min made every dip-then-rebound (AC blast,
@@ -50,17 +60,20 @@ class BathFan(hass.Hass):
     self.spike_window = float(self.args.get("shower_spike_seconds", 180))
     self.post_exit_s = float(self.args.get("post_exit_minutes", 15)) * 60
     self.max_runtime_s = float(self.args.get("max_runtime_minutes", 60)) * 60
+    self.notify_after_s = float(self.args.get("override_notify_minutes", 60)) * 60
 
     self.history = []
     self.session_active = False
     self.exit_handle = None
     self.max_handle = None
+    self.notify_handle = None
+    self.fan_on_since = None
 
     self.listen_state(self.humidity_change, self.args["fan_sensor"])
     self.listen_state(self.occupancy_change, self.args["occupancy_entity"])
     self.listen_state(self.fan_change, self.args["fan"])
 
-    self.log("Bath fan v2.1 watching {} (spike {}pp over median/{}s, tail {}min, max {}min, occupancy {})".format(
+    self.log("Bath fan v2.2 watching {} (spike {}pp over median/{}s, tail {}min, max {}min, occupancy {})".format(
         self.args["fan_sensor"], self.spike_pp, int(self.spike_window),
         int(self.post_exit_s / 60), int(self.max_runtime_s / 60),
         self.args["occupancy_entity"]))
@@ -68,6 +81,7 @@ class BathFan(hass.Hass):
     # Adopt a fan that is already running (AppDaemon restart mid-session).
     if self.get_state(self.args["fan"]) == "on":
       self.log("Fan already on at startup - adopting session")
+      self.fan_on_since = time.time()
       self.start_session(adopted=True)
 
   def override_on(self):
@@ -124,6 +138,7 @@ class BathFan(hass.Hass):
     self.session_active = True
     self.exit_handle = self.cancel(self.exit_handle)
     self.max_handle = self.cancel(self.max_handle)
+    self.notify_handle = self.cancel(self.notify_handle)
     self.max_handle = self.run_in(self.max_runtime_reached, self.max_runtime_s)
     if not adopted:
       self.turn_on(self.args["fan"])
@@ -139,6 +154,9 @@ class BathFan(hass.Hass):
     self.session_active = False
     if self.override_on():
       self.log("Session over ({}) but override set - leaving fan alone".format(reason))
+      if 'notify' in self.args:
+        self.notify_handle = self.cancel(self.notify_handle)
+        self.notify_handle = self.run_in(self.override_reminder, self.notify_after_s)
       return
     self.log("Turning fan off ({})".format(reason))
     self.turn_off(self.args["fan"])
@@ -158,14 +176,20 @@ class BathFan(hass.Hass):
         self.exit_handle = self.cancel(self.exit_handle)
 
   def fan_change(self, entity, attribute, old, new, kwargs):
-    if new == "on" and not self.session_active:
-      self.log("Fan turned on externally - adopting session")
-      self.start_session(adopted=True)
-    elif new == "off" and self.session_active:
-      self.log("Fan turned off externally - ending session")
-      self.exit_handle = self.cancel(self.exit_handle)
-      self.max_handle = self.cancel(self.max_handle)
-      self.session_active = False
+    if new == "on":
+      if self.fan_on_since is None:
+        self.fan_on_since = time.time()
+      if not self.session_active:
+        self.log("Fan turned on externally - adopting session")
+        self.start_session(adopted=True)
+    elif new == "off":
+      self.fan_on_since = None
+      self.notify_handle = self.cancel(self.notify_handle)
+      if self.session_active:
+        self.log("Fan turned off externally - ending session")
+        self.exit_handle = self.cancel(self.exit_handle)
+        self.max_handle = self.cancel(self.max_handle)
+        self.session_active = False
 
   def exit_timer_done(self, kwargs):
     self.exit_handle = None
@@ -174,3 +198,15 @@ class BathFan(hass.Hass):
   def max_runtime_reached(self, kwargs):
     self.max_handle = None
     self.end_session("max runtime {:.0f}min reached".format(self.max_runtime_s / 60))
+
+  def override_reminder(self, kwargs):
+    self.notify_handle = None
+    if self.get_state(self.args["fan"]) != "on":
+      return
+    hours = (time.time() - self.fan_on_since) / 3600 if self.fan_on_since else 0
+    self.log("Override fan still running {:.1f}h in - sending reminder".format(hours))
+    self.call_service(
+        "notify/" + self.args["notify"],
+        title="Bath fan still running",
+        message="{} has been on for {:.1f} hours (manual override) and will not "
+                "turn off on its own.".format(self.friendly_name(self.args["fan"]), hours))
