@@ -1,0 +1,250 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: openclaw
+  namespace: openclaw
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: openclaw
+      version: 1.5.40
+      sourceRef:
+        kind: HelmRepository
+        name: openclaw-helm
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    app-template:
+      configMode: merge
+      skills: []
+
+      controllers:
+        main:
+          serviceAccount:
+            identifier: openclaw
+          initContainers:
+            # kubectl + flux CLIs copied onto the PVC so agents can operate the cluster
+            init-tools:
+              image:
+                repository: docker.io/alpine/k8s
+                tag: 1.34.1
+              command:
+                - sh
+                - -c
+                - mkdir -p /home/node/.openclaw/bin && cp /usr/bin/kubectl /home/node/.openclaw/bin/kubectl
+              securityContext:
+                runAsUser: 1000
+                runAsGroup: 1000
+                runAsNonRoot: true
+                readOnlyRootFilesystem: true
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+            init-flux-cli:
+              image:
+                repository: ghcr.io/fluxcd/flux-cli
+                tag: v2.7.5
+              command:
+                - sh
+                - -c
+                - mkdir -p /home/node/.openclaw/bin && cp /usr/local/bin/flux /home/node/.openclaw/bin/flux
+              securityContext:
+                runAsUser: 1000
+                runAsGroup: 1000
+                runAsNonRoot: true
+                readOnlyRootFilesystem: true
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+          containers:
+            main:
+              envFrom:
+                - secretRef:
+                    name: openclaw-secret
+              env:
+                TZ: ${TIMEZONE}
+                # Prepend PVC bin dir so agents find kubectl/flux
+                PATH: /home/node/.openclaw/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+                # Root fs is read-only; kubectl discovery cache must land on /tmp
+                KUBECACHEDIR: /tmp/kube-cache
+                HASS_URL: http://home-assistant.home:8123
+
+      serviceAccount:
+        openclaw: {}
+
+      rbac:
+        roles:
+          readonly:
+            type: ClusterRole
+            rules:
+              # Core API, everything except secrets
+              - apiGroups: [""]
+                resources:
+                  - pods
+                  - pods/log
+                  - pods/status
+                  - services
+                  - endpoints
+                  - events
+                  - configmaps
+                  - namespaces
+                  - nodes
+                  - persistentvolumeclaims
+                  - persistentvolumes
+                  - serviceaccounts
+                  - replicationcontrollers
+                  - limitranges
+                  - resourcequotas
+                verbs: [get, list, watch]
+              # Non-core groups hold no secret material
+              - apiGroups:
+                  - apps
+                  - batch
+                  - autoscaling
+                  - policy
+                  - networking.k8s.io
+                  - storage.k8s.io
+                  - rbac.authorization.k8s.io
+                  - apiextensions.k8s.io
+                  - coordination.k8s.io
+                  - discovery.k8s.io
+                  - events.k8s.io
+                  - node.k8s.io
+                  - scheduling.k8s.io
+                  - metrics.k8s.io
+                  - gateway.networking.k8s.io
+                  - source.toolkit.fluxcd.io
+                  - kustomize.toolkit.fluxcd.io
+                  - helm.toolkit.fluxcd.io
+                  - notification.toolkit.fluxcd.io
+                  - external-secrets.io
+                  - cert-manager.io
+                  - ceph.rook.io
+                  - volsync.backube
+                  - snapshot.storage.k8s.io
+                  - monitoring.coreos.com
+                  - postgresql.cnpg.io
+                  - cilium.io
+                resources: ["*"]
+                verbs: [get, list, watch]
+          ops:
+            type: ClusterRole
+            rules:
+              # Bounce stuck workloads
+              - apiGroups: [""]
+                resources: [pods]
+                verbs: [delete]
+              # flux reconcile / suspend / resume
+              - apiGroups:
+                  - source.toolkit.fluxcd.io
+                  - kustomize.toolkit.fluxcd.io
+                  - helm.toolkit.fluxcd.io
+                resources: ["*"]
+                verbs: [patch]
+        bindings:
+          readonly:
+            type: ClusterRoleBinding
+            roleRef:
+              identifier: readonly
+            subjects:
+              - identifier: openclaw
+          ops:
+            type: ClusterRoleBinding
+            roleRef:
+              identifier: ops
+            subjects:
+              - identifier: openclaw
+
+      configMaps:
+        config:
+          data:
+            openclaw.json: |
+              {
+                "gateway": {
+                  "port": 18789,
+                  "mode": "local"
+                },
+                "browser": {
+                  "enabled": true,
+                  "defaultProfile": "default",
+                  "profiles": {
+                    "default": {
+                      "cdpUrl": "http://localhost:9222",
+                      "color": "#4285F4"
+                    }
+                  }
+                },
+                "agents": {
+                  "defaults": {
+                    "workspace": "/home/node/.openclaw/workspace",
+                    "model": {
+                      "primary": "anthropic/claude-opus-4-6"
+                    },
+                    "userTimezone": "${TIMEZONE}",
+                    "timeoutSeconds": 600,
+                    "maxConcurrent": 1
+                  },
+                  "list": [
+                    {
+                      "id": "main",
+                      "default": true,
+                      "identity": {
+                        "name": "OpenClaw",
+                        "emoji": "🦞"
+                      }
+                    }
+                  ]
+                },
+                "session": {
+                  "scope": "per-sender",
+                  "store": "/home/node/.openclaw/sessions",
+                  "reset": {
+                    "mode": "idle",
+                    "idleMinutes": 60
+                  }
+                },
+                "logging": {
+                  "level": "info",
+                  "consoleLevel": "info",
+                  "consoleStyle": "compact",
+                  "redactSensitive": "tools"
+                },
+                "tools": {
+                  "profile": "full",
+                  "web": {
+                    "search": {
+                      "enabled": false
+                    },
+                    "fetch": {
+                      "enabled": true
+                    }
+                  }
+                },
+                "channels": {
+                  "telegram": {
+                    "enabled": true,
+                    "botToken": "${TELEGRAM_BOT_TOKEN}"
+                  }
+                }
+              }
+
+      route:
+        main:
+          hostnames: ["openclaw.${SECRET_DOMAIN}"]
+          parentRefs:
+            - name: internal
+              namespace: kube-system
+              sectionName: https
+          rules:
+            - backendRefs:
+                - identifier: main
+                  port: 18789
