@@ -36,7 +36,7 @@ spec:
       extraEnv:
         - name: REDIS_HOST
           value: dragonfly.databases.svc.cluster.local
-        - name: REDIT_HOST_PORT
+        - name: REDIS_HOST_PORT
           value: "6379"
         - name: NEXTCLOUD_TRUSTED_DOMAINS
           value: *host
@@ -88,5 +88,5 @@ spec:
       enabled: false
     readinessProbe:
       enabled: false
-    livenessProble:
+    livenessProbe:
       enabled: false
