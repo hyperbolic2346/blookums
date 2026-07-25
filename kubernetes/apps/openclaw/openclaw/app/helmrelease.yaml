@@ -230,9 +230,9 @@ spec:
                   }
                 },
                 "channels": {
-                  "telegram": {
+                  "discord": {
                     "enabled": true,
-                    "botToken": "${TELEGRAM_BOT_TOKEN}"
+                    "token": "${DISCORD_BOT_TOKEN}"
                   }
                 }
               }
