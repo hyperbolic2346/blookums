@@ -78,6 +78,17 @@ spec:
                 KUBECACHEDIR: /tmp/kube-cache
                 HASS_URL: http://home-assistant.home:8123
 
+      persistence:
+        # Chart only mounts the data PVC into its own containers; our extra
+        # init containers need it too (merged with chart defaults)
+        data:
+          advancedMounts:
+            main:
+              init-tools:
+                - path: /home/node/.openclaw
+              init-flux-cli:
+                - path: /home/node/.openclaw
+
       serviceAccount:
         openclaw: {}
 
