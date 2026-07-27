@@ -198,7 +198,12 @@ spec:
                   "defaults": {
                     "workspace": "/home/node/.openclaw/workspace",
                     "model": {
-                      "primary": "anthropic/claude-opus-4-6"
+                      "primary": "anthropic/claude-sonnet-5",
+                      "fallbacks": ["anthropic/claude-opus-4-6"]
+                    },
+                    "utilityModel": "anthropic/claude-haiku-4-5",
+                    "subagents": {
+                      "model": "anthropic/claude-haiku-4-5"
                     },
                     "heartbeat": {
                       "every": "0m"
