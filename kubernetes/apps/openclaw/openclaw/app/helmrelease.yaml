@@ -84,6 +84,9 @@ spec:
                 PATH: /home/node/.openclaw/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
                 # Root fs is read-only; kubectl discovery cache must land on /tmp
                 KUBECACHEDIR: /tmp/kube-cache
+                # 2026.7.x installs channel plugins via npm at startup; npm
+                # cache cannot live in read-only /home/node
+                NPM_CONFIG_CACHE: /tmp/.npm
                 HASS_URL: http://home-assistant.home:8123
 
       persistence:
