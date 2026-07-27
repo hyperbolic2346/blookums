@@ -67,6 +67,11 @@ spec:
                     - ALL
           containers:
             main:
+              image:
+                # Chart 1.5.40 pins appVersion 2026.5.22; needed for Discord
+                # cron delivery + utilityModel/subagents config keys
+                repository: ghcr.io/openclaw/openclaw
+                tag: 2026.7.1-2
               envFrom:
                 - secretRef:
                     name: openclaw-secret
