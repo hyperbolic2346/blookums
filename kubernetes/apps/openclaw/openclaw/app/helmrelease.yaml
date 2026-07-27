@@ -6,6 +6,9 @@ metadata:
   namespace: openclaw
 spec:
   interval: 10m
+  # wally pulls large images slowly (32GB IDSDM boot disk); default 5m
+  # helm action timeout causes rollback churn mid-pull
+  timeout: 15m
   chart:
     spec:
       chart: openclaw
