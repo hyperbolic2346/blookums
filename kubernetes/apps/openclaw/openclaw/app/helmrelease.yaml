@@ -200,6 +200,9 @@ spec:
                     "model": {
                       "primary": "anthropic/claude-opus-4-6"
                     },
+                    "heartbeat": {
+                      "every": "0m"
+                    },
                     "userTimezone": "${TIMEZONE}",
                     "timeoutSeconds": 600,
                     "maxConcurrent": 1
