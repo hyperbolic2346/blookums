@@ -42,12 +42,28 @@ spec:
         controllerPlugin:
           priorityClassName: system-cluster-critical
     drivers:
+      # nodePlugin.tolerations must be set per-driver: the chart renders the
+      # per-driver value (default []) unconditionally into the Driver CR, which
+      # overrides operatorConfig.driverSpecDefaults. Without the control-plane
+      # toleration, no CSI plugin runs on the nucs and pods pinned there
+      # (zwave-js-ui on nuc1) can't mount PVCs. The old rook-ceph chart's
+      # csi.pluginTolerations is ignored as of v1.20.
       rbd:
         enabled: true
         name: storage.rbd.csi.ceph.com
+        nodePlugin:
+          tolerations:
+            - key: node-role.kubernetes.io/control-plane
+              operator: Exists
+              effect: NoSchedule
       cephfs:
         enabled: true
         name: storage.cephfs.csi.ceph.com
+        nodePlugin:
+          tolerations:
+            - key: node-role.kubernetes.io/control-plane
+              operator: Exists
+              effect: NoSchedule
       nfs:
         enabled: false
         name: storage.nfs.csi.ceph.com
