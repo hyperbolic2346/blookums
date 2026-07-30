@@ -26,7 +26,7 @@ spec:
           "title": "Whole House Power (W)",
           "type": "timeseries",
           "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
-          "datasource": { "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "unit": "watt",
@@ -66,7 +66,7 @@ spec:
           "title": "Current Power",
           "type": "stat",
           "gridPos": { "h": 4, "w": 8, "x": 0, "y": 8 },
-          "datasource": { "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": { "unit": "watt", "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 2000 }, { "color": "red", "value": 4000 }] } }
           },
@@ -80,7 +80,7 @@ spec:
           "title": "Left Panel",
           "type": "stat",
           "gridPos": { "h": 4, "w": 8, "x": 8, "y": 8 },
-          "datasource": { "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": { "unit": "watt", "thresholds": { "steps": [{ "color": "blue", "value": null }, { "color": "yellow", "value": 2000 }, { "color": "red", "value": 3000 }] } }
           },
@@ -94,7 +94,7 @@ spec:
           "title": "Right Panel",
           "type": "stat",
           "gridPos": { "h": 4, "w": 8, "x": 16, "y": 8 },
-          "datasource": { "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": { "unit": "watt", "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 2000 }, { "color": "red", "value": 3000 }] } }
           },
@@ -108,7 +108,7 @@ spec:
           "title": "Cumulative Energy (kWh)",
           "type": "timeseries",
           "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
-          "datasource": { "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "unit": "kwatth",
@@ -149,7 +149,7 @@ spec:
           "title": "Daily Energy Usage (kWh/day)",
           "type": "timeseries",
           "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 },
-          "datasource": { "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "unit": "kwatth",
@@ -195,7 +195,7 @@ spec:
           "title": "Per-Device Power (W)",
           "type": "timeseries",
           "gridPos": { "h": 8, "w": 24, "x": 0, "y": 28 },
-          "datasource": { "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "unit": "watt",

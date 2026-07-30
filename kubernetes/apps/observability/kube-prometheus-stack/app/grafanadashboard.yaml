@@ -189,7 +189,7 @@ spec:
           "title": "Locks",
           "type": "stat",
           "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -213,7 +213,7 @@ spec:
           "title": "Lights On",
           "type": "stat",
           "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "orange", "value": 5 }] }
@@ -233,7 +233,7 @@ spec:
           "title": "Garage Doors",
           "type": "stat",
           "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -257,7 +257,7 @@ spec:
           "title": "Wilson Gate",
           "type": "stat",
           "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -281,7 +281,7 @@ spec:
           "title": "Brigman Gate",
           "type": "stat",
           "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -305,7 +305,7 @@ spec:
           "title": "Doors/Windows Open",
           "type": "stat",
           "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "orange", "value": 3 }] }
@@ -325,7 +325,7 @@ spec:
           "title": "Servers",
           "type": "stat",
           "gridPos": { "h": 4, "w": 3, "x": 0, "y": 4 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -349,7 +349,7 @@ spec:
           "title": "APC 1500",
           "type": "stat",
           "gridPos": { "h": 4, "w": 3, "x": 3, "y": 4 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "unit": "m",
@@ -370,7 +370,7 @@ spec:
           "title": "APC 3000",
           "type": "stat",
           "gridPos": { "h": 4, "w": 3, "x": 6, "y": 4 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "unit": "m",
@@ -391,7 +391,7 @@ spec:
           "title": "APC 1500 Battery",
           "type": "gauge",
           "gridPos": { "h": 4, "w": 3, "x": 9, "y": 4 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "min": 0,
@@ -414,7 +414,7 @@ spec:
           "title": "APC 3000 Battery",
           "type": "gauge",
           "gridPos": { "h": 4, "w": 3, "x": 12, "y": 4 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "min": 0,
@@ -437,7 +437,7 @@ spec:
           "title": "Internet",
           "type": "stat",
           "gridPos": { "h": 4, "w": 3, "x": 15, "y": 4 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -461,7 +461,7 @@ spec:
           "title": "Home Assistant",
           "type": "stat",
           "gridPos": { "h": 4, "w": 3, "x": 18, "y": 4 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -485,7 +485,7 @@ spec:
           "title": "Ceph Health",
           "type": "stat",
           "gridPos": { "h": 4, "w": 3, "x": 21, "y": 4 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -510,7 +510,7 @@ spec:
           "title": "ZFS Pool Usage",
           "type": "gauge",
           "gridPos": { "h": 6, "w": 8, "x": 0, "y": 8 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "unit": "percent",
@@ -533,7 +533,7 @@ spec:
           "title": "Disk Health",
           "type": "stat",
           "gridPos": { "h": 6, "w": 16, "x": 8, "y": 8 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -557,7 +557,7 @@ spec:
           "title": "Server Details",
           "type": "table",
           "gridPos": { "h": 6, "w": 12, "x": 0, "y": 14 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "custom": { "filterable": false }
@@ -595,7 +595,7 @@ spec:
           "title": "Node Resource Summary",
           "type": "table",
           "gridPos": { "h": 6, "w": 12, "x": 12, "y": 14 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "unit": "percent",
@@ -654,7 +654,7 @@ spec:
           "title": "Lock Details",
           "type": "table",
           "gridPos": { "h": 6, "w": 12, "x": 0, "y": 20 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "custom": { "filterable": false }
@@ -692,7 +692,7 @@ spec:
           "title": "Light Details",
           "type": "table",
           "gridPos": { "h": 6, "w": 12, "x": 12, "y": 20 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "custom": { "filterable": false }
@@ -764,7 +764,7 @@ spec:
           "description": "Per-sensor motion detection timeline. Each row shows when a sensor detected motion.",
           "type": "state-timeline",
           "gridPos": { "h": 10, "w": 24, "x": 0, "y": 0 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -790,7 +790,7 @@ spec:
           "description": "Aggregated motion per floor - shows activity when any sensor on that floor detects motion.",
           "type": "state-timeline",
           "gridPos": { "h": 5, "w": 24, "x": 0, "y": 10 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -830,7 +830,7 @@ spec:
           "title": "Room Temperatures",
           "type": "timeseries",
           "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "unit": "fahrenheit",
@@ -851,7 +851,7 @@ spec:
           "title": "Room Humidity",
           "type": "timeseries",
           "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "unit": "percent",
@@ -874,7 +874,7 @@ spec:
           "title": "Door States",
           "type": "state-timeline",
           "gridPos": { "h": 8, "w": 24, "x": 0, "y": 23 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -900,7 +900,7 @@ spec:
           "description": "Total number of motion events detected by each sensor in the last 24 hours.",
           "type": "barchart",
           "gridPos": { "h": 8, "w": 24, "x": 0, "y": 31 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "color": { "mode": "palette-classic" },
@@ -959,7 +959,7 @@ spec:
           "title": "Cicada Status",
           "type": "stat",
           "gridPos": { "h": 4, "w": 8, "x": 0, "y": 0 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -983,7 +983,7 @@ spec:
           "title": "Armadillo Status",
           "type": "stat",
           "gridPos": { "h": 4, "w": 8, "x": 8, "y": 0 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -1007,7 +1007,7 @@ spec:
           "title": "Bedrock Status",
           "type": "stat",
           "gridPos": { "h": 4, "w": 8, "x": 16, "y": 0 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -1031,7 +1031,7 @@ spec:
           "title": "Cicada Players",
           "type": "stat",
           "gridPos": { "h": 4, "w": 8, "x": 0, "y": 4 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }, { "color": "green", "value": 1 }] }
@@ -1051,7 +1051,7 @@ spec:
           "title": "Armadillo Players",
           "type": "stat",
           "gridPos": { "h": 4, "w": 8, "x": 8, "y": 4 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }, { "color": "green", "value": 1 }] }
@@ -1071,7 +1071,7 @@ spec:
           "title": "Bedrock Players",
           "type": "stat",
           "gridPos": { "h": 4, "w": 8, "x": 16, "y": 4 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }, { "color": "green", "value": 1 }] }
@@ -1091,7 +1091,7 @@ spec:
           "title": "Player Count Over Time",
           "type": "timeseries",
           "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10, "pointSize": 5, "showPoints": "never", "spanNulls": true },
@@ -1112,7 +1112,7 @@ spec:
           "title": "Server Response Time",
           "type": "timeseries",
           "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "unit": "s",
@@ -1133,7 +1133,7 @@ spec:
           "title": "Server Info",
           "type": "table",
           "gridPos": { "h": 6, "w": 24, "x": 0, "y": 16 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "custom": { "filterable": false },
@@ -1207,7 +1207,7 @@ spec:
           "title": "Server Status",
           "type": "stat",
           "gridPos": { "h": 5, "w": 24, "x": 0, "y": 1 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -1236,7 +1236,7 @@ spec:
           "title": "Minecraft Players Online",
           "type": "stat",
           "gridPos": { "h": 3, "w": 24, "x": 0, "y": 6 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }, { "color": "green", "value": 1 }] }
@@ -1254,7 +1254,7 @@ spec:
           "title": "Game Server Details",
           "type": "table",
           "gridPos": { "h": 7, "w": 14, "x": 0, "y": 9 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "custom": { "filterable": false }
@@ -1304,7 +1304,7 @@ spec:
           "title": "Backup Status",
           "type": "stat",
           "gridPos": { "h": 7, "w": 10, "x": 14, "y": 9 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -1328,7 +1328,7 @@ spec:
           "title": "Server Uptime",
           "type": "state-timeline",
           "gridPos": { "h": 7, "w": 24, "x": 0, "y": 16 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -1364,7 +1364,7 @@ spec:
           "title": "Service Status",
           "type": "stat",
           "gridPos": { "h": 4, "w": 24, "x": 0, "y": 24 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -1388,7 +1388,7 @@ spec:
           "title": "Backup Status",
           "type": "stat",
           "gridPos": { "h": 4, "w": 24, "x": 0, "y": 28 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -1412,7 +1412,7 @@ spec:
           "title": "Service Uptime",
           "type": "state-timeline",
           "gridPos": { "h": 6, "w": 24, "x": 0, "y": 32 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -1443,7 +1443,7 @@ spec:
           "title": "Service Status",
           "type": "stat",
           "gridPos": { "h": 4, "w": 24, "x": 0, "y": 39 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -1467,7 +1467,7 @@ spec:
           "title": "Service Uptime",
           "type": "state-timeline",
           "gridPos": { "h": 6, "w": 24, "x": 0, "y": 43 },
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
               "mappings": [

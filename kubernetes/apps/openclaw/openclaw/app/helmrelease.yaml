@@ -262,7 +262,7 @@ spec:
                 "channels": {
                   "discord": {
                     "enabled": true,
-                    "token": "${DISCORD_BOT_TOKEN}"
+                    "token": "$${DISCORD_BOT_TOKEN}"
                   }
                 },
                 "plugins": {
