@@ -51,6 +51,10 @@ spec:
       rbd:
         enabled: true
         name: storage.rbd.csi.ceph.com
+        # Must be pinned like tolerations: without it the rbd Driver CR got
+        # snapshotPolicy: none, dropping the csi-snapshotter sidecar. VolSync
+        # snapshot deletes then hang forever and every -r2 backup stalls.
+        snapshotPolicy: volumeSnapshot
         nodePlugin:
           tolerations:
             - key: node-role.kubernetes.io/control-plane
@@ -59,6 +63,7 @@ spec:
       cephfs:
         enabled: true
         name: storage.cephfs.csi.ceph.com
+        snapshotPolicy: volumeSnapshot
         nodePlugin:
           tolerations:
             - key: node-role.kubernetes.io/control-plane
