@@ -125,6 +125,17 @@ views:
         entity: switch.master_bath_fan
         name: Fan
         icon: mdi:fan
+      - show_name: true
+        show_icon: true
+        type: button
+        tap_action:
+          action: call-service
+          service: input_button.press
+          target:
+            entity_id: input_button.master_bath_fan_timed
+        entity: input_button.master_bath_fan_timed
+        name: Fan 30 min
+        icon: mdi:fan-clock
       - type: entities
         entities:
         - entity: input_select.master_bathroom_occupancy

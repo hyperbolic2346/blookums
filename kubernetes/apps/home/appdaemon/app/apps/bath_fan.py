@@ -18,9 +18,18 @@ import time
 #                    when an override leaves the fan running past the session
 # override_notify_minutes: delay after an override-abandoned session before the
 #                          reminder fires, if the fan is still on (default 60)
+# timed_button (optional): input_button that starts a fixed-length run
+# timed_minutes: how long a timed run lasts (default 30)
 #
 # Release Notes
 #
+# Version 2.3:
+#   Timed runs. Pressing timed_button runs the fan for timed_minutes flat:
+#   occupancy is ignored (no 15-min empty-room tail cutting it short) and the
+#   fan turns off when the timer fires. Pressing again restarts the clock. A
+#   shower detected mid-run hands control back to the occupancy session logic.
+#   Motivated by the humidity sensor under-reading a real shower (2026-08-03):
+#   a guaranteed manual run needs to exist that no sensor can veto.
 # Version 2.2:
 #   Override sessions never auto-off by design, which let a wall-switch press
 #   run the fan for 12+ hours unnoticed. Now, when a session ends but the
@@ -61,19 +70,23 @@ class BathFan(hass.Hass):
     self.post_exit_s = float(self.args.get("post_exit_minutes", 15)) * 60
     self.max_runtime_s = float(self.args.get("max_runtime_minutes", 60)) * 60
     self.notify_after_s = float(self.args.get("override_notify_minutes", 60)) * 60
+    self.timed_s = float(self.args.get("timed_minutes", 30)) * 60
 
     self.history = []
     self.session_active = False
     self.exit_handle = None
     self.max_handle = None
     self.notify_handle = None
+    self.timed_handle = None
     self.fan_on_since = None
 
     self.listen_state(self.humidity_change, self.args["fan_sensor"])
     self.listen_state(self.occupancy_change, self.args["occupancy_entity"])
     self.listen_state(self.fan_change, self.args["fan"])
+    if 'timed_button' in self.args:
+      self.listen_state(self.timed_press, self.args["timed_button"])
 
-    self.log("Bath fan v2.2 watching {} (spike {}pp over median/{}s, tail {}min, max {}min, occupancy {})".format(
+    self.log("Bath fan v2.3 watching {} (spike {}pp over median/{}s, tail {}min, max {}min, occupancy {})".format(
         self.args["fan_sensor"], self.spike_pp, int(self.spike_window),
         int(self.post_exit_s / 60), int(self.max_runtime_s / 60),
         self.args["occupancy_entity"]))
@@ -127,6 +140,10 @@ class BathFan(hass.Hass):
     if not self.session_active:
       self.log("Shower detected: {} above window median {}".format(val, baseline))
       self.start_session()
+    elif self.timed_handle is not None:
+      # A real shower outranks the fixed clock: let occupancy govern from here.
+      self.log("Shower detected during timed run - switching to occupancy session")
+      self.start_session(adopted=True)
     elif self.exit_handle is not None:
       # Steam while the tail timer runs means someone is showering again.
       self.log("Shower spike during tail - cancelling exit timer")
@@ -134,11 +151,17 @@ class BathFan(hass.Hass):
 
   # --- session lifecycle ----------------------------------------------------
 
-  def start_session(self, adopted=False):
+  def start_session(self, adopted=False, timed=False):
     self.session_active = True
     self.exit_handle = self.cancel(self.exit_handle)
     self.max_handle = self.cancel(self.max_handle)
     self.notify_handle = self.cancel(self.notify_handle)
+    self.timed_handle = self.cancel(self.timed_handle)
+    if timed:
+      # Fixed-length run: no occupancy tail, no max backstop - just the clock.
+      self.turn_on(self.args["fan"])
+      self.timed_handle = self.run_in(self.timed_done, self.timed_s)
+      return
     self.max_handle = self.run_in(self.max_runtime_reached, self.max_runtime_s)
     if not adopted:
       self.turn_on(self.args["fan"])
@@ -151,6 +174,7 @@ class BathFan(hass.Hass):
   def end_session(self, reason):
     self.exit_handle = self.cancel(self.exit_handle)
     self.max_handle = self.cancel(self.max_handle)
+    self.timed_handle = self.cancel(self.timed_handle)
     self.session_active = False
     if self.override_on():
       self.log("Session over ({}) but override set - leaving fan alone".format(reason))
@@ -165,6 +189,9 @@ class BathFan(hass.Hass):
 
   def occupancy_change(self, entity, attribute, old, new, kwargs):
     if not self.session_active:
+      return
+    if self.timed_handle is not None:
+      # Timed runs ignore occupancy entirely; the clock is the only authority.
       return
     if new == "Empty":
       self.log("Bathroom empty - fan off in {:.0f}min unless someone returns".format(self.post_exit_s / 60))
@@ -189,7 +216,21 @@ class BathFan(hass.Hass):
         self.log("Fan turned off externally - ending session")
         self.exit_handle = self.cancel(self.exit_handle)
         self.max_handle = self.cancel(self.max_handle)
+        self.timed_handle = self.cancel(self.timed_handle)
         self.session_active = False
+
+  def timed_press(self, entity, attribute, old, new, kwargs):
+    if new in (None, "unavailable", "unknown"):
+      return
+    if self.override_on():
+      self.log("Timed run requested but override set - ignoring")
+      return
+    self.log("Timed run: fan on for {:.0f}min".format(self.timed_s / 60))
+    self.start_session(timed=True)
+
+  def timed_done(self, kwargs):
+    self.timed_handle = None
+    self.end_session("timed {:.0f}min run complete".format(self.timed_s / 60))
 
   def exit_timer_done(self, kwargs):
     self.exit_handle = None

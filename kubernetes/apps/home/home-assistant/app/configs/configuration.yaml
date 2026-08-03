@@ -32,6 +32,11 @@ input_select:
     initial: sound_princess
     icon: mdi:music-note
 
+input_button:
+  master_bath_fan_timed:
+    name: Master Bath Fan 30 min
+    icon: mdi:fan-clock
+
 input_number:
   bathroom_sound_volume:
     name: Bathroom Sound Volume

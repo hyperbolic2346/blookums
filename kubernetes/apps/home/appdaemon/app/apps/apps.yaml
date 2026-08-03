@@ -232,6 +232,9 @@ Master Bath Fan:
   # Manual override never auto-offs; nudge the phones instead of running all night.
   notify: mikeandjolei
   override_notify_minutes: 60
+  # Dashboard button: fixed 30min run that occupancy logic can't cut short.
+  timed_button: input_button.master_bath_fan_timed
+  timed_minutes: 30
   #Batteries:
   #class: Battery
   #module: battery
