@@ -42,7 +42,7 @@ spec:
           02-migrate:
             image: &apiImage
               repository: ghcr.io/hyperbolic2346/stockpile-api
-              tag: main-0a3d628-b40 # {"$imagepolicy": "flux-system:stockpile-api:tag"}
+              tag: main-ba79c9a-b41 # {"$imagepolicy": "flux-system:stockpile-api:tag"}
             command: ["npx", "prisma", "migrate", "deploy"]
             envFrom: *envFrom
           # 3) seed vendors/tenants/catalog (idempotent upserts)
@@ -114,7 +114,7 @@ spec:
           main:
             image:
               repository: ghcr.io/hyperbolic2346/stockpile-web
-              tag: main-0a3d628-b40 # {"$imagepolicy": "flux-system:stockpile-web:tag"}
+              tag: main-ba79c9a-b41 # {"$imagepolicy": "flux-system:stockpile-web:tag"}
             env:
               PUBLIC_API_URL: "https://stockpile.${SECRET_DOMAIN}"
               PORT: "3000"
