@@ -116,6 +116,12 @@
       commitMessageTopic: "tool {{depName}}",
     },
     {
+      description: "Chunky 1.5+ requires Minecraft 26.1+; lift this once the servers upgrade",
+      matchDatasources: ["custom.hangar"],
+      matchPackageNames: ["Chunky"],
+      allowedVersions: "<1.5",
+    },
+    {
       matchUpdateTypes: ["major"],
       labels: ["type/major"],
     },
@@ -144,6 +150,15 @@
       addLabels: ["renovate/github-release"],
     },
   ],
+  customDatasources: {
+    hangar: {
+      defaultRegistryUrlTemplate: "https://hangar.papermc.io/api/v1/projects/{{packageName}}/versions?limit=25",
+      format: "json",
+      transformTemplates: [
+        '{"releases": result.{"version": name, "releaseTimestamp": createdAt}}',
+      ],
+    },
+  },
   customManagers: [
     {
       description: "Process annotated dependencies",
@@ -194,6 +209,21 @@
       ],
       datasourceTemplate: "github-releases",
       autoReplaceStringTemplate: "https://github.com/{{{depName}}}/releases/download/{{{newValue}}}/ItemChestSorter-{{{newValue}}}.jar",
+    },
+    {
+      customType: "regex",
+      description: "Process Chunky plugin jars from Hangar",
+      managerFilePatterns: [
+        "/(^|/)kubernetes/.+\\.ya?ml(?:\\.j2)?$/",
+      ],
+      matchStrings: [
+        // - https://hangarcdn.papermc.io/plugins/pop4959/Chunky/versions/1.4.40/PAPER/Chunky-Bukkit-1.4.40.jar
+        // version appears twice (path + filename), so the whole URL is rebuilt on update
+        "https://hangarcdn\\.papermc\\.io/plugins/pop4959/(?<depName>Chunky)/versions/(?<currentValue>[^/\\s]+)/PAPER/Chunky-Bukkit-[^/\\s]+\\.jar",
+      ],
+      datasourceTemplate: "custom.hangar",
+      versioningTemplate: "loose",
+      autoReplaceStringTemplate: "https://hangarcdn.papermc.io/plugins/pop4959/Chunky/versions/{{{newValue}}}/PAPER/Chunky-Bukkit-{{{newValue}}}.jar",
     },
     {
       customType: "regex",

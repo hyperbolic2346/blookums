@@ -145,6 +145,7 @@ spec:
        # renovate: datasource=github-tags depName=webbukkit/dynmap
        - https://dynmap.us/builds/dynmap/Dynmap-3.8-spigot.jar
        - https://github.com/flokol120/Spigot-Item-Chest-Sorter/releases/download/1.14.6/ItemChestSorter-1.14.6.jar
+       - https://hangarcdn.papermc.io/plugins/pop4959/Chunky/versions/1.4.40/PAPER/Chunky-Bukkit-1.4.40.jar
 
       rcon:
         # If you enable this, make SURE to change your password below.
