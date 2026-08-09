@@ -67,7 +67,7 @@ spec:
       # One of: peaceful, easy, normal, and hard
       difficulty: normal
       # A comma-separated list of player names to whitelist.
-      whitelist: hyperbolic2346,minionmcmuffin
+      whitelist: hyperbolic2346,minionmcmuffin,gllich
       # A comma-separated list of player names who should be admins.
       ops: hyperbolic2346
       # A server icon URL for server listings. Auto-scaled and transcoded.
@@ -142,7 +142,9 @@ spec:
       externalIPs:
 
       modUrls:
-       - https://gate.${SECRET_DOMAIN}/media/Dynmap-3.7-beta-10-spigot.jar
+       # renovate: datasource=github-tags depName=webbukkit/dynmap
+       - https://dynmap.us/builds/dynmap/Dynmap-3.8-spigot.jar
+       - https://github.com/flokol120/Spigot-Item-Chest-Sorter/releases/download/1.14.6/ItemChestSorter-1.14.6.jar
 
       rcon:
         # If you enable this, make SURE to change your password below.

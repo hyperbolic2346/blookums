@@ -141,7 +141,8 @@ spec:
       externalIPs:
 
       modUrls:
-       - https://gate.${SECRET_DOMAIN}/media/Dynmap-3.7-beta-10-spigot.jar
+       # renovate: datasource=github-tags depName=webbukkit/dynmap
+       - https://dynmap.us/builds/dynmap/Dynmap-3.8-spigot.jar
 
       rcon:
         # If you enable this, make SURE to change your password below.

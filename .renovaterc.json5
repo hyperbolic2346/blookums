@@ -169,6 +169,34 @@
     },
     {
       customType: "regex",
+      description: "Process Dynmap plugin jars",
+      managerFilePatterns: [
+        "/(^|/)kubernetes/.+\\.ya?ml(?:\\.j2)?$/",
+      ],
+      matchStrings: [
+        // # renovate: datasource=github-tags depName=webbukkit/dynmap
+        // - https://dynmap.us/builds/dynmap/Dynmap-3.8-spigot.jar
+        "datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n.+/Dynmap-(?<currentValue>\\S+)-spigot\\.jar",
+      ],
+      extractVersionTemplate: "^v(?<version>.*)$",
+      versioningTemplate: "loose",
+    },
+    {
+      customType: "regex",
+      description: "Process ItemChestSorter plugin jars",
+      managerFilePatterns: [
+        "/(^|/)kubernetes/.+\\.ya?ml(?:\\.j2)?$/",
+      ],
+      matchStrings: [
+        // - https://github.com/flokol120/Spigot-Item-Chest-Sorter/releases/download/1.14.6/ItemChestSorter-1.14.6.jar
+        // version appears twice (path + filename), so the whole URL is rebuilt on update
+        "https://github\\.com/(?<depName>[^/\\s]+/Spigot-Item-Chest-Sorter)/releases/download/(?<currentValue>[^/\\s]+)/ItemChestSorter-[^/\\s]+\\.jar",
+      ],
+      datasourceTemplate: "github-releases",
+      autoReplaceStringTemplate: "https://github.com/{{{depName}}}/releases/download/{{{newValue}}}/ItemChestSorter-{{{newValue}}}.jar",
+    },
+    {
+      customType: "regex",
       description: "Process OCI dependencies",
       managerFilePatterns: [
         "/\\.yaml(?:\\.j2)?$/",
