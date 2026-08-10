@@ -1,0 +1,27 @@
+---
+# Allow the OpenClaw agent to run the Ceph CLI via the rook operator pod
+# (no toolbox deployed). Exec is deliberately scoped to the storage
+# namespace only.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: openclaw-exec
+  namespace: storage
+rules:
+  - apiGroups: [""]
+    resources: [pods/exec]
+    verbs: [create]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openclaw-exec
+  namespace: storage
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: openclaw-exec
+subjects:
+  - kind: ServiceAccount
+    name: openclaw
+    namespace: openclaw
