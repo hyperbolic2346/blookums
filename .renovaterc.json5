@@ -50,7 +50,7 @@
       matchManagers: ["github-actions"],
       automerge: true,
       automergeType: "branch",
-      matchUpdateTypes: ["minor", "patch", "digest"],
+      matchUpdateTypes: ["patch", "digest"],
       minimumReleaseAge: "3 days",
       ignoreTests: true,
     },
@@ -59,7 +59,7 @@
       matchManagers: ["mise"],
       automerge: true,
       automergeType: "branch",
-      matchUpdateTypes: ["minor", "patch"],
+      matchUpdateTypes: ["patch"],
       ignoreTests: true,
     },
     {
@@ -148,6 +148,11 @@
     {
       matchDatasources: ["github-releases"],
       addLabels: ["renovate/github-release"],
+    },
+    {
+      description: "Require manual merge for game servers (Factorio & Minecraft)",
+      matchFileNames: ["kubernetes/apps/gaming/**"],
+      automerge: false,
     },
   ],
   customDatasources: {
