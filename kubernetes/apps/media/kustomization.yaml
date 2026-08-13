@@ -20,6 +20,7 @@ resources:
   - ./immich/ks.yaml
   - ./jellyfin/ks.yaml
   - ./lidarr/ks.yaml
+  - ./navidrome/ks.yaml
   - ./nextcloud/ks.yaml
   - ./overseerr/ks.yaml
   - ./plex/ks.yaml

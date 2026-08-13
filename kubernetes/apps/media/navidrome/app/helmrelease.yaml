@@ -1,0 +1,102 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: navidrome
+  namespace: media
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: navidrome
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    controllers:
+      navidrome:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          main:
+            image:
+              repository: ghcr.io/navidrome/navidrome
+              tag: 0.63.2@sha256:9012939114fbb1bb641b81cf96dec5ded15f0aafefe8d47a511d7cb919658e40
+            env:
+              TZ: ${TIMEZONE}
+              ND_PORT: &port 4533
+              ND_MUSICFOLDER: /music
+              ND_DATAFOLDER: /config
+              ND_LOGLEVEL: info
+              # NFS mounts don't emit inotify events, so poll on a schedule
+              ND_SCANNER_SCHEDULE: "@every 1h"
+              ND_ENABLEINSIGHTSCOLLECTOR: "false"
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /ping
+                    port: *port
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              readiness: *probes
+              startup:
+                enabled: false
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 10m
+                memory: 128M
+              limits:
+                memory: 1024M
+        pod:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 568
+            runAsGroup: 568
+            fsGroup: 568
+            fsGroupChangePolicy: OnRootMismatch
+            supplementalGroups:
+              - 1001
+    route:
+      main:
+        hostnames: ["navidrome.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: internal
+            namespace: kube-system
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: main
+                port: *port
+    persistence:
+      config:
+        enabled: true
+        existingClaim: navidrome-config
+      music:
+        existingClaim: music
+        globalMounts:
+          - path: /music
+            readOnly: true
+      tmp:
+        type: emptyDir
+    service:
+      main:
+        controller: navidrome
+        ports:
+          http:
+            port: *port
