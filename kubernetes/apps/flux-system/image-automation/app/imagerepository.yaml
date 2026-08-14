@@ -20,3 +20,25 @@ spec:
   interval: 10m
   secretRef:
     name: ghcr-pull
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: sutler-api
+  namespace: flux-system
+spec:
+  image: ghcr.io/hyperbolic2346/sutler-api
+  interval: 10m
+  secretRef:
+    name: ghcr-pull
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: sutler-web
+  namespace: flux-system
+spec:
+  image: ghcr.io/hyperbolic2346/sutler-web
+  interval: 10m
+  secretRef:
+    name: ghcr-pull

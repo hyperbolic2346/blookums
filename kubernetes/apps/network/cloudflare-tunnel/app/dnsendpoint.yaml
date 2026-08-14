@@ -18,3 +18,6 @@ spec:
     - dnsName: "joltwagon.com"
       recordType: CNAME
       targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
+    - dnsName: "sutler.${SECRET_DOMAIN_SUTLER}"
+      recordType: CNAME
+      targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]

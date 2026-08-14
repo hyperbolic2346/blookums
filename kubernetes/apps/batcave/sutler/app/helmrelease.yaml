@@ -1,0 +1,222 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: sutler
+  namespace: batcave
+spec:
+  interval: 30m
+  # Cold image pulls + the init chain (init-db, migrate, seed) can exceed the
+  # 5m Helm default (stockpile got rolled back by that once) — give it room.
+  timeout: 10m
+  chartRef:
+    kind: OCIRepository
+    name: sutler
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    defaultPodOptions:
+      imagePullSecrets:
+        - name: sutler-ghcr-pull
+    controllers:
+      api:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        initContainers:
+          # 1) create the sutler database + role on the shared CNPG cluster
+          01-init-db:
+            image:
+              repository: ghcr.io/home-operations/postgres-init
+              tag: 18.4@sha256:ebd9d30add17acdf935d73eb004758c7dfd9388aaa605fda70ad74378ab92aec
+            envFrom: &envFrom
+              - secretRef:
+                  name: sutler-secret
+          # 2) apply Prisma migrations before the seed runs. The api image's
+          # default CMD also runs `migrate deploy` on boot; doing it here first
+          # keeps the init ordering correct (init-db -> migrate -> seed -> api)
+          # and the boot-time re-run is an idempotent no-op.
+          02-migrate:
+            image: &apiImage
+              repository: ghcr.io/hyperbolic2346/sutler-api
+              tag: main-c375cb8-b5 # {"$imagepolicy": "flux-system:sutler-api:tag"}
+            command: ["npx", "prisma", "migrate", "deploy"]
+            envFrom: *envFrom
+          # 3) seed baseline data (idempotent upserts)
+          03-seed:
+            image: *apiImage
+            command: ["node", "dist/seed/main.js"]
+            envFrom: *envFrom
+        containers:
+          main:
+            image: *apiImage
+            # No command override: the image CMD runs
+            # `npx prisma migrate deploy && node dist/main.js`.
+            env:
+              API_PORT: "8000"
+              REDIS_URL: "redis://sutler-redis.batcave.svc.cluster.local:6379"
+              AUTH_CALLBACK_URL: "https://sutler.${SECRET_DOMAIN_SUTLER}/api/auth/google/callback"
+            envFrom: *envFrom
+            probes:
+              liveness: &apiProbe
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/health
+                    port: 8000
+                  initialDelaySeconds: 10
+                  periodSeconds: 15
+                  timeoutSeconds: 2
+                  failureThreshold: 3
+              readiness: *apiProbe
+              # The CMD runs migrations before the server binds; the startup
+              # probe keeps liveness from killing the pod during a long deploy.
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/health
+                    port: 8000
+                  periodSeconds: 5
+                  failureThreshold: 30
+            resources:
+              requests:
+                cpu: 25m
+                memory: 192Mi
+              limits:
+                memory: 512Mi
+      worker:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          main:
+            image: *apiImage
+            command: ["node", "dist/worker/main.js"]
+            env:
+              REDIS_URL: "redis://sutler-redis.batcave.svc.cluster.local:6379"
+            envFrom: *envFrom
+            probes:
+              liveness:
+                enabled: false
+              readiness:
+                enabled: false
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 10m
+                memory: 128Mi
+              limits:
+                memory: 384Mi
+      web:
+        containers:
+          main:
+            image:
+              repository: ghcr.io/hyperbolic2346/sutler-web
+              tag: main-c375cb8-b5 # {"$imagepolicy": "flux-system:sutler-web:tag"}
+            env:
+              PUBLIC_API_URL: "https://sutler.${SECRET_DOMAIN_SUTLER}"
+              # Self-hosted Umami analytics (observability namespace). The
+              # website id is NOT a secret (it ships in page source); create
+              # the website in the Umami dashboard and paste its id here.
+              PUBLIC_UMAMI_SRC: "https://umami.${SECRET_DOMAIN}/script.js"
+              # PUBLIC_UMAMI_WEBSITE_ID: "<paste from umami dashboard>"
+              PORT: "3000"
+            probes:
+              liveness: &webProbe
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 3000
+                  initialDelaySeconds: 5
+                  periodSeconds: 30
+                  timeoutSeconds: 2
+                  failureThreshold: 3
+              readiness: *webProbe
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 192Mi
+      # Dedicated ephemeral Redis for BullMQ (plain Redis is natively
+      # BullMQ-compatible; avoids the shared Dragonfly's emulated-cluster mode).
+      redis:
+        containers:
+          main:
+            image:
+              repository: public.ecr.aws/docker/library/redis
+              tag: 8-alpine
+            command: ["redis-server", "--save", "", "--appendonly", "no"]
+            probes:
+              liveness: &redisProbe
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 6379
+                  initialDelaySeconds: 5
+                  periodSeconds: 20
+              readiness: *redisProbe
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                memory: 128Mi
+    service:
+      api:
+        controller: api
+        ports:
+          http:
+            port: 8000
+      web:
+        controller: web
+        ports:
+          http:
+            port: 3000
+      redis:
+        controller: redis
+        ports:
+          redis:
+            port: 6379
+    route:
+      app:
+        hostnames: ["sutler.${SECRET_DOMAIN_SUTLER}"]
+        parentRefs:
+          - name: external
+            namespace: kube-system
+            # Sutler's apex has its own TLS listener on the external gateway
+            # (the plain `https` listener only matches *.${SECRET_DOMAIN}).
+            sectionName: https-sutler
+        rules:
+          # /api -> NestJS backend (more specific prefix wins per Gateway API)
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /api
+            backendRefs:
+              - identifier: api
+                port: 8000
+          # everything else -> the SvelteKit app
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /
+            backendRefs:
+              - identifier: web
+                port: 3000

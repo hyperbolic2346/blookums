@@ -19,4 +19,10 @@ ingress:
     service: *svc-internal
     originRequest:
       noTLSVerify: true
+  - hostname: "sutler.${SECRET_DOMAIN_SUTLER}"
+    service: *svc-external
+    originRequest:
+      # SNI must match the https-sutler listener's cert, not the default
+      # originServerName (external.${SECRET_DOMAIN}) set at the top.
+      originServerName: "sutler.${SECRET_DOMAIN_SUTLER}"
   - service: http_status:404
