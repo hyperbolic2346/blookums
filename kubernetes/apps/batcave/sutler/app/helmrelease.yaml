@@ -121,7 +121,7 @@ spec:
           main:
             image:
               repository: ghcr.io/hyperbolic2346/sutler-web
-              tag: main-c7061d9-b38 # {"$imagepolicy": "flux-system:sutler-web:tag"}
+              tag: main-b6ae9ef-b39 # {"$imagepolicy": "flux-system:sutler-web:tag"}
             env:
               PUBLIC_API_URL: "https://sutler.${SECRET_DOMAIN_SUTLER}"
               # Self-hosted Umami analytics (observability namespace). The
