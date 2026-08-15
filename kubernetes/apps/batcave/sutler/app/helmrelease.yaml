@@ -45,7 +45,7 @@ spec:
           02-migrate:
             image: &apiImage
               repository: ghcr.io/hyperbolic2346/sutler-api
-              tag: main-a61611c-b22 # {"$imagepolicy": "flux-system:sutler-api:tag"}
+              tag: main-bbef9a6-b23 # {"$imagepolicy": "flux-system:sutler-api:tag"}
             command: ["npx", "prisma", "migrate", "deploy"]
             envFrom: *envFrom
           # 3) seed baseline data (idempotent upserts)
