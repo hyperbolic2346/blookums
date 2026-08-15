@@ -136,6 +136,12 @@ spec:
       VOLSYNC_CLAIM: scorpion-data
       VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
       VOLSYNC_CAPACITY: 100Gi
+      # Default 1Gi cache could not hold the restic pack files for this PVC and
+      # every sync since 2026-08-13 died with "no space left on device" on
+      # /cache. Dynmap alone is 898MB across 121k tile files, and a Chunky
+      # pregen is about to grow that a lot. volsync's restic mover has no
+      # exclude/filter option, so the cache has to be sized for the whole PVC.
+      VOLSYNC_CACHE_CAPACITY: 20Gi
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
