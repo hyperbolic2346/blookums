@@ -233,8 +233,12 @@ Master Bath Fan:
   # Replayed over 4.8 days: 6.0h/day of fan, 15 runs, median 95min, 80% ending
   # because the gap actually closed. Gap percentiles were p25=14 p50=23 p75=32,
   # so +30 is a genuinely wet room, not the everyday baseline.
-  start_gap_pp: 30
-  stop_gap_pp: 18
+  # MIN, not median: with two sensors a median is just their average, so one
+  # drifting sensor eats the gap. entry1 wandered 52->70% on the evening of
+  # 2026-08-17 and left the fan idle at +28pp with the bathroom at 90%.
+  reference_mode: min
+  start_gap_pp: 35
+  stop_gap_pp: 22
   # Everyday ending: 15min after you leave, provided the room is no longer badly
   # soaked. Above +25pp it keeps working instead of quitting with the mirror
   # fogged - that is exactly what the fixed 30min timer did on 2026-08-17.
@@ -250,7 +254,7 @@ Master Bath Fan:
   entry_sensors:
     - binary_sensor.master_bath0_motion
   post_exit_minutes: 15
-  soaked_gap_pp: 25
+  soaked_gap_pp: 28
   min_runtime_minutes: 10
   # The sensor stops transmitting when it saturates (44min of silence on
   # 2026-08-17 while pegged at 99%), so the loop must not be event-driven only.

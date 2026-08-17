@@ -6,9 +6,12 @@ import time
 #
 # fan: switch entity for the exhaust fan
 # fan_sensor: humidity sensor inside the bathroom
-# reference_sensors: list of humidity sensors representing "the rest of the house".
-#                    Their MEDIAN is the target the fan is trying to reach.
+# reference_sensors: humidity sensors standing in for "the dry part of the house".
+#                    NOT a level the fan can reach - they are downstairs on
+#                    another HVAC zone near the intake - so the thresholds below
+#                    are an empirical calibration against them, not physics.
 #                    Do NOT use sensors downstream of the bathroom (see below).
+# reference_mode: "min" (default) or "median". See reference().
 # start_gap_pp: turn the fan on when bath - reference reaches this (default 30)
 # stop_gap_pp: turn it off again when the gap falls to this (default 18)
 # evaluate_seconds: how often to re-decide, independent of sensor updates (default 60)
@@ -105,6 +108,7 @@ class BathFan(hass.Hass):
     self.fan = self.args["fan"]
     self.sensor = self.args["fan_sensor"]
     self.refs = list(self.args.get("reference_sensors", []))
+    self.ref_mode = self.args.get("reference_mode", "min")
     self.start_gap = float(self.args.get("start_gap_pp", 30))
     self.stop_gap = float(self.args.get("stop_gap_pp", 18))
     self.max_runtime_s = float(self.args.get("max_runtime_minutes", 240)) * 60
@@ -153,9 +157,9 @@ class BathFan(hass.Hass):
       self.listen_state(self.timed_press, self.args["timed_button"])
     self.run_every(self.evaluate, "now+15", interval)
 
-    self.log("Bath fan v3.0: {} vs median{} - on at +{}pp, off at +{}pp, "
+    self.log("Bath fan v3.0: {} vs {}{} - on at +{}pp, off at +{}pp, "
              "re-evaluated every {}s, cap {}min".format(
-        self.sensor, self.refs, self.start_gap, self.stop_gap,
+        self.sensor, self.ref_mode, self.refs, self.start_gap, self.stop_gap,
         int(interval), int(self.max_runtime_s / 60)))
 
   # --- helpers --------------------------------------------------------------
@@ -170,8 +174,25 @@ class BathFan(hass.Hass):
     return val if 0 <= val <= 100 else None
 
   def reference(self):
+    """The dry-house baseline. Default MIN, not median.
+
+    With only two reference sensors a median is just their average, so one
+    sensor wandering drags the baseline and silently eats the gap. That is not
+    hypothetical: on 2026-08-17 entry1 drifted 52% -> 70% in the evening, which
+    pulled the reference from 53 to 62 and left the fan idle at +28pp with the
+    bathroom sitting at 90%. The two disagree by 8pp typically and up to 21pp,
+    and entry1 swings 29pp a day against guest_bath's 14pp.
+
+    The minimum answers the question actually being asked - how dry is the dry
+    part of the house - and cannot be spoiled by one sensor reading high, which
+    is the failure that has now bitten twice (master_hall, then entry1). It is
+    exposed to a sensor reading spuriously LOW, which the 0-100 sanity filter
+    in humidity() and the healthy state of both sensors make an acceptable
+    trade. Set reference_mode: median to go back."""
     vals = [v for v in (self.humidity(r) for r in self.refs) if v is not None]
-    return statistics.median(vals) if vals else None
+    if not vals:
+      return None
+    return min(vals) if self.ref_mode == "min" else statistics.median(vals)
 
   def override_on(self):
     return 'override' in self.args and self.get_state(self.args["override"]) == "on"
