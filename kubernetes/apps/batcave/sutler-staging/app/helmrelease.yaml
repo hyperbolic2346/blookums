@@ -1,0 +1,238 @@
+---
+# Sutler STAGING — tracks `main`, so it gets whatever just merged.
+#
+# Prod (../sutler) tracks semver tags instead, which is the point of the pair:
+# schema migrations run automatically as an initContainer, so without this split
+# every merge to main would apply migrations straight to the production
+# database. Staging takes that hit first, against a throwaway DB.
+#
+# Isolation from prod:
+#   - its own database (sutler_staging) on the shared CNPG cluster
+#   - its own 1Password item, with GunBroker SANDBOX credentials only
+#   - its own Redis, so BullMQ jobs can't cross over
+#   - staging.${SECRET_DOMAIN_SUTLER}, covered by the same wildcard TLS
+#     listener as prod (https-sutler matches *.${SECRET_DOMAIN_SUTLER})
+#
+# Rebuilding its data (needs a catalog first — let the worker sync, or run
+# rsr:sync):
+#   kubectl -n batcave exec deploy/sutler-staging-api -- \
+#     node dist/seed/multivendor.js
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: sutler-staging
+  namespace: batcave
+spec:
+  interval: 30m
+  # Cold image pulls + the init chain (init-db, migrate, seed) can exceed the
+  # 5m Helm default (stockpile got rolled back by that once) — give it room.
+  timeout: 10m
+  chartRef:
+    kind: OCIRepository
+    name: sutler-staging
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    defaultPodOptions:
+      imagePullSecrets:
+        - name: sutler-staging-ghcr-pull
+    controllers:
+      api:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        initContainers:
+          # 1) create the sutler database + role on the shared CNPG cluster
+          01-init-db:
+            image:
+              repository: ghcr.io/home-operations/postgres-init
+              tag: 18.4@sha256:ebd9d30add17acdf935d73eb004758c7dfd9388aaa605fda70ad74378ab92aec
+            envFrom: &envFrom
+              - secretRef:
+                  name: sutler-staging-secret
+          # 2) apply Prisma migrations before the seed runs. The api image's
+          # default CMD also runs `migrate deploy` on boot; doing it here first
+          # keeps the init ordering correct (init-db -> migrate -> seed -> api)
+          # and the boot-time re-run is an idempotent no-op.
+          02-migrate:
+            image: &apiImage
+              repository: ghcr.io/hyperbolic2346/sutler-api
+              tag: main-319a1be-b41 # {"$imagepolicy": "flux-system:sutler-api-staging:tag"}
+            command: ["npx", "prisma", "migrate", "deploy"]
+            envFrom: *envFrom
+          # 3) seed baseline data (idempotent upserts)
+          03-seed:
+            image: *apiImage
+            command: ["node", "dist/seed/main.js"]
+            envFrom: *envFrom
+        containers:
+          main:
+            image: *apiImage
+            # No command override: the image CMD runs
+            # `npx prisma migrate deploy && node dist/main.js`.
+            env:
+              API_PORT: "8000"
+              REDIS_URL: "redis://sutler-staging-redis.batcave.svc.cluster.local:6379"
+              AUTH_CALLBACK_URL: "https://staging.${SECRET_DOMAIN_SUTLER}/api/auth/google/callback"
+            envFrom: *envFrom
+            probes:
+              liveness: &apiProbe
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/health
+                    port: 8000
+                  initialDelaySeconds: 10
+                  periodSeconds: 15
+                  timeoutSeconds: 2
+                  failureThreshold: 3
+              readiness: *apiProbe
+              # The CMD runs migrations before the server binds; the startup
+              # probe keeps liveness from killing the pod during a long deploy.
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/health
+                    port: 8000
+                  periodSeconds: 5
+                  failureThreshold: 30
+            resources:
+              requests:
+                cpu: 25m
+                memory: 192Mi
+              limits:
+                memory: 512Mi
+      worker:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          main:
+            image: *apiImage
+            command: ["node", "dist/worker/main.js"]
+            env:
+              REDIS_URL: "redis://sutler-staging-redis.batcave.svc.cluster.local:6379"
+            envFrom: *envFrom
+            probes:
+              liveness:
+                enabled: false
+              readiness:
+                enabled: false
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 10m
+                memory: 128Mi
+              limits:
+                memory: 384Mi
+      web:
+        containers:
+          main:
+            image:
+              repository: ghcr.io/hyperbolic2346/sutler-web
+              tag: main-319a1be-b41 # {"$imagepolicy": "flux-system:sutler-web-staging:tag"}
+            env:
+              PUBLIC_API_URL: "https://staging.${SECRET_DOMAIN_SUTLER}"
+              # No Umami here on purpose — the web app only emits analytics when
+              # BOTH vars are set, so staging traffic stays out of prod's stats.
+              PORT: "3000"
+            probes:
+              liveness: &webProbe
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 3000
+                  initialDelaySeconds: 5
+                  periodSeconds: 30
+                  timeoutSeconds: 2
+                  failureThreshold: 3
+              readiness: *webProbe
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 192Mi
+      # Dedicated ephemeral Redis for BullMQ (plain Redis is natively
+      # BullMQ-compatible; avoids the shared Dragonfly's emulated-cluster mode).
+      redis:
+        containers:
+          main:
+            image:
+              repository: public.ecr.aws/docker/library/redis
+              tag: 8-alpine
+            command: ["redis-server", "--save", "", "--appendonly", "no"]
+            probes:
+              liveness: &redisProbe
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 6379
+                  initialDelaySeconds: 5
+                  periodSeconds: 20
+              readiness: *redisProbe
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                memory: 128Mi
+    service:
+      api:
+        controller: api
+        ports:
+          http:
+            port: 8000
+      web:
+        controller: web
+        ports:
+          http:
+            port: 3000
+      redis:
+        controller: redis
+        ports:
+          redis:
+            port: 6379
+    route:
+      app:
+        hostnames: ["staging.${SECRET_DOMAIN_SUTLER}"]
+        parentRefs:
+          - name: external
+            namespace: kube-system
+            # Sutler's apex has its own TLS listener on the external gateway
+            # (the plain `https` listener only matches *.${SECRET_DOMAIN}).
+            sectionName: https-sutler
+        rules:
+          # /api -> NestJS backend (more specific prefix wins per Gateway API)
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /api
+            backendRefs:
+              - identifier: api
+                port: 8000
+          # everything else -> the SvelteKit app
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /
+            backendRefs:
+              - identifier: web
+                port: 3000
