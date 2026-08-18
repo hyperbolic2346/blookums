@@ -10,7 +10,7 @@
 #   - its own database (sutler_staging) on the shared CNPG cluster
 #   - its own 1Password item, with GunBroker SANDBOX credentials only
 #   - its own Redis, so BullMQ jobs can't cross over
-#   - staging.${SECRET_DOMAIN_SUTLER}, covered by the same wildcard TLS
+#   - sutler-staging.${SECRET_DOMAIN_SUTLER}, covered by the same wildcard TLS
 #     listener as prod (https-sutler matches *.${SECRET_DOMAIN_SUTLER})
 #
 # Rebuilding its data (needs a catalog first — let the worker sync, or run
@@ -80,7 +80,11 @@ spec:
             env:
               API_PORT: "8000"
               REDIS_URL: "redis://sutler-staging-redis.batcave.svc.cluster.local:6379"
-              AUTH_CALLBACK_URL: "https://staging.${SECRET_DOMAIN_SUTLER}/api/auth/google/callback"
+              # Do NOT schedule distributor syncs here. stockpile and sutler prod already
+              # pull RSR on a schedule; a third set of periodic FTPS logins just so a
+              # staging box has fresh data is a bad trade. It takes a catalog copy instead.
+              SYNC_SCHEDULE_ENABLED: "false"
+              AUTH_CALLBACK_URL: "https://sutler-staging.${SECRET_DOMAIN_SUTLER}/api/auth/google/callback"
             envFrom: *envFrom
             probes:
               liveness: &apiProbe
@@ -121,6 +125,10 @@ spec:
             command: ["node", "dist/worker/main.js"]
             env:
               REDIS_URL: "redis://sutler-staging-redis.batcave.svc.cluster.local:6379"
+              # Do NOT schedule distributor syncs here. stockpile and sutler prod already
+              # pull RSR on a schedule; a third set of periodic FTPS logins just so a
+              # staging box has fresh data is a bad trade. It takes a catalog copy instead.
+              SYNC_SCHEDULE_ENABLED: "false"
             envFrom: *envFrom
             probes:
               liveness:
@@ -142,7 +150,7 @@ spec:
               repository: ghcr.io/hyperbolic2346/sutler-web
               tag: main-319a1be-b41 # {"$imagepolicy": "flux-system:sutler-web-staging:tag"}
             env:
-              PUBLIC_API_URL: "https://staging.${SECRET_DOMAIN_SUTLER}"
+              PUBLIC_API_URL: "https://sutler-staging.${SECRET_DOMAIN_SUTLER}"
               # No Umami here on purpose — the web app only emits analytics when
               # BOTH vars are set, so staging traffic stays out of prod's stats.
               PORT: "3000"
@@ -212,7 +220,7 @@ spec:
             port: 6379
     route:
       app:
-        hostnames: ["staging.${SECRET_DOMAIN_SUTLER}"]
+        hostnames: ["sutler-staging.${SECRET_DOMAIN_SUTLER}"]
         parentRefs:
           - name: external
             namespace: kube-system

@@ -21,6 +21,6 @@ spec:
     - dnsName: "sutler.${SECRET_DOMAIN_SUTLER}"
       recordType: CNAME
       targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
-    - dnsName: "staging.${SECRET_DOMAIN_SUTLER}"
+    - dnsName: "sutler-staging.${SECRET_DOMAIN_SUTLER}"
       recordType: CNAME
       targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]

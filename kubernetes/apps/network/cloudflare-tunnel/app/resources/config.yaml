@@ -25,10 +25,10 @@ ingress:
       # SNI must match the https-sutler listener's cert, not the default
       # originServerName (external.${SECRET_DOMAIN}) set at the top.
       originServerName: "sutler.${SECRET_DOMAIN_SUTLER}"
-  - hostname: "staging.${SECRET_DOMAIN_SUTLER}"
+  - hostname: "sutler-staging.${SECRET_DOMAIN_SUTLER}"
     service: *svc-external
     originRequest:
       # Same wildcard listener/cert as prod (https-sutler matches
       # *.${SECRET_DOMAIN_SUTLER}), so only the SNI name differs.
-      originServerName: "staging.${SECRET_DOMAIN_SUTLER}"
+      originServerName: "sutler-staging.${SECRET_DOMAIN_SUTLER}"
   - service: http_status:404
