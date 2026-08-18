@@ -32,10 +32,46 @@ spec:
     numerical:
       order: asc
 ---
+# Sutler PROD tracks released semver tags only. Sutler applies Prisma
+# migrations from an initContainer, so tracking `main` here would run every
+# merged schema change against the production database unattended. Cutting a
+# `v*` tag in the sutler repo is now the deploy gate. Staging (below) takes
+# `main` instead, so the migration path is exercised before a release.
 apiVersion: image.toolkit.fluxcd.io/v1
 kind: ImagePolicy
 metadata:
   name: sutler-api
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: sutler-api
+  filterTags:
+    pattern: '^(?P<version>\d+\.\d+\.\d+)$'
+    extract: '$version'
+  policy:
+    semver:
+      range: '>=0.0.0'
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: sutler-web
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: sutler-web
+  filterTags:
+    pattern: '^(?P<version>\d+\.\d+\.\d+)$'
+    extract: '$version'
+  policy:
+    semver:
+      range: '>=0.0.0'
+---
+# Sutler STAGING follows main — the behaviour prod used to have.
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: sutler-api-staging
   namespace: flux-system
 spec:
   imageRepositoryRef:
@@ -50,7 +86,7 @@ spec:
 apiVersion: image.toolkit.fluxcd.io/v1
 kind: ImagePolicy
 metadata:
-  name: sutler-web
+  name: sutler-web-staging
   namespace: flux-system
 spec:
   imageRepositoryRef:

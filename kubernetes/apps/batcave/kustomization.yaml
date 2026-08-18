@@ -11,3 +11,4 @@ resources:
   - ./quartermaster/ks.yaml
   - ./stockpile/ks.yaml
   - ./sutler/ks.yaml
+  - ./sutler-staging/ks.yaml
