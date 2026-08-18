@@ -137,9 +137,6 @@ spec:
           - path: /config/mqtt/sonoff-bathroom-fan.yaml
             subPath: sonoff-bathroom-fan.yaml
             readOnly: true
-          - path: /config/mqtt/dht22-temperature.yaml
-            subPath: dht22-temperature.yaml
-            readOnly: true
       config-dashboards:
         type: configMap
         name: home-assistant-dashboards
