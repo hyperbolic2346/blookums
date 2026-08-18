@@ -20,10 +20,12 @@ configMapGenerator:
       - sensors/emoncms.yaml
       - sensors/front_door.yaml
       - sensors/office.yaml
+      - sensors/dewpoint.yaml
   - name: home-assistant-mqtt
     files:
       - mqtt/gate.yaml
       - mqtt/sonoff-bathroom-fan.yaml
+      - mqtt/dht22-temperature.yaml
   - name: home-assistant-dashboards
     files:
       - dashboards/dashboard_simple.yaml

@@ -89,7 +89,6 @@ views:
     entity: sensor.master_closet1_temperature
     detail: 1
     name: Master Closet
-    unit: F
   - graph: line
     type: sensor
     entity: sensor.master_hall_temperature
@@ -100,7 +99,6 @@ views:
     entity: sensor.master_bedroom_temperature
     detail: 1
     name: Master Bedroom
-    unit: F
   - show_name: true
     show_icon: true
     type: button
@@ -149,6 +147,12 @@ views:
           name: Motion 1
         - entity: sensor.master_bath1_humidity
           name: Humidity
+        - entity: sensor.master_bath1_temperature
+          name: Temperature
+        - entity: sensor.master_bath_dew_point
+          name: Dew Point
+        - entity: sensor.master_bath_dew_point_excess
+          name: Dew Point Excess
     - type: horizontal-stack
       cards:
       - type: light
@@ -164,7 +168,6 @@ views:
       type: sensor
       entity: sensor.master_bath1_temperature
       detail: 1
-      unit: F
       name: Master Bath
     - graph: line
       type: sensor
@@ -190,6 +193,29 @@ views:
       type: sensor
       entity: sensor.master_bathroom_humidity_derivative
       detail: 1
+    # Dew point is the comparable quantity across rooms; RH is not, because
+    # upstairs and downstairs run on different thermostats. Watching these
+    # together is what decides whether BathFan should switch to dew point and
+    # which room is the honest "dry house" reference.
+    - type: history-graph
+      title: Dew point by room
+      hours_to_show: 24
+      entities:
+        - entity: sensor.master_bath_dew_point
+          name: Master Bath
+        - entity: sensor.master_hall_dew_point
+          name: Master Hall
+        - entity: sensor.master_closet_dew_point
+          name: Master Closet
+        - entity: sensor.guest_bath_dew_point
+          name: Guest Bath
+        - entity: sensor.entry_dew_point
+          name: Entry
+    - graph: line
+      type: sensor
+      entity: sensor.master_bath_dew_point_excess
+      detail: 1
+      name: Bath dew point above driest room
   - type: media-control
     entity: media_player.master_bathroom
   subview: false

@@ -1,0 +1,106 @@
+# DHT22 temperature sensors — HA-side workaround for a firmware bug.
+#
+# These hand-flashed ESP/DHT22 nodes self-announce over MQTT discovery, and
+# their payload declares the temperature unit as bare "F". Home Assistant
+# requires °F/°C/K for device_class: temperature and rejects the entity outright:
+#
+#   2026-08-03 12:36:34 ERROR [mqtt.entity] Error 'The unit of measurement `F`
+#   is not valid together with device class `temperature`' ... master_bath1t
+#
+# All six temperature sensors died at that instant, when HA tightened that
+# validation. Humidity was unaffected because its unit "%" is valid — same
+# device, same JSON payload, same discovery message. The temperature data never
+# stopped flowing; HA was only refusing to build the entities:
+#
+#   home/master_bath/motion1
+#     {"humidity":"61.00","temperature":"73.00","heatIndex":"72.87","motion":"standby"}
+#
+# Defining them here bypasses discovery entirely.
+#
+# unique_id is kept IDENTICAL to the discovery uniq_id on purpose: the failed
+# discovery entries already hold those ids in the entity registry, so matching
+# them means these adopt the existing entity_ids (sensor.master_bath1_temperature
+# and friends) rather than landing as ..._2 and breaking every dashboard and
+# automation reference.
+#
+# TO REMOVE: reflash the sketch to emit "°F", then delete this file and its
+# entries in configs/kustomization.yaml and helmrelease.yaml. Note the ordering
+# trap — once the firmware is fixed, the now-valid discovery message collides
+# with these on unique_id, HA logs a duplicate-id error and ignores the
+# DISCOVERED entity. Nothing breaks, the sensors keep working through this file,
+# and the firmware fix simply appears to do nothing until this file is gone.
+#
+# The availability templates guard the 2147483648 DHT read-failure sentinel,
+# which laundry_room emits constantly and any node can emit transiently. Without
+# it a failed read becomes a 2147483648°F reading, and anything consuming
+# temperature (BathFan, the dew point templates) would swallow it.
+sensor:
+  - name: "master_bath1 Temperature"
+    unique_id: master_bath1_temp
+    state_topic: "home/master_bath/motion1"
+    device_class: temperature
+    unit_of_measurement: "°F"
+    value_template: "{{ value_json.temperature | float | round(1) }}"
+    availability:
+      - topic: "home/master_bath/motion1"
+        value_template: >-
+          {{ 'online' if -60 < (value_json.temperature | float(-999)) < 160 else 'offline' }}
+
+  - name: "master_hall Temperature"
+    unique_id: master_hall_temp
+    state_topic: "home/master_hall/motion"
+    device_class: temperature
+    unit_of_measurement: "°F"
+    value_template: "{{ value_json.temperature | float | round(1) }}"
+    availability:
+      - topic: "home/master_hall/motion"
+        value_template: >-
+          {{ 'online' if -60 < (value_json.temperature | float(-999)) < 160 else 'offline' }}
+
+  - name: "master_closet1 Temperature"
+    unique_id: master_closet1_temp
+    state_topic: "home/master_closet/motion1"
+    device_class: temperature
+    unit_of_measurement: "°F"
+    value_template: "{{ value_json.temperature | float | round(1) }}"
+    availability:
+      - topic: "home/master_closet/motion1"
+        value_template: >-
+          {{ 'online' if -60 < (value_json.temperature | float(-999)) < 160 else 'offline' }}
+
+  - name: "guest_bath Temperature"
+    unique_id: guest_bath_temp
+    state_topic: "home/guest_bath/motion"
+    device_class: temperature
+    unit_of_measurement: "°F"
+    value_template: "{{ value_json.temperature | float | round(1) }}"
+    availability:
+      - topic: "home/guest_bath/motion"
+        value_template: >-
+          {{ 'online' if -60 < (value_json.temperature | float(-999)) < 160 else 'offline' }}
+
+  - name: "entry1 Temperature"
+    unique_id: entry1_temp
+    state_topic: "home/entry/motion1"
+    device_class: temperature
+    unit_of_measurement: "°F"
+    value_template: "{{ value_json.temperature | float | round(1) }}"
+    availability:
+      - topic: "home/entry/motion1"
+        value_template: >-
+          {{ 'online' if -60 < (value_json.temperature | float(-999)) < 160 else 'offline' }}
+
+  # This node's DHT22 is dead — it publishes the 2147483648 sentinel for both
+  # temperature and humidity. Defined for completeness; the availability guard
+  # keeps it reading "unavailable" rather than a nonsense number, and it will
+  # start working on its own if the sensor is ever replaced.
+  - name: "laundry_room Temperature"
+    unique_id: laundry_room_temp
+    state_topic: "home/laundry_room/motion"
+    device_class: temperature
+    unit_of_measurement: "°F"
+    value_template: "{{ value_json.temperature | float | round(1) }}"
+    availability:
+      - topic: "home/laundry_room/motion"
+        value_template: >-
+          {{ 'online' if -60 < (value_json.temperature | float(-999)) < 160 else 'offline' }}

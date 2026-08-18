@@ -1,0 +1,112 @@
+# Dew point per room, computed from the DHT22 temperature + humidity pairs.
+#
+# WHY: relative humidity is not comparable between rooms at different
+# temperatures, and this house runs upstairs and downstairs on separate
+# thermostats — measured 2026-08-18, upstairs sat at 67-69F while downstairs was
+# 75-77F. An 8F spread shifts RH by roughly 15 points at identical moisture, so
+# RH comparisons silently encode the temperature difference. Dew point is the
+# actual moisture content and is directly comparable.
+#
+# This mattered concretely: BathFan v3.0 picked guest_bath and entry1 as its
+# "dry house baseline" on RH, but by dew point those are the two WETTEST rooms
+# (57.2F and 64.8F) while master_hall — excluded as "contaminated" — is the
+# DRIEST at 50.7F. entry1 sits near outdoor dew point because it is by the front
+# door. These sensors exist to make that visible on the dashboard before any
+# control logic is changed to use them.
+#
+# Magnus-Tetens, a=17.62 b=243.12 (0.35C accuracy over -45..60C). Sensors report
+# Fahrenheit, so convert in and out. Availability is gated on both inputs being
+# numeric, which also filters the 2147483648 DHT read-failure sentinel.
+- sensor:
+    - name: "Master Bath Dew Point"
+      unique_id: master_bath1_dewpoint
+      unit_of_measurement: "°F"
+      device_class: temperature
+      state_class: measurement
+      availability: >
+        {{ states('sensor.master_bath1_temperature') | float(-999) > -100
+           and 0 < states('sensor.master_bath1_humidity') | float(-1) <= 100 }}
+      state: >
+        {% set t = (states('sensor.master_bath1_temperature') | float - 32) / 1.8 %}
+        {% set rh = states('sensor.master_bath1_humidity') | float %}
+        {% set g = log(rh / 100) + (17.62 * t) / (243.12 + t) %}
+        {{ (((243.12 * g) / (17.62 - g)) * 1.8 + 32) | round(1) }}
+
+    - name: "Master Hall Dew Point"
+      unique_id: master_hall_dewpoint
+      unit_of_measurement: "°F"
+      device_class: temperature
+      state_class: measurement
+      availability: >
+        {{ states('sensor.master_hall_temperature') | float(-999) > -100
+           and 0 < states('sensor.master_hall_humidity') | float(-1) <= 100 }}
+      state: >
+        {% set t = (states('sensor.master_hall_temperature') | float - 32) / 1.8 %}
+        {% set rh = states('sensor.master_hall_humidity') | float %}
+        {% set g = log(rh / 100) + (17.62 * t) / (243.12 + t) %}
+        {{ (((243.12 * g) / (17.62 - g)) * 1.8 + 32) | round(1) }}
+
+    - name: "Master Closet Dew Point"
+      unique_id: master_closet1_dewpoint
+      unit_of_measurement: "°F"
+      device_class: temperature
+      state_class: measurement
+      availability: >
+        {{ states('sensor.master_closet1_temperature') | float(-999) > -100
+           and 0 < states('sensor.master_closet1_humidity') | float(-1) <= 100 }}
+      state: >
+        {% set t = (states('sensor.master_closet1_temperature') | float - 32) / 1.8 %}
+        {% set rh = states('sensor.master_closet1_humidity') | float %}
+        {% set g = log(rh / 100) + (17.62 * t) / (243.12 + t) %}
+        {{ (((243.12 * g) / (17.62 - g)) * 1.8 + 32) | round(1) }}
+
+    - name: "Guest Bath Dew Point"
+      unique_id: guest_bath_dewpoint
+      unit_of_measurement: "°F"
+      device_class: temperature
+      state_class: measurement
+      availability: >
+        {{ states('sensor.guest_bath_temperature') | float(-999) > -100
+           and 0 < states('sensor.guest_bath_humidity') | float(-1) <= 100 }}
+      state: >
+        {% set t = (states('sensor.guest_bath_temperature') | float - 32) / 1.8 %}
+        {% set rh = states('sensor.guest_bath_humidity') | float %}
+        {% set g = log(rh / 100) + (17.62 * t) / (243.12 + t) %}
+        {{ (((243.12 * g) / (17.62 - g)) * 1.8 + 32) | round(1) }}
+
+    - name: "Entry Dew Point"
+      unique_id: entry1_dewpoint
+      unit_of_measurement: "°F"
+      device_class: temperature
+      state_class: measurement
+      availability: >
+        {{ states('sensor.entry1_temperature') | float(-999) > -100
+           and 0 < states('sensor.entry1_humidity') | float(-1) <= 100 }}
+      state: >
+        {% set t = (states('sensor.entry1_temperature') | float - 32) / 1.8 %}
+        {% set rh = states('sensor.entry1_humidity') | float %}
+        {% set g = log(rh / 100) + (17.62 * t) / (243.12 + t) %}
+        {{ (((243.12 * g) / (17.62 - g)) * 1.8 + 32) | round(1) }}
+
+    # The number BathFan would actually key on: how much wetter the bathroom is
+    # than the driest room in the house. Watch this across a few showers before
+    # any control logic is switched over to it. For reference, the RH-based
+    # equivalent currently starts the fan at +35 and stops at +22 — dew point
+    # excess runs much smaller, so thresholds will NOT carry over.
+    - name: "Master Bath Dew Point Excess"
+      unique_id: master_bath1_dewpoint_excess
+      unit_of_measurement: "°F"
+      state_class: measurement
+      icon: mdi:water-thermometer
+      availability: >
+        {{ has_value('sensor.master_bath_dew_point')
+           and [ states('sensor.master_hall_dew_point'),
+                 states('sensor.guest_bath_dew_point'),
+                 states('sensor.entry_dew_point') ]
+               | select('is_number') | list | count > 0 }}
+      state: >
+        {% set house = [ states('sensor.master_hall_dew_point'),
+                         states('sensor.guest_bath_dew_point'),
+                         states('sensor.entry_dew_point') ]
+                       | select('is_number') | map('float') | list %}
+        {{ (states('sensor.master_bath_dew_point') | float - house | min) | round(1) }}
