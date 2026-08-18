@@ -34,3 +34,4 @@ spec:
       VOLSYNC_CLAIM: plex-config
       VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
       VOLSYNC_CAPACITY: 250Gi
+      VOLSYNC_CACHE_CAPACITY: 10Gi
