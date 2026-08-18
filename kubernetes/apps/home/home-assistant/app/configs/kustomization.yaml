@@ -24,6 +24,7 @@ configMapGenerator:
     files:
       - mqtt/gate.yaml
       - mqtt/sonoff-bathroom-fan.yaml
+      - mqtt/dht22-temperature.yaml
   - name: home-assistant-dashboards
     files:
       - dashboards/dashboard_simple.yaml

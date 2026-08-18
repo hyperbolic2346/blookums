@@ -256,6 +256,13 @@ Master Bath Fan:
   post_exit_minutes: 15
   soaked_gap_pp: 28
   min_runtime_minutes: 10
+  # Backstop against hopeless runs only - this fan has a LONG LAG. On 2026-08-17
+  # it sat flat at 90-91% for 30min, then fell to 73% over the next 30. A short
+  # window would have killed it just before it worked. Only applies once the room
+  # is empty, and any real progress re-anchors the clock.
+  progress_check_minutes: 45
+  progress_pp: 2
+  stalled_cooldown_minutes: 90
   # The sensor stops transmitting when it saturates (44min of silence on
   # 2026-08-17 while pegged at 99%), so the loop must not be event-driven only.
   evaluate_seconds: 60

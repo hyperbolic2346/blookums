@@ -36,6 +36,12 @@ import time
 # soaked_gap_pp: above this the fan keeps going even though the room is empty,
 #                rather than stopping with the mirror still fogged (default 25)
 # min_runtime_minutes: floor on any run, prevents chatter (default 10)
+# progress_check_minutes: give up if the gap has not improved in this long, once
+#                    the room is empty (default 45). Progress resets the clock.
+#                    Patience is the real knob, not the pp value - this fan can
+#                    sit flat for half an hour before it starts working.
+# progress_pp: how much the gap must improve to count as progress (default 2)
+# stalled_cooldown_minutes: wait this long after giving up (default 90)
 # light (optional): light to toggle with the fan
 # override (optional): input_boolean that suspends fan control while "on"
 # notify (optional): HA notify service name for the override-left-running reminder
@@ -80,7 +86,7 @@ import time
 #      problem is worst: at 15:00 on 2026-08-17 the hall said +27pp while the
 #      clean sensors said +42pp. reference_sensors should therefore be rooms the
 #      bathroom does not vent into - guest_bath (corr 0.35) and entry1 (0.49).
-#      The median makes one of them showering harmless.
+#      Aggregated with MIN, not median: see reference().
 #
 #   2. PERIODIC EVALUATION. v2.x only re-decided on humidity state changes. This
 #      sensor stops transmitting when it saturates - on 2026-08-17 it sent
@@ -88,11 +94,14 @@ import time
 #      minutes, including the entire time the fan was running. evaluate() now
 #      runs on a timer as well, so silence cannot stall the control loop.
 #
-#   Replayed over 4.8 days: 6.0 h/day of fan (v2.3 actually managed 1.1), 15
-#   runs, median 95 min, 80% ending because the gap genuinely closed rather than
-#   hitting the cap. The gap-closing runs are the fan doing real work; the capped
-#   ones cluster in hot afternoons when outdoor air is too wet for the fan to
-#   win, which is what max_runtime_minutes is for.
+#   Replayed over 7.8 days: ~3 h/day of fan (v2.3 actually managed 1.1), median
+#   run ~46 min.
+#
+#   THE FAN IS SLOW - measured, not assumed. On 2026-08-17 it ran 59 minutes in
+#   an empty bathroom: flat at 90-91% for the first ~30 minutes, then down to
+#   73% over the next 30. Anything that judges this fan on a short window will
+#   conclude it is useless right before it works. Keep progress_check_minutes
+#   generous.
 #
 #   NOTE: RH is a proxy. The physically correct comparison is dew point, but
 #   every indoor temperature sensor (master_bath1, master_hall, guest_bath,
@@ -119,6 +128,9 @@ class BathFan(hass.Hass):
     self.soaked_gap = float(self.args.get("soaked_gap_pp", 25))
     self.min_runtime_s = float(self.args.get("min_runtime_minutes", 10)) * 60
     self.presence = list(self.args.get("presence_sensors", []))
+    self.progress_check_s = float(self.args.get("progress_check_minutes", 45)) * 60
+    self.progress_pp = float(self.args.get("progress_pp", 2))
+    self.stalled_cooldown_s = float(self.args.get("stalled_cooldown_minutes", 90)) * 60
     self.entry_sensors = list(self.args.get("entry_sensors", []))
     self.timed_s = float(self.args.get("timed_minutes", 30)) * 60
     self.notify_after_s = float(self.args.get("override_notify_minutes", 60)) * 60
@@ -127,6 +139,8 @@ class BathFan(hass.Hass):
     self.running_since = None
     self.blocked_until = None
     self.gap_history = []
+    self.run_anchor = None
+    self.progress_since = None
     self.empty_since = None
     self.entered_since_empty = False
     self.timed_until = None
@@ -233,6 +247,8 @@ class BathFan(hass.Hass):
       if 'light' in self.args:
         self.turn_on(self.args["light"])
       self.running_since = time.time()
+      self.run_anchor = None
+      self.progress_since = time.time()
     else:
       self.turn_off(self.fan)
       if 'light' in self.args:
@@ -240,6 +256,41 @@ class BathFan(hass.Hass):
       self.running_since = None
 
   # --- the control loop -----------------------------------------------------
+
+  def stalled(self, now, settled):
+    """"If it hasn't done it yet, it won't do it." Give up when the fan has run
+    progress_check_minutes without moving the gap down by progress_pp.
+
+    THIS FAN HAS A LONG LAG - do not set the window short. On 2026-08-17 it ran
+    59 minutes in an empty bathroom: humidity sat flat at 90-91% for the first
+    ~30 minutes, then broke through and fell to 73% over the next 30. Judging it
+    at 27 minutes said "hopeless"; it was about to work. The lag is presumably
+    the fan stripping the wet-towel/wall/enclosure reservoir before room air
+    starts to drop. 45min/2pp was chosen against that run - it re-anchors on the
+    improvement and lets the run continue. A 25min/4pp setting would have killed
+    it just before the breakthrough.
+
+    So this is a backstop against genuinely hopeless runs (a saturated day where
+    nothing moves for the better part of an hour), NOT an efficiency tweak. When
+    in doubt, lengthen the window rather than shorten it: cutting a working run
+    leaves the room wet, which is the failure this whole app exists to prevent.
+
+    Only applies once the room is empty. During a shower the gap is supposed to
+    be climbing, and cutting the fan then is the opposite of useful. Progress
+    re-anchors the clock, so a long run that IS working never gets cut."""
+    if self.progress_pp <= 0 or settled is None or self.progress_since is None:
+      return False
+    if self.empty_since is None:
+      return False
+    if now - self.progress_since < self.progress_check_s:
+      return False
+    if self.run_anchor is None:
+      return False
+    if settled <= self.run_anchor - self.progress_pp:
+      self.run_anchor = settled          # it is working - reset the clock
+      self.progress_since = now
+      return False
+    return True
 
   def occupancy_change(self, entity, attribute, old, new, kwargs):
     """Arm the post-exit tail on the TRANSITION to Empty. Testing "is empty
@@ -329,6 +380,10 @@ class BathFan(hass.Hass):
     self.gap_history = [(t, g) for t, g in self.gap_history if now - t <= self.smooth_s]
     settled = self.smoothed_gap(now)
 
+    if fan_on and self.run_anchor is None and settled is not None:
+      self.run_anchor = settled
+      self.progress_since = now
+
     if fan_on:
       young = self.running_since and now - self.running_since < self.min_runtime_s
       empty_for = (now - self.empty_since) if self.empty_since else None
@@ -347,6 +402,11 @@ class BathFan(hass.Hass):
         # is the 2026-08-17 case where a fixed timer switched off at 99%.
         self.set_fan(False, "bathroom empty {:.0f}min and down to +{:.0f}pp".format(
             empty_for / 60, settled))
+      elif self.stalled(now, settled):
+        self.set_fan(False, "no progress in {:.0f}min (+{:.0f}pp -> +{:.0f}pp) - the "
+                            "fan cannot win this one".format(
+            self.progress_check_s / 60, self.run_anchor, settled))
+        self.blocked_until = now + self.stalled_cooldown_s
       elif self.running_since and now - self.running_since >= self.max_runtime_s:
         self.set_fan(False, "{:.0f}min cap reached and still +{:.0f}pp - the fan "
                             "is not winning right now".format(self.max_runtime_s / 60, gap))

@@ -33,11 +33,22 @@ class RoomOccupancy(hass.Hass):
         self.occupancy = STATE_EMPTY
         self.pending_exit_handle = None
         self.safety_handle = None
+        self.entry_confirm_handle = None
 
         # Config
         self.sensors = self.args.get("sensors", [])
         self.exit_grace_period = self.args.get("exit_grace_period", 120)
         self.safety_timeout = self.args.get("safety_timeout", 1800)
+        # A boundary trip alone does not prove anybody came in. Without interior
+        # confirmation within this long, treat it as someone walking past the
+        # door. Before this existed the only way back from a phantom Occupied
+        # was safety_timeout - on 2026-08-17 a single trip at 18:20:47 held the
+        # room Occupied for the full 30 minutes with both sensors reading off,
+        # which also blocks BathFan's post-exit tail from ever arming.
+        # Deliberately generous: someone quietly in the shower may not trip the
+        # interior sensor for a while, and calling the room empty while they are
+        # in it is the worse error.
+        self.entry_confirm = self.args.get("entry_confirm_seconds", 600)
         self.occupancy_entity = self.args["occupancy_entity"]
 
         # Build sensor zone lookup and subscribe
@@ -51,12 +62,29 @@ class RoomOccupancy(hass.Hass):
                 continue
             self.listen_state(self._on_motion, entity, new="on")
 
-        # Sync state from HA entity on startup
+        # Sync state from HA entity on startup. AppDaemon and HA both restart
+        # (deploys, reboots), and the room does not empty just because we did.
         current = self.get_state(self.occupancy_entity)
-        if current in (STATE_OCCUPIED, STATE_PENDING_EXIT):
+        if current == STATE_OCCUPIED:
             self.occupancy = STATE_OCCUPIED
             self._reset_safety_timer()
-            self.log(f"Restored state {current} from {self.occupancy_entity}")
+            self.log(f"Restored {current} from {self.occupancy_entity}")
+        elif current == STATE_PENDING_EXIT:
+            # Keep it pending and re-arm the countdown. Collapsing this to
+            # Occupied (the old behaviour) threw away the only timer that
+            # reaches Empty, so a restart mid-exit stranded the room Occupied
+            # until another door trip or the safety timeout.
+            self.occupancy = STATE_PENDING_EXIT
+            self._reset_safety_timer()
+            self.pending_exit_handle = self.run_in(
+                self._on_exit_confirmed, self.exit_grace_period
+            )
+            self.log(f"Restored {current} from {self.occupancy_entity}, exit timer re-armed")
+
+        # If HA restarts under us its input_select may come back at the default
+        # option while our own state is still correct. Re-assert on reconnect.
+        self.listen_event(self._on_ha_start, "homeassistant_start")
+        self.listen_event(self._on_ha_start, "plugin_restarted")
 
         self.log(
             f"Initialized: sensors={[s['entity'] for s in self.sensors if ZONE_MAP[s['zone']] != ZONE_EXTERIOR]}, "
@@ -78,6 +106,9 @@ class RoomOccupancy(hass.Hass):
         """Interior sensor fired — someone is definitely in the room."""
         self._cancel(self.pending_exit_handle)
         self.pending_exit_handle = None
+        # Entry is now confirmed by real interior activity.
+        self._cancel(self.entry_confirm_handle)
+        self.entry_confirm_handle = None
         if self.occupancy != STATE_OCCUPIED:
             self._set_occupancy(STATE_OCCUPIED)
         self._reset_safety_timer()
@@ -87,9 +118,15 @@ class RoomOccupancy(hass.Hass):
         Could be entering or leaving. If we were occupied, start the
         exit countdown. If empty, assume entry."""
         if self.occupancy == STATE_EMPTY:
-            # Door sensor while empty — someone walking in
+            # Door sensor while empty — probably someone walking in, but it
+            # could equally be someone passing the doorway. Believe it for now
+            # and start a confirmation timer; interior motion cancels it.
             self._set_occupancy(STATE_OCCUPIED)
             self._reset_safety_timer()
+            self._cancel(self.entry_confirm_handle)
+            self.entry_confirm_handle = self.run_in(
+                self._on_entry_unconfirmed, self.entry_confirm
+            )
         elif self.occupancy == STATE_OCCUPIED:
             # Door sensor while occupied — might be leaving
             self._set_occupancy(STATE_PENDING_EXIT)
@@ -111,11 +148,30 @@ class RoomOccupancy(hass.Hass):
         self.pending_exit_handle = None
         self._set_occupancy(STATE_EMPTY)
 
+    def _on_entry_unconfirmed(self, kwargs):
+        self.entry_confirm_handle = None
+        if self.occupancy != STATE_OCCUPIED:
+            return
+        self.log(
+            f"Boundary trip never confirmed by interior motion in "
+            f"{self.entry_confirm}s — treating as a pass-by"
+        )
+        self._set_occupancy(STATE_EMPTY)
+
+    def _on_ha_start(self, event_name, data, kwargs):
+        """HA came back. Push our state onto the entity in case it reset."""
+        current = self.get_state(self.occupancy_entity)
+        if current != self.occupancy:
+            self.log(f"HA restart: {self.occupancy_entity} is {current}, re-asserting {self.occupancy}")
+            self._publish(self.occupancy)
+
     def _on_safety_timeout(self, kwargs):
         self.safety_handle = None
         self.log(f"Safety timeout after {self.safety_timeout}s — forcing empty")
         self._cancel(self.pending_exit_handle)
         self.pending_exit_handle = None
+        self._cancel(self.entry_confirm_handle)
+        self.entry_confirm_handle = None
         self._set_occupancy(STATE_EMPTY)
 
     def _reset_safety_timer(self):
@@ -128,7 +184,9 @@ class RoomOccupancy(hass.Hass):
         old = self.occupancy
         self.occupancy = new_state
         self.log(f"Occupancy: {old} → {new_state}")
+        self._publish(new_state)
 
+    def _publish(self, new_state):
         try:
             self.call_service(
                 "input_select/select_option",
