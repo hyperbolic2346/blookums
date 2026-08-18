@@ -36,6 +36,9 @@ import time
 # soaked_gap_pp: above this the fan keeps going even though the room is empty,
 #                rather than stopping with the mirror still fogged (default 25)
 # min_runtime_minutes: floor on any run, prevents chatter (default 10)
+# start_confirm_seconds: the start gap must hold this long before the fan starts,
+#                    so a transient (HA restarting, MQTT entities repopulating
+#                    one by one) cannot trigger a run (default 90)
 # progress_check_minutes: give up if the gap has not improved in this long, once
 #                    the room is empty (default 45). Progress resets the clock.
 #                    Patience is the real knob, not the pp value - this fan can
@@ -128,6 +131,7 @@ class BathFan(hass.Hass):
     self.soaked_gap = float(self.args.get("soaked_gap_pp", 25))
     self.min_runtime_s = float(self.args.get("min_runtime_minutes", 10)) * 60
     self.presence = list(self.args.get("presence_sensors", []))
+    self.start_confirm_s = float(self.args.get("start_confirm_seconds", 90))
     self.progress_check_s = float(self.args.get("progress_check_minutes", 45)) * 60
     self.progress_pp = float(self.args.get("progress_pp", 2))
     self.stalled_cooldown_s = float(self.args.get("stalled_cooldown_minutes", 90)) * 60
@@ -139,6 +143,7 @@ class BathFan(hass.Hass):
     self.running_since = None
     self.blocked_until = None
     self.gap_history = []
+    self.above_since = None
     self.run_anchor = None
     self.progress_since = None
     self.empty_since = None
@@ -232,10 +237,21 @@ class BathFan(hass.Hass):
     the fan starts, so for the first smoothing_minutes there is no verdict and
     the fan cannot stop. Without that, the window still held the pre-shower dry
     readings and their median sat below stop_gap_pp, so the fan switched off in
-    the same second it started (observed: 6 on/off cycles inside 2 minutes)."""
-    if not self.gap_history or now - self.gap_history[0][0] < self.smooth_s:
+    the same second it started (observed: 6 on/off cycles inside 2 minutes).
+
+    CAREFUL - this went wrong once already, and every stop path is gated on it.
+    The first version pruned gap_history to "age <= smooth_s" and then required
+    "oldest >= smooth_s". Those are mutually exclusive, so this returned None
+    forever and the fan could only ever be stopped by the 240min cap - on
+    2026-08-17 it ran from 23:39 with the gap sitting at +10pp against a +22
+    stop threshold. Hence: keep TWICE the window, median over the last
+    smooth_s, and require those samples to actually SPAN most of it."""
+    window = [(t, g) for t, g in self.gap_history if now - t <= self.smooth_s]
+    if len(window) < 3:
       return None
-    return statistics.median(g for _, g in self.gap_history)
+    if now - window[0][0] < self.smooth_s * 0.8:
+      return None
+    return statistics.median(g for _, g in window)
 
   def set_fan(self, on, reason):
     # Transitions always log, and reset the dedupe so the next steady-state
@@ -247,6 +263,7 @@ class BathFan(hass.Hass):
       if 'light' in self.args:
         self.turn_on(self.args["light"])
       self.running_since = time.time()
+      self.above_since = None
       self.run_anchor = None
       self.progress_since = time.time()
     else:
@@ -377,7 +394,10 @@ class BathFan(hass.Hass):
 
     gap = bath - ref
     self.gap_history.append((now, gap))
-    self.gap_history = [(t, g) for t, g in self.gap_history if now - t <= self.smooth_s]
+    # Twice the smoothing window: smoothed_gap() needs samples SPANNING
+    # smooth_s, which is impossible if everything older than it is pruned.
+    self.gap_history = [(t, g) for t, g in self.gap_history
+                        if now - t <= self.smooth_s * 2]
     settled = self.smoothed_gap(now)
 
     if fan_on and self.run_anchor is None and settled is not None:
@@ -417,6 +437,16 @@ class BathFan(hass.Hass):
       return
 
     if gap >= self.start_gap:
+      # Require the threshold to HOLD before acting. On 2026-08-17 Home Assistant
+      # restarted and its MQTT entities repopulated one at a time; for a few
+      # seconds the reference read low, the gap looked huge, and the fan started
+      # on a single transient sample. Seven seconds later the true gap was +15pp.
+      if self.above_since is None:
+        self.above_since = now
+      if now - self.above_since < self.start_confirm_s:
+        self.say("confirming", "Gap +{:.0f}pp - confirming for {:.0f}s before starting".format(
+            gap, self.start_confirm_s))
+        return
       if self.blocked_until and now < self.blocked_until:
         self.say("holding", "Wet (+{:.0f}pp) but holding off until {:.0f}min cooldown "
                             "expires".format(gap, (self.blocked_until - now) / 60))
@@ -424,6 +454,7 @@ class BathFan(hass.Hass):
       self.blocked_until = None
       self.set_fan(True, "bath {:.0f}% vs {:.0f}% house (+{:.0f}pp)".format(bath, ref, gap))
     else:
+      self.above_since = None
       self.say("idle", "Idle: bath {:.0f}%, house {:.0f}%, +{:.0f}pp (on at +{:.0f})".format(
           bath, ref, gap, self.start_gap))
 
