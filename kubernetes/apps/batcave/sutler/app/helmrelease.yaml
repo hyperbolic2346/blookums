@@ -45,7 +45,7 @@ spec:
           02-migrate:
             image: &apiImage
               repository: ghcr.io/hyperbolic2346/sutler-api
-              tag: main-319a1be-b41 # {"$imagepolicy": "flux-system:sutler-api:tag"}
+              tag: 0.1.0 # {"$imagepolicy": "flux-system:sutler-api:tag"}
             command: ["npx", "prisma", "migrate", "deploy"]
             envFrom: *envFrom
           # 3) seed baseline data (idempotent upserts)
@@ -121,7 +121,7 @@ spec:
           main:
             image:
               repository: ghcr.io/hyperbolic2346/sutler-web
-              tag: main-319a1be-b41 # {"$imagepolicy": "flux-system:sutler-web:tag"}
+              tag: 0.1.0 # {"$imagepolicy": "flux-system:sutler-web:tag"}
             env:
               PUBLIC_API_URL: "https://sutler.${SECRET_DOMAIN_SUTLER}"
               # Self-hosted Umami analytics (observability namespace). The
