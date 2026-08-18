@@ -134,25 +134,38 @@ views:
         entity: input_button.master_bath_fan_timed
         name: Fan 30 min
         icon: mdi:fan-clock
-      - type: entities
-        entities:
-        - entity: input_select.master_bathroom_occupancy
-          name: Occupancy
-        - entity: automation.bathroom_start_sound_on_toilet_motion
-          name: Potty Princess
-          icon: mdi:music-note-off
-        - entity: binary_sensor.master_bath0_motion
-          name: Motion 0
-        - entity: binary_sensor.master_bath1_motion
-          name: Motion 1
-        - entity: sensor.master_bath1_humidity
-          name: Humidity
-        - entity: sensor.master_bath1_temperature
-          name: Temperature
-        - entity: sensor.master_bath_dew_point
-          name: Dew Point
-        - entity: sensor.master_bath_dew_point_excess
-          name: Dew Point Excess
+    # Climate gets its own FULL-WIDTH card. It used to be the third element of
+    # the horizontal-stack above, which on a phone left it a third of the screen
+    # and truncated every label to "T..." / "D...". Glance keeps the values big
+    # and the names short enough to survive four columns.
+    - type: glance
+      title: Climate
+      columns: 4
+      entities:
+      - entity: sensor.master_bath1_temperature
+        name: Temp
+      - entity: sensor.master_bath1_humidity
+        name: Humidity
+      - entity: sensor.master_bath_dew_point
+        name: Dew pt
+      - entity: sensor.master_bath_dew_point_excess
+        name: Excess
+    - type: entities
+      title: Room
+      entities:
+      - entity: input_select.master_bathroom_occupancy
+        name: Occupancy
+      # The entity_id never followed an alias rename: this automation is called
+      # "Bathroom - Start Sound on Toilet Motion" but its entity_id is still
+      # automation.bathroom_toilet_motion_detected. The dashboard was guessing
+      # the slugified alias, which is what drew the warning card on this view.
+      - entity: automation.bathroom_toilet_motion_detected
+        name: Potty Princess
+        icon: mdi:music-note-off
+      - entity: binary_sensor.master_bath0_motion
+        name: Motion 0
+      - entity: binary_sensor.master_bath1_motion
+        name: Motion 1
     - type: horizontal-stack
       cards:
       - type: light
