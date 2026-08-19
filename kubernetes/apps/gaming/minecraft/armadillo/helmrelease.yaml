@@ -168,7 +168,11 @@ spec:
             # externalTrafficPolicy: Cluster
             port: 8123
           ingress:
-            enabled: true
+            # Replaced by ./httproute.yaml. The cluster has no ingress
+            # controller (no IngressClass at all) since the move to Cilium
+            # Gateway API, so this Ingress was never programmed and
+            # armadillo.${SECRET_DOMAIN} stopped resolving internally.
+            enabled: false
             className: internal
             annotations:
               kubernetes.io/ingress.class: internal
