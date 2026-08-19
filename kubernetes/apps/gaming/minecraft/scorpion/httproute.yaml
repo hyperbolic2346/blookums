@@ -7,12 +7,13 @@ metadata:
 spec:
   hostnames: ["scorpion.${SECRET_DOMAIN}"]
   parentRefs:
-    # NOTE: internal while we validate the dynmap hardening. To publish this map
-    # to the internet, change this to `external` -- the tunnel already routes
-    # *.burntsheep.com to cilium-gateway-external and a wildcard DNS record
-    # already exists, so that one word is the entire cutover. Put a Cloudflare
-    # Access policy on the hostname BEFORE flipping it.
-    - name: internal
+    # PUBLIC AND UNAUTHENTICATED. The tunnel routes *.burntsheep.com to
+    # cilium-gateway-external and a wildcard DNS record already exists, so
+    # attaching here puts the map on the open internet. There is deliberately
+    # no Cloudflare Access policy on this hostname: anyone who knows the name
+    # can see the world map and live player positions/usernames. Add one in
+    # Cloudflare (not in this repo) if that ever stops being acceptable.
+    - name: external
       namespace: kube-system
       port: 443
   rules:
