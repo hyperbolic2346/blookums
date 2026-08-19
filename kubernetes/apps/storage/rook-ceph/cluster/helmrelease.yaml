@@ -20,13 +20,9 @@ spec:
     operatorNamespace: storage
     monitoring:
       enabled: true
-    ingress:
-      dashboard:
-        ingressClassName: internal
-        annotations:
-        host:
-          name: rook.${SECRET_DOMAIN}
-          path: /
+    # No ingress block: the cluster has no ingress controller (no IngressClass
+    # at all) since the move to Cilium Gateway API, so the chart's Ingress was
+    # never programmed. The dashboard is served by ./httproute.yaml instead.
     cephClusterSpec:
       cephConfig:
         global:

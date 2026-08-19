@@ -13,6 +13,24 @@ spec:
       sourceRef:
         kind: HelmRepository
         name: gate-charts
+  # gate-charts renders its Ingress unconditionally -- there is no values
+  # toggle for it -- and the cluster has had no ingress controller since the
+  # move to Cilium Gateway API, so it was never programmed. ./httproute.yaml
+  # serves gate.${SECRET_DOMAIN} instead, so drop the dead object here.
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              group: networking.k8s.io
+              version: v1
+              kind: Ingress
+              name: gate-gate
+            patch: |
+              apiVersion: networking.k8s.io/v1
+              kind: Ingress
+              metadata:
+                name: gate-gate
+              $patch: delete
   values:
     celery:
       image: ${SECRET_DOCKER_USER}/celery_motion:v2

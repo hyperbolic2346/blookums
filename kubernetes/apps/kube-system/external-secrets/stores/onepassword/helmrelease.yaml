@@ -114,7 +114,12 @@ spec:
                 memory: 256Mi
     ingress:
       main:
-        enabled: true
+        # Disabled, not converted to an HTTPRoute: nothing reaches Connect by
+        # hostname. The ClusterSecretStore in ./secretstore.yaml uses the
+        # in-cluster service (connectHost: http://onepassword-connect.kube-system
+        # .svc.cluster.local.:8080), and the cluster has no ingress controller
+        # since the move to Cilium Gateway API, so this was never programmed.
+        enabled: false
         className: internal
         annotations:
           hajimari.io/enable: "false"
