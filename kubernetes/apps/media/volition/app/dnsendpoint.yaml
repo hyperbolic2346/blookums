@@ -1,0 +1,29 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/externaldns.k8s.io/dnsendpoint_v1alpha1.json
+#
+# cloudflare-dns runs with --gateway-name=external, so it ignores the `volition`
+# gateway entirely and no record would be created automatically. Hence this
+# explicit DNSEndpoint (the `crd` source is enabled).
+#
+# cloudflare-proxied MUST be false. cloudflare-dns runs with --cloudflare-proxied
+# as its default, and a proxied record would route traffic back through
+# Cloudflare's edge -- undoing the entire point of the public gateway.
+#
+# Trade-off: an unproxied A record publishes the home WAN IP in public DNS.
+# That is already true of minion-valheim on 99.136.248.250.
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: volition
+  namespace: media
+  annotations:
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+spec:
+  endpoints:
+    - dnsName: "volition.${SECRET_DOMAIN}"
+      recordType: A
+      recordTTL: 300
+      targets: ["99.136.248.251"]
+      providerSpecific:
+        - name: external-dns.alpha.kubernetes.io/cloudflare-proxied
+          value: "false"

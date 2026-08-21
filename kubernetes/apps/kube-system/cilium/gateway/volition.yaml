@@ -1,0 +1,55 @@
+---
+# yaml-language-server: $schema=https://github.com/datreeio/CRDs-catalog/raw/refs/heads/main/gateway.networking.k8s.io/gateway_v1.json
+#
+# Public-facing gateway for the volition file share.
+#
+# Unlike `external`, traffic here does NOT pass through cloudflared. It takes an
+# IP directly from the `pool-public` CiliumLoadBalancerIPPool (99.136.248.249-253)
+# -- the same mechanism minion-valheim uses -- so bulk downloads run at line rate
+# instead of being funnelled through the tunnel (and stay clear of Cloudflare's
+# ToS 2.8 restriction on bulk non-HTML transfer).
+#
+# There is no port-forward involved: Cilium advertises a /32 for this IP to the
+# UDM Pro over BGP and the UDM routes it un-NATted, so nothing needs configuring
+# on the router side. Inbound access is governed by the UDM's Internet-In
+# firewall policy, not by forwarding rules.
+#
+# Consequence: this listener is reachable directly from the internet with no WAF
+# or DDoS absorption in front of it. TLS + basic auth is the whole perimeter,
+# which is why the HTTP listener only ever redirects.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: volition
+spec:
+  gatewayClassName: cilium
+  addresses:
+    - type: IPAddress
+      value: "99.136.248.251"
+  infrastructure:
+    labels:
+      # Required by pool-public's serviceSelector. Without this label the LB
+      # service falls back to the 192.168.14.0/24 `pool` and never gets a
+      # public IP.
+      io.cilium/lb-public: "true"
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      hostname: "volition.${SECRET_DOMAIN}"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "volition.${SECRET_DOMAIN}"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        certificateRefs:
+          # Reuses the existing wildcard cert -- *.burntsheep.com already covers
+          # volition.burntsheep.com, so no new Certificate resource is needed.
+          - kind: Secret
+            name: ${SECRET_DOMAIN/./-}-production-tls
