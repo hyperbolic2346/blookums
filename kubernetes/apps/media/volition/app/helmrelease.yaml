@@ -1,0 +1,171 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: volition
+  namespace: media
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: volition
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    controllers:
+      volition:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          main:
+            image:
+              repository: docker.io/library/caddy
+              tag: 2.11.4-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+            env:
+              TZ: ${TIMEZONE}
+              # Caddy writes state under these; redirect them into the emptyDir
+              # so readOnlyRootFilesystem can stay true.
+              XDG_CONFIG_HOME: /tmp/caddy-config
+              XDG_DATA_HOME: /tmp/caddy-data
+            envFrom:
+              - secretRef:
+                  name: volition-secret
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: 8081
+                  initialDelaySeconds: 5
+                  periodSeconds: 20
+                  timeoutSeconds: 3
+                  failureThreshold: 3
+              readiness: *probes
+              startup:
+                enabled: false
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: {drop: ["ALL"]}
+            resources:
+              requests:
+                cpu: 50m
+                memory: 64M
+              limits:
+                memory: 1024M
+        pod:
+          securityContext:
+            # 568 is the TrueNAS apps UID that already reads the fileserver
+            # exports (same as navidrome against the `music` volume). If the
+            # browse listing 403s on click, this is the first thing to check
+            # against the actual owner of the staged files.
+            runAsNonRoot: true
+            runAsUser: 568
+            runAsGroup: 568
+            fsGroup: 568
+            fsGroupChangePolicy: OnRootMismatch
+            supplementalGroups:
+              - 1001
+    configMaps:
+      caddyfile:
+        data:
+          Caddyfile: |
+            {
+              admin off
+              auto_https off
+              persist_config off
+            }
+
+            # Bulk file share. TLS terminates at the volition gateway, so this
+            # listener is plain HTTP inside the cluster.
+            :8080 {
+              root * /srv/files
+
+              basic_auth {
+                friends {env.CADDY_PASSWORD_HASH}
+              }
+
+              file_server browse {
+                hide .*
+              }
+
+              # Compress text only. The payload is largely already-compressed
+              # archives; gzipping multi-GB binaries would burn CPU and slow
+              # transfers for no size win. Range requests (resumable downloads)
+              # are handled by file_server natively.
+              encode gzip {
+                match {
+                  header Content-Type text/*
+                }
+              }
+
+              log {
+                output stdout
+                format console
+              }
+            }
+
+            # Unauthenticated health endpoint on its own port, so kubelet probes
+            # are not answered with 401 by the basic_auth above.
+            :8081 {
+              handle /healthz {
+                respond "ok" 200
+              }
+              handle {
+                respond 404
+              }
+            }
+    persistence:
+      files:
+        existingClaim: volition-nfs
+        globalMounts:
+          - path: /srv/files
+            readOnly: true
+      caddyfile:
+        type: configMap
+        name: volition
+        globalMounts:
+          - path: /etc/caddy/Caddyfile
+            subPath: Caddyfile
+            readOnly: true
+      tmp:
+        type: emptyDir
+    route:
+      main:
+        hostnames: ["volition.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: volition
+            namespace: kube-system
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: main
+                port: 8080
+      redirect:
+        hostnames: ["volition.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: volition
+            namespace: kube-system
+            sectionName: http
+        rules:
+          - filters:
+              - type: RequestRedirect
+                requestRedirect:
+                  scheme: https
+                  statusCode: 301
+    service:
+      main:
+        controller: volition
+        ports:
+          http:
+            port: 8080

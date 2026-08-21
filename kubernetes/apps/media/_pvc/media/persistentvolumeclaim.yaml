@@ -44,6 +44,20 @@ spec:
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
+  name: volition-nfs
+  namespace: media
+spec:
+  storageClassName: ''
+  volumeName: volition-nfs
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Ti
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
   name: youtubedl-nfs
   namespace: media
 spec:

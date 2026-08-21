@@ -30,4 +30,5 @@ resources:
   - ./sabnzbd/ks.yaml
   - ./sonarr/ks.yaml
   - ./tautulli/ks.yaml
+  - ./volition/ks.yaml
   - ./youtubedl/ks.yaml

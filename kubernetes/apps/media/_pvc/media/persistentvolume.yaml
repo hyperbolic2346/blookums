@@ -62,6 +62,31 @@ spec:
     - rsize=131072
     - wsize=131072
 ---
+# NOTE: path is inline rather than a ${SECRET_FILESERV_*_PATH} substitution
+# because there is no sops/age tooling on the machine this was authored from.
+# Move it into cluster-secrets.sops.yaml as SECRET_FILESERV_VOLITION_PATH if you
+# want it to match the convention of the volumes above.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: volition-nfs
+spec:
+  storageClassName: ''
+  capacity:
+    storage: 5Ti
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    path: /mnt/fileserv/Library/Volition
+    server: ${SECRET_FILESERV_IP}
+  mountOptions:
+    - nfsvers=4.1
+    - nconnect=8
+    - hard
+    - noatime
+    - rsize=131072
+    - wsize=131072
+---
 apiVersion: v1
 kind: PersistentVolume
 metadata:
