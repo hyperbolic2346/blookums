@@ -9,6 +9,11 @@
 # instead of being funnelled through the tunnel (and stay clear of Cloudflare's
 # ToS 2.8 restriction on bulk non-HTML transfer).
 #
+# There is no port-forward involved: Cilium advertises a /32 for this IP to the
+# UDM Pro over BGP and the UDM routes it un-NATted, so nothing needs configuring
+# on the router side. Inbound access is governed by the UDM's Internet-In
+# firewall policy, not by forwarding rules.
+#
 # Consequence: this listener is reachable directly from the internet with no WAF
 # or DDoS absorption in front of it. TLS + basic auth is the whole perimeter,
 # which is why the HTTP listener only ever redirects.
