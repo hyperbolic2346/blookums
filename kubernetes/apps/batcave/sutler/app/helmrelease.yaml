@@ -106,24 +106,25 @@ spec:
           # carrying a migration rolls the worker before the api has applied
           # it, and the worker crashloops on "column ... does not exist" until
           # the api finishes (seen with 0.3.0 / TenantMarketplaceConfig).
-          # 150 x 4s = 10m, matching the HelmRelease timeout.
+          # 150 x 4s = 10m, matching the HelmRelease timeout. No shell
+          # variables on purpose: Flux's strict envsubst rejects any $name it
+          # doesn't know.
           01-wait-for-migrations:
             image: *apiImage
             command: ["sh", "-c"]
             args:
               - |
-                i=0
-                until npx prisma migrate status >/dev/null 2>&1; do
-                  i=$((i+1))
-                  if [ "$i" -ge 150 ]; then
-                    echo "migrations still pending after ${i} attempts, giving up"
-                    npx prisma migrate status
-                    exit 1
+                for _ in $(seq 1 150); do
+                  if npx prisma migrate status >/dev/null 2>&1; then
+                    echo "migrations current"
+                    exit 0
                   fi
-                  echo "waiting for migrations (attempt ${i})"
+                  echo "waiting for migrations..."
                   sleep 4
                 done
-                echo "migrations current"
+                echo "migrations still pending after 10m, giving up"
+                npx prisma migrate status
+                exit 1
             envFrom: *envFrom
         containers:
           main:
