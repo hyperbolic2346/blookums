@@ -107,7 +107,7 @@ spec:
           # it, and the worker crashloops on "column ... does not exist" until
           # the api finishes (seen with 0.3.0 / TenantMarketplaceConfig).
           # 150 x 4s = 10m, matching the HelmRelease timeout. No shell
-          # variables on purpose: Flux's strict envsubst rejects any $name it
+          # variables on purpose: Flux's strict envsubst rejects any dollar-name it
           # doesn't know.
           01-wait-for-migrations:
             image: *apiImage
