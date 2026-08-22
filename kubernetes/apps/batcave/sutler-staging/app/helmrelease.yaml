@@ -118,6 +118,35 @@ spec:
       worker:
         annotations:
           reloader.stakater.com/auto: "true"
+        initContainers:
+          # Wait for the api's 02-migrate init container to bring the schema
+          # current. The worker shares the api image (prisma CLI + schema) and
+          # the same DATABASE_URL; `migrate status` exits 0 only when every
+          # migration in prisma/migrations is applied, and non-zero while any
+          # are pending or the database/role doesn't exist yet. Only the api
+          # ever runs `migrate deploy` -- this just polls. Without it, a release
+          # carrying a migration rolls the worker before the api has applied
+          # it, and the worker crashloops on "column ... does not exist" until
+          # the api finishes (seen with 0.3.0 / TenantMarketplaceConfig).
+          # 150 x 4s = 10m, matching the HelmRelease timeout.
+          01-wait-for-migrations:
+            image: *apiImage
+            command: ["sh", "-c"]
+            args:
+              - |
+                i=0
+                until npx prisma migrate status >/dev/null 2>&1; do
+                  i=$((i+1))
+                  if [ "$i" -ge 150 ]; then
+                    echo "migrations still pending after ${i} attempts, giving up"
+                    npx prisma migrate status
+                    exit 1
+                  fi
+                  echo "waiting for migrations (attempt ${i})"
+                  sleep 4
+                done
+                echo "migrations current"
+            envFrom: *envFrom
         containers:
           main:
             image: *apiImage
