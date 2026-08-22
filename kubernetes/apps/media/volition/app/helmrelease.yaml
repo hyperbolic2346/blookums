@@ -92,6 +92,15 @@ spec:
               admin off
               auto_https off
               persist_config off
+
+              # Cilium's Gateway is an L7 proxy: it terminates and re-originates
+              # the connection, so the peer Caddy sees is the Envoy pod
+              # (10.42.x) or the node, never the visitor. Trusting private
+              # ranges makes Caddy take client_ip from X-Forwarded-For, which is
+              # where the real address actually survives.
+              servers {
+                trusted_proxies static private_ranges
+              }
             }
 
             # Bulk file share. TLS terminates at the volition gateway, so this
@@ -99,8 +108,13 @@ spec:
             :8080 {
               root * /srv/files
 
+              # Same credential under both spellings. The singular/plural
+              # mismatch silently locked people out for hours -- the failure
+              # mode is an ordinary 401, indistinguishable from a wrong
+              # password, so nobody can self-diagnose it.
               basic_auth {
                 friends {env.CADDY_PASSWORD_HASH}
+                friend {env.CADDY_PASSWORD_HASH}
               }
 
               file_server browse {
