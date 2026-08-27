@@ -56,6 +56,13 @@ spec:
             parameters: IN AAAA cloudflarestorage.com
             configBlock: |-
               rcode NOERROR
+          # Same disease, different domain: kustomize-controller fetching remote
+          # bases from raw.githubusercontent.com picked the AAAA answer and got
+          # "network is unreachable" (broke the dragonfly kustomization).
+          - name: template
+            parameters: IN AAAA githubusercontent.com
+            configBlock: |-
+              rcode NOERROR
           - name: forward
             parameters: . /etc/resolv.conf
           - name: cache
