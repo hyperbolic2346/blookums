@@ -1,0 +1,57 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/prometheusrule_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: sutler
+spec:
+  groups:
+    - name: sutler.orders
+      rules:
+        - alert: SutlerOrderNeedsAttention
+          expr: sutler_orders{status="NEEDS_ATTENTION"} > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              {{ $value }} sutler order(s) in NEEDS_ATTENTION — a human must
+              act (check /orders for the reason on each row).
+        - alert: SutlerOrderStuckNew
+          expr: sutler_oldest_order_age_seconds{status="NEW"} > 3600
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              A sutler order has sat in NEW for over an hour — the worker or
+              the submit path is stalled.
+        - alert: SutlerOrderUnshipped
+          expr: sutler_oldest_unshipped_order_age_seconds > 172800
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              A submitted sutler order has gone 48h with no tracking — the
+              distributor may not have shipped; the buyer's clock is running.
+    - name: sutler.pipeline
+      rules:
+        - alert: SutlerOrderPollStale
+          expr: time() - sutler_last_poll_timestamp_seconds > 1800
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: >-
+              No successful {{ $labels.marketplace }} order poll in 30+
+              minutes — sutler is blind to new sales.
+        - alert: SutlerSyncStale
+          expr: time() - sutler_last_sync_success_timestamp_seconds > 21600
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              No successful {{ $labels.distributor }} sync in 6+ hours —
+              listed quantities are drifting from reality (oversell risk).
