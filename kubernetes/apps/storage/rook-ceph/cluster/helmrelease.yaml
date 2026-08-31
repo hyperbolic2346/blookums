@@ -74,7 +74,10 @@ spec:
             cpu: 50m
             memory: 512Mi
           limits:
-            memory: 2Gi
+            # Bumped 2Gi->6Gi during 2026-08-29 quorum outage: 34h without quorum
+            # bloated mon stores/osdmap backlog and mons OOMKilled mid-election,
+            # deadlocking recovery. Can revisit once cluster is HEALTH_OK.
+            memory: 6Gi
         osd:
           requests:
             cpu: 500m
