@@ -93,6 +93,28 @@ spec:
           "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2, "custom": { "drawStyle": "bars", "fillOpacity": 60 } } }
         },
         {
+          "type": "timeseries", "title": "Auto-list actions (24h window)", "id": 14,
+          "gridPos": { "x": 0, "y": 26, "w": 12, "h": 7 },
+          "targets": [
+            { "expr": "sum by (action) (sutler_reconcile_actions{window=\"24h\", action=~\"published|ended\"})", "legendFormat": "{{action}}", "refId": "A" },
+            { "expr": "sum(sutler_reconcile_actions{window=\"24h\", action=\"failed\"})", "legendFormat": "failed", "refId": "B" }
+          ],
+          "fieldConfig": { "defaults": { "unit": "none", "decimals": 0 } }
+        },
+        {
+          "type": "bargauge", "title": "Held back (latest pass)", "id": 15,
+          "gridPos": { "x": 12, "y": 26, "w": 6, "h": 7 },
+          "targets": [{ "expr": "sum by (kind) (sutler_reconcile_held)", "legendFormat": "{{kind}}", "instant": true, "refId": "A" }],
+          "options": { "displayMode": "gradient", "orientation": "horizontal" },
+          "fieldConfig": { "defaults": { "unit": "none", "decimals": 0 } }
+        },
+        {
+          "type": "stat", "title": "Last reconcile pass", "id": 16,
+          "gridPos": { "x": 18, "y": 26, "w": 6, "h": 7 },
+          "targets": [{ "expr": "time() - sutler_reconcile_last_run_timestamp_seconds", "legendFormat": "{{marketplace}}", "instant": true, "refId": "A" }],
+          "fieldConfig": { "defaults": { "unit": "s", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 3600 }, { "color": "red", "value": 7200 } ] } } }
+        },
+        {
           "type": "timeseries", "title": "Oldest actionable order age", "id": 13,
           "gridPos": { "x": 12, "y": 18, "w": 12, "h": 8 },
           "targets": [

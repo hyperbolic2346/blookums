@@ -35,6 +35,26 @@ spec:
             summary: >-
               A submitted sutler order has gone 48h with no tracking — the
               distributor may not have shipped; the buyer's clock is running.
+    - name: sutler.autolist
+      rules:
+        - alert: SutlerReconcileMassEnding
+          expr: sum(sutler_reconcile_actions{action="ended", window="24h"}) > 20
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              Auto-list ended {{ $value }} listings in 24h — a feed glitch may
+              be taking the catalog down; check the reconcile runs.
+        - alert: SutlerReconcileFailures
+          expr: sum(sutler_reconcile_actions{action="failed", window="24h"}) > 0
+          for: 2h
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              Auto-list actions are failing (marketplace/API rejections) and
+              staying failed — check the worker log and ERROR listings.
     - name: sutler.pipeline
       rules:
         - alert: SutlerOrderPollStale
