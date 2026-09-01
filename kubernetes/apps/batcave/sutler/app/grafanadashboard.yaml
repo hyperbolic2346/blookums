@@ -16,112 +16,276 @@ spec:
       "tags": ["sutler", "batcave"],
       "timezone": "browser",
       "schemaVersion": 39,
-      "refresh": "1m",
-      "time": { "from": "now-30d", "to": "now" },
+      "refresh": "5m",
+      "time": { "from": "now-14d", "to": "now" },
+      "links": [
+        { "type": "link", "title": "Sutler UI", "url": "https://sutler.burntsheep.com", "icon": "external link", "targetBlank": true }
+      ],
+      "annotations": { "list": [
+        {
+          "name": "Deploys/restarts",
+          "datasource": { "type": "prometheus" },
+          "enable": true,
+          "expr": "changes(process_start_time_seconds{namespace=\"batcave\", pod=~\"sutler.*\"}[5m]) > 0",
+          "titleFormat": "sutler restart",
+          "iconColor": "purple"
+        }
+      ] },
       "panels": [
         {
-          "type": "stat", "title": "Sales (7d)", "id": 1,
+          "type": "stat", "title": "Profit (7d)", "id": 1,
           "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
-          "targets": [{ "expr": "sum(sutler_sales{window=\"7d\"}) or vector(0)", "instant": true, "refId": "A" }],
-          "fieldConfig": { "defaults": { "unit": "none", "decimals": 0 } }
+          "targets": [{ "expr": "sum(sutler_profit_cents{window=\"7d\"}) / 100 or vector(0)", "refId": "A" }],
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area" },
+          "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2, "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0 } ] } } }
         },
         {
-          "type": "stat", "title": "Revenue (7d)", "id": 2,
+          "type": "stat", "title": "Profit (24h)", "id": 2,
           "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+          "targets": [{ "expr": "sum(sutler_profit_cents{window=\"24h\"}) / 100 or vector(0)", "instant": true, "refId": "A" }],
+          "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2 } }
+        },
+        {
+          "type": "stat", "title": "Profit (30d)", "id": 3,
+          "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+          "targets": [{ "expr": "sum(sutler_profit_cents{window=\"30d\"}) / 100 or vector(0)", "instant": true, "refId": "A" }],
+          "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2 } }
+        },
+        {
+          "type": "stat", "title": "Revenue (7d)", "id": 4,
+          "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
           "targets": [{ "expr": "sum(sutler_revenue_cents{window=\"7d\"}) / 100 or vector(0)", "instant": true, "refId": "A" }],
           "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2 } }
         },
         {
-          "type": "stat", "title": "Profit (7d)", "id": 3,
-          "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
-          "targets": [{ "expr": "sum(sutler_profit_cents{window=\"7d\"}) / 100 or vector(0)", "instant": true, "refId": "A" }],
-          "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2, "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0 } ] } } }
-        },
-        {
-          "type": "stat", "title": "Profit / sale (7d)", "id": 4,
-          "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+          "type": "stat", "title": "Profit / sale (7d)", "id": 5,
+          "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
           "targets": [{ "expr": "(sum(sutler_profit_cents{window=\"7d\"}) / clamp_min(sum(sutler_sales{window=\"7d\"}), 1)) / 100 or vector(0)", "instant": true, "refId": "A" }],
           "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2 } }
         },
         {
-          "type": "stat", "title": "Needs attention", "id": 5,
-          "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+          "type": "stat", "title": "Needs attention", "id": 6,
+          "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
           "targets": [{ "expr": "sum(sutler_orders{status=\"NEEDS_ATTENTION\"}) or vector(0)", "instant": true, "refId": "A" }],
-          "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } } }
+          "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "links": [ { "title": "Open sutler orders", "url": "https://sutler.burntsheep.com/orders", "targetBlank": true } ], "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } } }
         },
         {
-          "type": "stat", "title": "Sales missing cost", "id": 6,
-          "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
+          "type": "timeseries", "title": "Profit per day", "id": 7,
+          "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+          "targets": [{ "expr": "sum by (marketplace) (increase(sutler_profit_cents_total[1d])) / 100", "legendFormat": "{{marketplace}}", "refId": "A" }],
+          "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+          "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2, "custom": { "drawStyle": "bars", "fillOpacity": 70, "stacking": { "mode": "normal" } } } }
+        },
+        {
+          "type": "timeseries", "title": "Revenue & sales per day", "id": 8,
+          "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+          "targets": [
+            { "expr": "sum by (marketplace) (increase(sutler_revenue_cents_total[1d])) / 100", "legendFormat": "{{marketplace}}", "refId": "A" },
+            { "expr": "sum(increase(sutler_sales_total[1d]))", "legendFormat": "sales", "refId": "B" }
+          ],
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+          "fieldConfig": {
+            "defaults": { "unit": "currencyUSD", "decimals": 2, "custom": { "drawStyle": "bars", "fillOpacity": 70, "stacking": { "mode": "normal" } } },
+            "overrides": [
+              { "matcher": { "id": "byName", "options": "sales" }, "properties": [
+                { "id": "custom.drawStyle", "value": "line" },
+                { "id": "custom.stacking", "value": { "mode": "none" } },
+                { "id": "custom.axisPlacement", "value": "right" },
+                { "id": "unit", "value": "none" },
+                { "id": "decimals", "value": 0 }
+              ] }
+            ]
+          }
+        },
+        {
+          "type": "row", "title": "Needs me", "id": 20, "collapsed": false,
+          "gridPos": { "x": 0, "y": 12, "w": 24, "h": 1 }, "panels": []
+        },
+        {
+          "type": "bargauge", "title": "Actionable orders", "id": 9,
+          "gridPos": { "x": 0, "y": 13, "w": 8, "h": 6 },
+          "targets": [{ "expr": "sutler_orders{status=~\"NEW|NEEDS_ATTENTION|SUBMITTED|CONFIRMED|SHIPPED\"}", "legendFormat": "{{status}}", "instant": true, "refId": "A" }],
+          "options": { "displayMode": "basic", "orientation": "horizontal" },
+          "fieldConfig": {
+            "defaults": { "unit": "none", "decimals": 0, "links": [ { "title": "Open sutler orders", "url": "https://sutler.burntsheep.com/orders", "targetBlank": true } ], "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] } },
+            "overrides": [
+              { "matcher": { "id": "byRegexp", "options": ".*NEEDS_ATTENTION.*" }, "properties": [ { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } } ] },
+              { "matcher": { "id": "byRegexp", "options": ".*NEW.*" }, "properties": [ { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1 } ] } } ] }
+            ]
+          }
+        },
+        {
+          "type": "stat", "title": "Oldest unshipped", "id": 10,
+          "gridPos": { "x": 8, "y": 13, "w": 4, "h": 6 },
+          "targets": [{ "expr": "sutler_oldest_unshipped_order_age_seconds", "instant": true, "refId": "A" }],
+          "fieldConfig": { "defaults": { "unit": "dtdurations", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 86400 }, { "color": "red", "value": 172800 } ] } } }
+        },
+        {
+          "type": "stat", "title": "Sales missing cost", "id": 11,
+          "gridPos": { "x": 12, "y": 13, "w": 4, "h": 6 },
           "targets": [{ "expr": "sum(sutler_sales_missing_cost) or vector(0)", "instant": true, "refId": "A" }],
           "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1 } ] } } }
         },
         {
-          "type": "timeseries", "title": "Sales per day", "id": 7,
-          "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
-          "targets": [{ "expr": "sum by (marketplace) (delta(sutler_sales_total[1d]))", "legendFormat": "{{marketplace}}", "refId": "A" }],
-          "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "custom": { "drawStyle": "bars", "fillOpacity": 60 } } }
-        },
-        {
-          "type": "timeseries", "title": "Profit per day", "id": 8,
-          "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
-          "targets": [{ "expr": "sum by (marketplace) (delta(sutler_profit_cents_total[1d])) / 100", "legendFormat": "{{marketplace}}", "refId": "A" }],
-          "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2, "custom": { "drawStyle": "bars", "fillOpacity": 60 } } }
-        },
-        {
-          "type": "bargauge", "title": "Orders by status", "id": 9,
-          "gridPos": { "x": 0, "y": 12, "w": 8, "h": 6 },
-          "targets": [{ "expr": "sutler_orders", "legendFormat": "{{status}}", "instant": true, "refId": "A" }],
-          "options": { "displayMode": "gradient", "orientation": "horizontal" },
-          "fieldConfig": { "defaults": { "unit": "none", "decimals": 0 } }
-        },
-        {
-          "type": "stat", "title": "Order poll age", "id": 10,
-          "gridPos": { "x": 8, "y": 12, "w": 8, "h": 6 },
-          "targets": [{ "expr": "time() - sutler_last_poll_timestamp_seconds", "legendFormat": "{{marketplace}}", "instant": true, "refId": "A" }],
-          "fieldConfig": { "defaults": { "unit": "s", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1200 }, { "color": "red", "value": 1800 } ] } } }
-        },
-        {
-          "type": "stat", "title": "Distributor sync age", "id": 11,
-          "gridPos": { "x": 16, "y": 12, "w": 8, "h": 6 },
-          "targets": [{ "expr": "time() - sutler_last_sync_success_timestamp_seconds", "legendFormat": "{{distributor}}", "instant": true, "refId": "A" }],
-          "fieldConfig": { "defaults": { "unit": "s", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 7200 }, { "color": "red", "value": 21600 } ] } } }
-        },
-        {
-          "type": "timeseries", "title": "Revenue per day", "id": 12,
-          "gridPos": { "x": 0, "y": 18, "w": 12, "h": 8 },
-          "targets": [{ "expr": "sum by (marketplace) (delta(sutler_revenue_cents_total[1d])) / 100", "legendFormat": "{{marketplace}}", "refId": "A" }],
-          "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2, "custom": { "drawStyle": "bars", "fillOpacity": 60 } } }
-        },
-        {
-          "type": "timeseries", "title": "Auto-list actions (24h window)", "id": 14,
-          "gridPos": { "x": 0, "y": 26, "w": 12, "h": 7 },
-          "targets": [
-            { "expr": "sum by (action) (sutler_reconcile_actions{window=\"24h\", action=~\"published|ended\"})", "legendFormat": "{{action}}", "refId": "A" },
-            { "expr": "sum(sutler_reconcile_actions{window=\"24h\", action=\"failed\"})", "legendFormat": "failed", "refId": "B" }
-          ],
-          "fieldConfig": { "defaults": { "unit": "none", "decimals": 0 } }
-        },
-        {
-          "type": "bargauge", "title": "Held back (latest pass)", "id": 15,
-          "gridPos": { "x": 12, "y": 26, "w": 6, "h": 7 },
-          "targets": [{ "expr": "sum by (kind) (sutler_reconcile_held)", "legendFormat": "{{kind}}", "instant": true, "refId": "A" }],
-          "options": { "displayMode": "gradient", "orientation": "horizontal" },
-          "fieldConfig": { "defaults": { "unit": "none", "decimals": 0 } }
-        },
-        {
-          "type": "stat", "title": "Last reconcile pass", "id": 16,
-          "gridPos": { "x": 18, "y": 26, "w": 6, "h": 7 },
-          "targets": [{ "expr": "time() - sutler_reconcile_last_run_timestamp_seconds", "legendFormat": "{{marketplace}}", "instant": true, "refId": "A" }],
-          "fieldConfig": { "defaults": { "unit": "s", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 3600 }, { "color": "red", "value": 7200 } ] } } }
-        },
-        {
-          "type": "timeseries", "title": "Oldest actionable order age", "id": 13,
-          "gridPos": { "x": 12, "y": 18, "w": 12, "h": 8 },
+          "type": "timeseries", "title": "Order age trend", "id": 12,
+          "gridPos": { "x": 16, "y": 13, "w": 8, "h": 6 },
           "targets": [
             { "expr": "sutler_oldest_order_age_seconds", "legendFormat": "{{status}}", "refId": "A" },
             { "expr": "sutler_oldest_unshipped_order_age_seconds", "legendFormat": "unshipped", "refId": "B" }
           ],
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
           "fieldConfig": { "defaults": { "unit": "s", "decimals": 0 } }
+        },
+        {
+          "type": "row", "title": "Funnel & merchandising", "id": 21, "collapsed": false,
+          "gridPos": { "x": 0, "y": 19, "w": 24, "h": 1 }, "panels": []
+        },
+        {
+          "type": "bargauge", "title": "Inventory funnel", "id": 13,
+          "gridPos": { "x": 0, "y": 20, "w": 8, "h": 7 },
+          "targets": [
+            { "expr": "sutler_funnel{stage=\"products\"}", "legendFormat": "1. products", "instant": true, "refId": "A" },
+            { "expr": "sutler_funnel{stage=\"eligible\"}", "legendFormat": "2. eligible", "instant": true, "refId": "B" },
+            { "expr": "sutler_funnel{stage=\"whitelisted\"}", "legendFormat": "3. whitelisted", "instant": true, "refId": "C" },
+            { "expr": "sutler_funnel{stage=\"listable\"}", "legendFormat": "4. listable", "instant": true, "refId": "D" },
+            { "expr": "sutler_funnel{stage=\"listed\"}", "legendFormat": "5. listed", "instant": true, "refId": "E" },
+            { "expr": "sutler_funnel{stage=\"sold_30d\"}", "legendFormat": "6. sold (30d)", "instant": true, "refId": "F" }
+          ],
+          "options": { "displayMode": "gradient", "orientation": "horizontal" },
+          "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "color": { "mode": "continuous-BlPu" } } }
+        },
+        {
+          "type": "bargauge", "title": "Why items can't list", "id": 14,
+          "gridPos": { "x": 8, "y": 20, "w": 8, "h": 7 },
+          "targets": [{ "expr": "topk(8, sutler_ineligible_products)", "legendFormat": "{{reason}}", "instant": true, "refId": "A" }],
+          "options": { "displayMode": "basic", "orientation": "horizontal" },
+          "fieldConfig": { "defaults": { "unit": "none", "decimals": 0 } }
+        },
+        {
+          "type": "timeseries", "title": "Offers per distributor", "id": 15,
+          "gridPos": { "x": 16, "y": 20, "w": 8, "h": 7 },
+          "targets": [{ "expr": "sum by (distributor) (sutler_offers{status=\"NORMAL\"})", "legendFormat": "{{distributor}} normal", "refId": "A" },
+                      { "expr": "sum by (distributor) (sutler_offers{status=\"ALLOCATED\"})", "legendFormat": "{{distributor}} allocated", "refId": "B" }],
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+          "fieldConfig": { "defaults": { "unit": "none", "decimals": 0 } }
+        },
+        {
+          "type": "stat", "title": "Whitelist dark matter", "id": 16,
+          "gridPos": { "x": 0, "y": 27, "w": 4, "h": 5 },
+          "description": "Whitelisted items currently ineligible — curation earning nothing.",
+          "targets": [{ "expr": "sutler_whitelist_dark or vector(0)", "instant": true, "refId": "A" }],
+          "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1 } ] } } }
+        },
+        {
+          "type": "stat", "title": "Eligible margin (avg / p50)", "id": 17,
+          "gridPos": { "x": 4, "y": 27, "w": 6, "h": 5 },
+          "targets": [{ "expr": "sutler_eligible_margin_cents / 100", "legendFormat": "{{agg}}", "instant": true, "refId": "A" }],
+          "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2 } }
+        },
+        {
+          "type": "bargauge", "title": "Price position (active listings)", "id": 18,
+          "gridPos": { "x": 10, "y": 27, "w": 7, "h": 5 },
+          "description": "vs competitor lowest, fresh snapshots only",
+          "targets": [{ "expr": "sutler_market_price_position", "legendFormat": "{{position}}", "instant": true, "refId": "A" }],
+          "options": { "displayMode": "basic", "orientation": "horizontal" },
+          "fieldConfig": { "defaults": { "unit": "none", "decimals": 0 } }
+        },
+        {
+          "type": "timeseries", "title": "Sell-through 7d (whitelisted vs all)", "id": 19,
+          "gridPos": { "x": 17, "y": 27, "w": 7, "h": 5 },
+          "targets": [{ "expr": "sutler_demand_units_sold_7d", "legendFormat": "{{distributor}} {{scope}}", "refId": "A" }],
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+          "fieldConfig": { "defaults": { "unit": "none", "decimals": 0 } }
+        },
+        {
+          "type": "row", "title": "Pipeline & sync", "id": 22, "collapsed": true,
+          "gridPos": { "x": 0, "y": 32, "w": 24, "h": 1 },
+          "panels": [
+            {
+              "type": "table", "title": "Data freshness", "id": 30,
+              "gridPos": { "x": 0, "y": 33, "w": 10, "h": 7 },
+              "targets": [
+                { "expr": "label_replace(time() - sutler_last_poll_timestamp_seconds, \"source\", \"poll: $1\", \"marketplace\", \"(.+)\")", "format": "table", "instant": true, "refId": "A" },
+                { "expr": "label_replace(time() - sutler_last_sync_success_timestamp_seconds, \"source\", \"sync: $1\", \"distributor\", \"(.+)\")", "format": "table", "instant": true, "refId": "B" },
+                { "expr": "label_replace(time() - sutler_reconcile_last_run_timestamp_seconds, \"source\", \"reconcile: $1\", \"marketplace\", \"(.+)\")", "format": "table", "instant": true, "refId": "C" },
+                { "expr": "label_replace(time() - sutler_market_scan_last_success_timestamp_seconds, \"source\", \"market scan\", \"__name__\", \"(.*)\")", "format": "table", "instant": true, "refId": "D" }
+              ],
+              "transformations": [
+                { "id": "merge", "options": {} },
+                { "id": "organize", "options": { "excludeByName": { "Time": true, "marketplace": true, "distributor": true } } }
+              ],
+              "fieldConfig": { "defaults": { "unit": "dtdurations", "decimals": 0, "custom": { "cellOptions": { "type": "color-background" } }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1800 }, { "color": "red", "value": 7200 } ] } } }
+            },
+            {
+              "type": "state-timeline", "title": "Freshness history", "id": 31,
+              "gridPos": { "x": 10, "y": 33, "w": 14, "h": 7 },
+              "targets": [
+                { "expr": "time() - sutler_last_poll_timestamp_seconds", "legendFormat": "poll {{marketplace}}", "refId": "A" },
+                { "expr": "time() - sutler_last_sync_success_timestamp_seconds", "legendFormat": "sync {{distributor}}", "refId": "B" },
+                { "expr": "time() - sutler_reconcile_last_run_timestamp_seconds", "legendFormat": "reconcile {{marketplace}}", "refId": "C" }
+              ],
+              "options": { "showValue": "never", "legend": { "displayMode": "list", "placement": "bottom" } },
+              "fieldConfig": { "defaults": { "unit": "dtdurations", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1800 }, { "color": "red", "value": 7200 } ] } } }
+            },
+            {
+              "type": "bargauge", "title": "Auto-list actions (24h)", "id": 32,
+              "gridPos": { "x": 0, "y": 40, "w": 6, "h": 6 },
+              "targets": [{ "expr": "sum by (action) (sutler_reconcile_actions{window=\"24h\"})", "legendFormat": "{{action}}", "instant": true, "refId": "A" }],
+              "options": { "displayMode": "basic", "orientation": "horizontal" },
+              "fieldConfig": {
+                "defaults": { "unit": "none", "decimals": 0 },
+                "overrides": [ { "matcher": { "id": "byName", "options": "failed" }, "properties": [ { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } } ] } ]
+              }
+            },
+            {
+              "type": "bargauge", "title": "Held back (latest pass)", "id": 33,
+              "gridPos": { "x": 6, "y": 40, "w": 6, "h": 6 },
+              "description": "pricing = held by margin/channel gates; errored = ERROR listings a human must clear; cooldown = anti-flap wait",
+              "targets": [{ "expr": "sum by (kind) (sutler_reconcile_held)", "legendFormat": "{{kind}}", "instant": true, "refId": "A" }],
+              "options": { "displayMode": "basic", "orientation": "horizontal" },
+              "fieldConfig": { "defaults": { "unit": "none", "decimals": 0 } }
+            },
+            {
+              "type": "timeseries", "title": "Sync duration", "id": 34,
+              "gridPos": { "x": 12, "y": 40, "w": 6, "h": 6 },
+              "targets": [{ "expr": "sutler_sync_duration_seconds", "legendFormat": "{{distributor}} {{kind}}", "refId": "A" }],
+              "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+              "fieldConfig": { "defaults": { "unit": "s", "decimals": 1 } }
+            },
+            {
+              "type": "timeseries", "title": "Order stage latency (7d avg)", "id": 35,
+              "gridPos": { "x": 18, "y": 40, "w": 6, "h": 6 },
+              "targets": [{ "expr": "sutler_order_stage_latency_seconds{agg=\"avg\"}", "legendFormat": "{{stage}}", "refId": "A" }],
+              "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+              "fieldConfig": { "defaults": { "unit": "s", "decimals": 0 } }
+            },
+            {
+              "type": "timeseries", "title": "Eligibility churn", "id": 36,
+              "gridPos": { "x": 0, "y": 46, "w": 8, "h": 6 },
+              "targets": [{ "expr": "sutler_eligibility_flips{window=\"24h\"}", "legendFormat": "{{direction}} (24h)", "refId": "A" }],
+              "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+              "fieldConfig": { "defaults": { "unit": "none", "decimals": 0 } }
+            },
+            {
+              "type": "stat", "title": "Listing errors", "id": 37,
+              "gridPos": { "x": 8, "y": 46, "w": 4, "h": 6 },
+              "targets": [{ "expr": "sum(sutler_listings{status=\"ERROR\"}) or vector(0)", "instant": true, "refId": "A" }],
+              "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1 } ] } } }
+            },
+            {
+              "type": "stat", "title": "Wedged syncs", "id": 38,
+              "gridPos": { "x": 12, "y": 46, "w": 4, "h": 6 },
+              "targets": [{ "expr": "sum(sutler_sync_wedged) or vector(0)", "instant": true, "refId": "A" }],
+              "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } } }
+            },
+            {
+              "type": "timeseries", "title": "Ship delta (undercharge watch)", "id": 39,
+              "gridPos": { "x": 16, "y": 46, "w": 8, "h": 6 },
+              "targets": [{ "expr": "sutler_ship_delta_cents{window=\"30d\"} / 100", "legendFormat": "30d ship delta", "refId": "A" }],
+              "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+              "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2, "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0 } ] } } }
+            }
+          ]
         }
       ]
     }

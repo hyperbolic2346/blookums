@@ -57,6 +57,24 @@ spec:
               staying failed — check the worker log and ERROR listings.
     - name: sutler.pipeline
       rules:
+        - alert: SutlerSyncWedged
+          expr: sum(sutler_sync_wedged) > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              A distributor sync has been stuck RUNNING for 30+ minutes —
+              likely a crashed worker mid-sync; check the worker pod.
+        - alert: SutlerMarketScanStale
+          expr: time() - sutler_market_scan_last_success_timestamp_seconds > 86400
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              No successful market scan in 24+ hours — competitor-price data
+              is stale and follow-market pricing is flying blind.
         - alert: SutlerOrderPollStale
           expr: time() - sutler_last_poll_timestamp_seconds > 1800
           for: 5m
