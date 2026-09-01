@@ -118,6 +118,10 @@ spec:
             env:
               PUBLIC_API_URL: "https://stockpile.${SECRET_DOMAIN}"
               PORT: "3000"
+              # Umami analytics (observability namespace) — the web app's
+              # tracking snippet is inert without both of these.
+              PUBLIC_UMAMI_SRC: "https://umami.${SECRET_DOMAIN}/script.js"
+              PUBLIC_UMAMI_WEBSITE_ID: "a3949217-22a2-446f-9bbd-5dc48bb24c54"
             probes:
               liveness: &webProbe
                 enabled: true
