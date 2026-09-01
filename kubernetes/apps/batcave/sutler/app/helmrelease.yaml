@@ -29,6 +29,15 @@ spec:
       api:
         annotations:
           reloader.stakater.com/auto: "true"
+        # app-template defaults to Recreate, which kills the old pod before
+        # the new one starts — a guaranteed outage per release, and a long one
+        # when the kill hangs (wally, 2026-08-22: 7 min of 503). Surge the new
+        # pod first; the old one goes only once the new has passed its startup
+        # probe. The worker stays Recreate: single process by design.
+        strategy: RollingUpdate
+        rollingUpdate:
+          surge: 1
+          unavailable: 0
         initContainers:
           # 1) create the sutler database + role on the shared CNPG cluster
           01-init-db:
@@ -147,6 +156,10 @@ spec:
               limits:
                 memory: 384Mi
       web:
+        strategy: RollingUpdate
+        rollingUpdate:
+          surge: 1
+          unavailable: 0
         containers:
           main:
             image:
