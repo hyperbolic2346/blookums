@@ -115,10 +115,11 @@ nodes:
         mtu: 1500
   - hostname: "wally"
     ipAddress: "10.0.14.16"
-    # still on IDSDM: BOSS M.2 not exported by card (stuck "unconfigured",
-    # suspected security lock from prior life; erase/card-swap pending)
+    # BOSS-S1 on 13G only exposes virtual disks (never a lone unconfigured
+    # M.2) and its firmware is RAID1-only, so the boot disk is a 2-stick
+    # RAID1 VD (Micron 5100 240GB x2) created with mvcli on 2026-09-01.
     installDiskSelector:
-      model: "IDSDM"
+      model: "DELLBOSS VD"
     machineSpec:
       secureboot: false
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
