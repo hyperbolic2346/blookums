@@ -143,8 +143,23 @@ spec:
               REDIS_URL: "redis://sutler-redis.batcave.svc.cluster.local:6379"
             envFrom: *envFrom
             probes:
+              # The worker is headless, so the chart's port-shaped defaults
+              # can't apply — but "no probe" cost us 13h of a Running pod
+              # doing nothing (2026-09-03: Redis/DB connection died silently;
+              # k8s only restarts on exit or probe failure, and there was
+              # neither). /healthz (sutler >= 0.10.2) answers 503 once the
+              # worker's own Redis+DB self-check heartbeat goes stale.
               liveness:
-                enabled: false
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: 8090
+                  initialDelaySeconds: 90
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 4
               readiness:
                 enabled: false
               startup:
