@@ -101,6 +101,11 @@ spec:
       VOLSYNC_CLAIM: cicada-data
       VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
       VOLSYNC_CAPACITY: 100Gi
+      # Same failure as scorpion below: every sync since 2026-08-20 died at ~55%
+      # with "no space left on device" on /cache. This PVC is 1.6M files /
+      # 13.7GB (dynmap tiles again), so the default 1Gi restic cache can't hold
+      # the pack files. Sized to match scorpion.
+      VOLSYNC_CACHE_CAPACITY: 20Gi
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
