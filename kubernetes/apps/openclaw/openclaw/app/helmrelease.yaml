@@ -262,7 +262,16 @@ spec:
                 "channels": {
                   "discord": {
                     "enabled": true,
-                    "token": "$${DISCORD_BOT_TOKEN}"
+                    "token": "$${DISCORD_BOT_TOKEN}",
+                    "guilds": {
+                      "1487865077930655886": {
+                        "channels": {
+                          "1487865078463070220": {
+                            "requireMention": false
+                          }
+                        }
+                      }
+                    }
                   }
                 },
                 "plugins": {
