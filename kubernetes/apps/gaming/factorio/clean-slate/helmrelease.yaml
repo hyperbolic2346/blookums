@@ -32,7 +32,13 @@ spec:
     image:
       repository: factoriotools/factorio
       pullPolicy: IfNotPresent
-      tag: 2.0.77@sha256:c6092b912bd142994170a8c430472be4259b57fca4eb3ebaa421fe46885fd5a4
+      # Track Factorio's STABLE channel via the image's floating tag. Numeric tags
+      # made renovate propose experimental releases (2.1.x while stable was 2.0.77)
+      # because it sorts versions with no idea of Factorio's channels. With a
+      # floating tag renovate only bumps the digest, i.e. only when stable moves.
+      # Game majors are one-way for saves and players must update clients, so
+      # keep these PRs manual (digest bumps are not auto-merged in .renovaterc).
+      tag: stable@sha256:c6092b912bd142994170a8c430472be4259b57fca4eb3ebaa421fe46885fd5a4
 
     service:
       type: LoadBalancer
