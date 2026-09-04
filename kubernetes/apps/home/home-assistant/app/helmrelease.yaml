@@ -105,6 +105,15 @@ spec:
       config:
         enabled: true
         existingClaim: home-assistant-config
+      # The image keeps a uv venv for custom-integration requirements at
+      # /config/.venv. On the PVC it outlives image upgrades and shadows the
+      # image's own packages (2026-09-03: a March aiohttp 3.13.3 left in it broke
+      # the websocket API on HA 2026.9.0). Keep it per-pod instead: integrations
+      # reinstall their requirements on each start.
+      venv:
+        type: emptyDir
+        globalMounts:
+          - path: /config/.venv
       config-yaml:
         type: configMap
         name: home-assistant-config
