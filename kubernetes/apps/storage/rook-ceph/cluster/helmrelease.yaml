@@ -44,6 +44,21 @@ spec:
         enabled: true
         urlPrefix: /
         ssl: false
+      # CephX key rotation for CVE-2025-30156 (Ceph 20.2.4 flags the legacy
+      # "aes" key type as insecure). Daemon keys (mon/osd/mds/mgr/rgw) move to
+      # aes256k; bumping keyGeneration triggers a rolling restart of every
+      # daemon, so merge this in a maintenance window with HEALTH_OK PGs.
+      # CSI keys are pinned to aes on purpose: aes256k kernel-client keys need
+      # Linux >= 7.0 and Talos 1.11 ships 6.12. Do NOT set allowedCiphers until
+      # CSI can move, or the RBD/CephFS mounts lose auth.
+      security:
+        cephx:
+          daemon:
+            keyRotationPolicy: KeyGeneration
+            keyGeneration: 2
+            keyType: aes256k
+          csi:
+            keyType: aes
       mgr:
         modules:
           - name: diskprediction_local
