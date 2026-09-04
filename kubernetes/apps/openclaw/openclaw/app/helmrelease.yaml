@@ -263,6 +263,8 @@ spec:
                   "discord": {
                     "enabled": true,
                     "token": "$${DISCORD_BOT_TOKEN}",
+                    "dmPolicy": "allowlist",
+                    "allowFrom": ["220412405874688000"],
                     "guilds": {
                       "1487865077930655886": {
                         "channels": {
