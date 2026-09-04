@@ -264,11 +264,11 @@ spec:
                     "enabled": true,
                     "token": "$${DISCORD_BOT_TOKEN}",
                     "dmPolicy": "allowlist",
-                    "allowFrom": ["220412405874688000"],
+                    "allowFrom": ["${SECRET_DISCORD_OWNER_ID}"],
                     "guilds": {
-                      "1487865077930655886": {
+                      "${SECRET_JEEVES_DISCORD_GUILD_ID}": {
                         "channels": {
-                          "1487865078463070220": {
+                          "${SECRET_JEEVES_DISCORD_CHANNEL_ID}": {
                             "requireMention": false
                           }
                         }
