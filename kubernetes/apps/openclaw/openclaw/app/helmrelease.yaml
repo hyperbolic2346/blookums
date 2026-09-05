@@ -37,7 +37,7 @@ spec:
             init-tools:
               image:
                 repository: docker.io/alpine/k8s
-                tag: 1.36.2
+                tag: 1.37.0
               command:
                 - sh
                 - -c
