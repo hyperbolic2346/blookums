@@ -119,7 +119,13 @@ spec:
       # force re-download of server file
       forceReDownload: false
       # If set, the modpack at this URL will be downloaded at startup
-      downloadModpackUrl:
+      # Dynmap has no release for Minecraft 26.x yet. This is the PR author's
+      # 2026-09-02 prebuilt Paper 26.2 jar attached to
+      # https://github.com/webbukkit/dynmap/pull/4262 (jar md5
+      # 5a0749afa9d7cb0c37917502eb354445). It is a zip with the jar at top
+      # level, which the image's MODPACK handling unpacks into plugins/.
+      # Swap for the official dynmap.us 3.9 jar in modUrls once it ships.
+      downloadModpackUrl: https://github.com/user-attachments/files/31758157/Dynmap-3.9-SNAPSHOT-spigot.jar.zip
       # If true, old versions of downloaded mods will be replaced with new ones from downloadModpackUrl
       removeOldMods: false
       # Check accounts against Minecraft account service.
@@ -141,8 +147,7 @@ spec:
       externalTrafficPolicy: Local
       externalIPs:
 
-      # No plugins yet: Dynmap has no release for Minecraft 26.x (see
-      # https://github.com/webbukkit/dynmap/pull/4262). Add it back once 3.9 ships.
+      # Dynmap comes in via downloadModpackUrl above until an official 26.x build exists.
       modUrls: []
 
       rcon:
@@ -156,7 +161,31 @@ spec:
         ## Set the externalTrafficPolicy in the Service to either Cluster or Local
         externalTrafficPolicy: Local
 
-      extraPorts: []
+      extraPorts:
+        - name: owendynmap
+          containerPort: 8123
+          service:
+            # Enable a service for dynmap
+            enabled: true
+            annotations: {}
+            type: ClusterIP
+            loadBalancerIP: ''
+            loadBalancerSourceRanges: []
+            # externalTrafficPolicy: Cluster
+            port: 8123
+          ingress:
+            enabled: false
+            className: internal
+            annotations:
+              kubernetes.io/ingress.class: internal
+              cert-manager.io/cluster-issuer: letsencrypt-production
+            hosts:
+              - name: owen.${SECRET_DOMAIN}
+                path: /
+            tls:
+              - secretName: owen-dynmap-tls
+                hosts:
+                  - owen.${SECRET_DOMAIN}
 
       query:
         # If you enable this, your server will be "published" to Gamespy
