@@ -958,7 +958,7 @@ spec:
         {
           "title": "Cicada Status",
           "type": "stat",
-          "gridPos": { "h": 4, "w": 8, "x": 0, "y": 0 },
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
           "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -982,7 +982,7 @@ spec:
         {
           "title": "Armadillo Status",
           "type": "stat",
-          "gridPos": { "h": 4, "w": 8, "x": 8, "y": 0 },
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
           "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -1006,7 +1006,7 @@ spec:
         {
           "title": "Bedrock Status",
           "type": "stat",
-          "gridPos": { "h": 4, "w": 8, "x": 16, "y": 0 },
+          "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
           "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -1028,9 +1028,33 @@ spec:
           ]
         },
         {
+          "title": "Owen Status",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "options": { "1": { "color": "green", "index": 0, "text": "ONLINE" } }, "type": "value" },
+                { "options": { "0": { "color": "red", "index": 1, "text": "OFFLINE" } }, "type": "value" }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
+          "targets": [
+            {
+              "expr": "minecraft_status_healthy{server_host=~\"owen.*\"}",
+              "legendFormat": "Owen",
+              "refId": "A"
+            }
+          ]
+        },
+        {
           "title": "Cicada Players",
           "type": "stat",
-          "gridPos": { "h": 4, "w": 8, "x": 0, "y": 4 },
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 4 },
           "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -1050,7 +1074,7 @@ spec:
         {
           "title": "Armadillo Players",
           "type": "stat",
-          "gridPos": { "h": 4, "w": 8, "x": 8, "y": 4 },
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 4 },
           "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -1070,7 +1094,7 @@ spec:
         {
           "title": "Bedrock Players",
           "type": "stat",
-          "gridPos": { "h": 4, "w": 8, "x": 16, "y": 4 },
+          "gridPos": { "h": 4, "w": 6, "x": 12, "y": 4 },
           "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -1083,6 +1107,26 @@ spec:
             {
               "expr": "minecraft_status_players_online_count{server_host=~\"bedrock.*\"}",
               "legendFormat": "Bedrock Players",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "title": "Owen Players",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 18, "y": 4 },
+          "datasource": { "type": "prometheus", "uid": "$${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }, { "color": "green", "value": 1 }] }
+            },
+            "overrides": []
+          },
+          "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
+          "targets": [
+            {
+              "expr": "minecraft_status_players_online_count{server_host=~\"owen.*\"}",
+              "legendFormat": "Owen Players",
               "refId": "A"
             }
           ]
@@ -1226,6 +1270,7 @@ spec:
             { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gaming\", deployment=\"newworld2023-minecraft\"}", "legendFormat": "NewWorld (MC)", "refId": "D" },
             { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gaming\", deployment=\"scorpion-minecraft\"}", "legendFormat": "Scorpion (MC)", "refId": "E" },
             { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gaming\", deployment=\"skyblock-minecraft\"}", "legendFormat": "SkyBlock (MC)", "refId": "F" },
+            { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gaming\", deployment=\"owen-minecraft\"}", "legendFormat": "Owen (MC)", "refId": "K" },
             { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gaming\", deployment=\"clean-slate-factorio-server-charts\"}", "legendFormat": "Factorio", "refId": "G" },
             { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gaming\", deployment=\"minion-valheim\"}", "legendFormat": "Valheim", "refId": "H" },
             { "expr": "kube_deployment_status_replicas_unavailable{namespace=\"gaming\", deployment=\"sandstorm\"}", "legendFormat": "Sandstorm", "refId": "I" },
@@ -1247,7 +1292,8 @@ spec:
           "targets": [
             { "expr": "minecraft_status_players_online_count{server_host=~\"cicada.*\"}", "legendFormat": "Cicada", "refId": "A" },
             { "expr": "minecraft_status_players_online_count{server_host=~\"armadillo.*\"}", "legendFormat": "Armadillo", "refId": "B" },
-            { "expr": "minecraft_status_players_online_count{server_host=~\"bedrock.*\"}", "legendFormat": "Bedrock", "refId": "C" }
+            { "expr": "minecraft_status_players_online_count{server_host=~\"bedrock.*\"}", "legendFormat": "Bedrock", "refId": "C" },
+            { "expr": "minecraft_status_players_online_count{server_host=~\"owen.*\"}", "legendFormat": "Owen", "refId": "D" }
           ]
         },
         {
