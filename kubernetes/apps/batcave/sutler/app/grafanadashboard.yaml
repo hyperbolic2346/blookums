@@ -121,14 +121,21 @@ spec:
           "fieldConfig": { "defaults": { "unit": "dtdurations", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 86400 }, { "color": "red", "value": 172800 } ] } } }
         },
         {
-          "type": "stat", "title": "Sales missing cost", "id": 11,
+          "type": "stat", "title": "Stuck live (end failed)", "id": 40,
           "gridPos": { "x": 12, "y": 13, "w": 4, "h": 6 },
+          "description": "Listings we tried to end but couldn't — still purchasable. Oversell risk.",
+          "targets": [{ "expr": "sum(sutler_listings_stuck_active) or vector(0)", "instant": true, "refId": "A" }],
+          "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } } }
+        },
+        {
+          "type": "stat", "title": "Sales missing cost", "id": 11,
+          "gridPos": { "x": 16, "y": 13, "w": 4, "h": 6 },
           "targets": [{ "expr": "sum(sutler_sales_missing_cost) or vector(0)", "instant": true, "refId": "A" }],
           "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1 } ] } } }
         },
         {
           "type": "timeseries", "title": "Order age trend", "id": 12,
-          "gridPos": { "x": 16, "y": 13, "w": 8, "h": 6 },
+          "gridPos": { "x": 20, "y": 13, "w": 4, "h": 6 },
           "targets": [
             { "expr": "sutler_oldest_order_age_seconds", "legendFormat": "{{status}}", "refId": "A" },
             { "expr": "sutler_oldest_unshipped_order_age_seconds", "legendFormat": "unshipped", "refId": "B" }

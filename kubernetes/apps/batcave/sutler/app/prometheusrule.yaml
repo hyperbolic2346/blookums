@@ -35,6 +35,33 @@ spec:
             summary: >-
               A submitted sutler order has gone 48h with no tracking — the
               distributor may not have shipped; the buyer's clock is running.
+    - name: sutler.listings
+      rules:
+        # The one that means money is at risk: we asked the marketplace to
+        # pull a listing, it refused, and the item is STILL purchasable while
+        # we believe it is coming down. That is the oversell path.
+        - alert: SutlerListingStuckActive
+          expr: sum(sutler_listings_stuck_active) > 0
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: >-
+              {{ $value }} live listing(s) failed to end and are still
+              purchasable — end them on the marketplace directly, then clear
+              the row. Oversell risk while this is up.
+        # Covers MANUAL publishes too: the reconcile-failure alert only sees
+        # the auto-list path, so with auto-list off nothing else notices a
+        # rejected publish.
+        - alert: SutlerListingErrors
+          expr: sum(sutler_listings{status="ERROR"}) > 0
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              {{ $value }} production listing(s) in ERROR — the marketplace
+              rejected the publish; inventory is not earning until it's fixed.
     - name: sutler.autolist
       rules:
         - alert: SutlerReconcileMassEnding
