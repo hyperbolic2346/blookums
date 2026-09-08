@@ -91,6 +91,42 @@ spec:
               after {{ $value | humanizeDuration }}.
     # The failures that leave no failure RECORD — nothing ran, or the thing
     # that would have recorded it was itself what broke.
+    # Order velocity is the earliest mispricing signal available, because it
+    # comes from the MARKET rather than from our own (possibly wrong) cost
+    # and fee data. The breaker in processPending() already stops the
+    # automatic path; these say why the phone should ring.
+    - name: sutler.velocity
+      rules:
+        - alert: SutlerAutoOrderingPaused
+          expr: sutler_orders_held_by_breaker > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: >-
+              {{ $value }} order(s) were held back from auto-ordering by the
+              velocity breaker — check the price on the item before releasing.
+              Nothing is cancelled; Submit on the row releases it.
+        - alert: SutlerProductOrderBurst
+          expr: sutler_max_product_velocity_1h >= 3
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: >-
+              {{ $value }} orders for a SINGLE product in the last hour. A
+              burst on one item is the classic sign it is mispriced —
+              genuine popularity spreads across items. Check the listing.
+        - alert: SutlerCommittedSpendSpike
+          expr: sutler_committed_spend_cents_1h > 50000
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: >-
+              ${{ $value }} (cents) of distributor cost committed in the last
+              hour by automatic fulfilment. If that is not a sale day you
+              recognise, pause fulfilment before it continues.
     - name: sutler.silent
       rules:
         - alert: SutlerListingLiveNotListable
