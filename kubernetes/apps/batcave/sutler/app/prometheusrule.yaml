@@ -35,6 +35,83 @@ spec:
             summary: >-
               A submitted sutler order has gone 48h with no tracking — the
               distributor may not have shipped; the buyer's clock is running.
+    # Every other group here asks "is the machine running?". This one asks
+    # "is the data sane?" — the class of failure where the machine runs
+    # perfectly and the numbers it runs on are wrong. All of these use
+    # metrics that already exist; they compare against recent history rather
+    # than absolute thresholds, because the absolute values are per-catalog.
+    - name: sutler.sanity
+      rules:
+        - alert: SutlerFeedTruncated
+          expr: >-
+            sutler_sync_items{kind="FULL",count="seen"}
+              < 0.80 * max_over_time(sutler_sync_items{kind="FULL",count="seen"}[7d])
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: >-
+              {{ $labels.distributor }} FULL feed delivered only {{ $value }}
+              rows — under 80% of its 7d peak. Everything missing goes STALE
+              and the reconciler will END those listings. Treat the catalog as
+              untrustworthy until the next good sync.
+        - alert: SutlerEligibleShelfCollapse
+          expr: >-
+            sutler_funnel{stage="eligible"}
+              < 0.60 * avg_over_time(sutler_funnel{stage="eligible"}[6h] offset 6h)
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: >-
+              The eligible shelf collapsed to {{ $value }} items (under 60% of
+              the last 6h average) — a bad feed, not a real inventory move.
+              Listings are being ended on the strength of it.
+        - alert: SutlerEligibilityFlipStorm
+          expr: sutler_eligibility_flips{direction="lost", window="24h"} > 500
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: >-
+              {{ $value }} products lost eligibility in 24h. Catches feed
+              damage whether or not anything was listed — unlike the
+              mass-ending rule, which needs a storefront big enough to notice.
+        - alert: SutlerQuantityFeedChurnStorm
+          expr: >-
+            sutler_sync_items{kind="QUANTITY",count="changed"}
+              > 0.25 * sutler_sync_items{kind="QUANTITY",count="seen"}
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: >-
+              {{ $labels.distributor }} quantity feed changed {{ $value }} rows
+              in one pass — a quarter of the catalog does not move at once.
+              Suspect a column shift zeroing quantities.
+        - alert: SutlerMarginCliff
+          expr: >-
+            sutler_eligible_margin_cents{agg="p50"}
+              < 0.50 * avg_over_time(sutler_eligible_margin_cents{agg="p50"}[24h] offset 24h)
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: >-
+              Median eligible net margin halved to {{ $value | humanize }}c —
+              suspect a distributor COST feed error. Sourcing picks the
+              CHEAPEST offer, so corrupt costs win every routing decision.
+              Turn auto-list off before the next reconcile pass.
+        - alert: SutlerReconcileMassPublishing
+          expr: sum(sutler_reconcile_actions{action="published", window="24h"}) > 50
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: >-
+              Auto-list published {{ $value }} listings in 24h. The mass-ending
+              rule had no twin; a pricing error that makes everything look
+              profitable shows up here first.
     - name: sutler.listings
       rules:
         # The one that means money is at risk: we asked the marketplace to
@@ -65,10 +142,16 @@ spec:
     - name: sutler.autolist
       rules:
         - alert: SutlerReconcileMassEnding
-          expr: sum(sutler_reconcile_actions{action="ended", window="24h"}) > 20
+          # Absolute OR proportional: a 15-listing storefront can be wiped
+          # entirely without ever reaching 20.
+          expr: >-
+            sum(sutler_reconcile_actions{action="ended", window="24h"}) > 20
+            or
+            sum(sutler_reconcile_actions{action="ended", window="24h"})
+              > 0.25 * clamp_min(sum(sutler_listings{status="ACTIVE"}), 1)
           for: 10m
           labels:
-            severity: warning
+            severity: critical
           annotations:
             summary: >-
               Auto-list ended {{ $value }} listings in 24h — a feed glitch may
