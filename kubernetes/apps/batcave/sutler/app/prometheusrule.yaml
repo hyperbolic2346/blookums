@@ -118,13 +118,16 @@ spec:
               burst on one item is the classic sign it is mispriced —
               genuine popularity spreads across items. Check the listing.
         - alert: SutlerCommittedSpendSpike
-          expr: sutler_committed_spend_cents_1h > 50000
+          # Divided here so the annotation reads in dollars WITHOUT a literal
+          # "$" before "{{" — Flux's post-build envsubst parses "${" as a
+          # shell variable and fails the whole Kustomization if it can't.
+          expr: sutler_committed_spend_cents_1h / 100 > 500
           for: 5m
           labels:
             severity: critical
           annotations:
             summary: >-
-              ${{ $value }} (cents) of distributor cost committed in the last
+              {{ $value }} dollars of distributor cost committed in the last
               hour by automatic fulfilment. If that is not a sale day you
               recognise, pause fulfilment before it continues.
     - name: sutler.silent
