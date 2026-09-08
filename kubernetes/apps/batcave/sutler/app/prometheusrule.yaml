@@ -27,7 +27,9 @@ spec:
               A sutler order has sat in NEW for over an hour — the worker or
               the submit path is stalled.
         - alert: SutlerOrderUnshipped
-          expr: sutler_oldest_unshipped_order_age_seconds > 172800
+          # 24h, not 48h: 48 spends the entire marketplace handling window
+          # before the first word.
+          expr: sutler_oldest_unshipped_order_age_seconds > 86400
           for: 30m
           labels:
             severity: warning
@@ -40,6 +42,107 @@ spec:
     # perfectly and the numbers it runs on are wrong. All of these use
     # metrics that already exist; they compare against recent history rather
     # than absolute thresholds, because the absolute values are per-catalog.
+    # In DRY_RUN a sale REQUIRES a human to place the distributor order, so
+    # silence is indistinguishable from success. These are the only alerts
+    # that fire because something went RIGHT and now needs you.
+    - name: sutler.homework
+      rules:
+        - alert: SutlerManualOrderPending
+          expr: sutler_oldest_manual_placement_age_seconds > 7200
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              A sale has waited {{ $value | humanizeDuration }} for you to
+              place it at the distributor by hand (DRY_RUN). The exact payload
+              is on the row: https://sutler.burntsheep.com/orders
+        - alert: SutlerManualOrderOverdue
+          expr: sutler_oldest_manual_placement_age_seconds > 86400
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: >-
+              OVERDUE 24h+: a DRY_RUN sale still is not placed at the
+              distributor. The buyer is waiting and the marketplace shipping
+              clock is running. Place it or cancel and refund.
+        # Identity-carrying versions: the count-only alerts cannot say WHICH
+        # sale, which is the first question at 11pm.
+        - alert: SutlerOrderNeedsAttentionNamed
+          expr: sutler_open_order_age_seconds{status="NEEDS_ATTENTION"} > 900
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              Order {{ $labels.external_order_id }} ({{ $labels.marketplace }})
+              needs you — blocked {{ $value | humanizeDuration }}. Reason is on
+              the row: https://sutler.burntsheep.com/orders
+        - alert: SutlerOrderUnshippedNamed
+          expr: sutler_open_order_age_seconds{status=~"SUBMITTED|CONFIRMED"} > 86400
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              Order {{ $labels.external_order_id }}
+              ({{ $labels.distributor }}, {{ $labels.mode }}) has no tracking
+              after {{ $value | humanizeDuration }}.
+    # The failures that leave no failure RECORD — nothing ran, or the thing
+    # that would have recorded it was itself what broke.
+    - name: sutler.silent
+      rules:
+        - alert: SutlerListingLiveNotListable
+          expr: sum(sutler_listings_live_not_listable) > 0
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: >-
+              {{ $value }} listing(s) are LIVE and purchasable but no longer
+              listable (out of stock, de-whitelisted, or channel-blocked) and
+              nothing has ended them. A buyer can order these right now and we
+              cannot ship. End them, or check whether auto-list is running.
+        - alert: SutlerReconcileNotRunning
+          expr: time() - sutler_reconcile_last_pass_timestamp_seconds > 7200
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              No reconcile pass has completed for {{ $labels.marketplace }} in
+              2h+ (kill switch, disabled config, failed connection test, or a
+              dead listings queue). Nothing will end a listing that sells out.
+        - alert: SutlerMarketScanFailing
+          expr: sutler_market_scan_last_status == 0
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              The last market scan FAILED — competitor pricing is frozen and
+              the repricer never ran. Otherwise silent for 24h.
+        # If this fires, assume every other sutler alert is NOT evaluating.
+        - alert: SutlerMetricsDown
+          expr: absent(sutler_funnel)
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: >-
+              Sutler metrics are not being scraped — every other sutler alert
+              is silently not evaluating. Check the api pod and its database.
+        - alert: SutlerChannelNeverPolled
+          expr: absent(sutler_last_poll_timestamp_seconds{marketplace="gunbroker"})
+          for: 30m
+          labels:
+            severity: critical
+          annotations:
+            summary: >-
+              No GunBroker order poll has EVER succeeded on this config. The
+              staleness alert keys off a timestamp that does not exist yet, so
+              it cannot fire — this is its go-live stand-in.
     - name: sutler.sanity
       rules:
         - alert: SutlerFeedTruncated
