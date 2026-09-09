@@ -153,6 +153,22 @@ spec:
               No reconcile pass has completed for {{ $labels.marketplace }} in
               2h+ (kill switch, disabled config, failed connection test, or a
               dead listings queue). Nothing will end a listing that sells out.
+        - alert: SutlerMarketSearchFindsNothing
+          # The scan reporting "scanned N, repriced 0" looks healthy whether
+          # the market is genuinely empty or the search is broken. This is
+          # the difference: snapshots exist and NONE of them found anyone.
+          expr: >-
+            sutler_market_snapshots{has_competitors="yes"} == 0
+            and sutler_market_snapshots{has_competitors="no"} > 5
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              The market scan has {{ $value }} snapshots and has found ZERO
+              competing listings on every one — suspect the search itself
+              (response parsing, UPC form, or Items-search permission) rather
+              than an empty market.
         - alert: SutlerMarketScanFailing
           expr: sutler_market_scan_last_status == 0
           for: 30m
