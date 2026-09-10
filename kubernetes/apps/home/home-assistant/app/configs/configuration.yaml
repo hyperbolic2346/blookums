@@ -148,11 +148,11 @@ homekit:
 sonos:
   media_player:
     hosts:
-      - 10.0.1.169
-      - 10.0.1.62
-      - 10.0.1.93
-      - 10.0.1.47
-      - 10.0.1.133
+      - 10.0.7.60
+      - 10.0.7.61
+      - 10.0.7.62
+      - 10.0.7.63
+      - 10.0.7.64
 
 prometheus:
   namespace: homeassistant
