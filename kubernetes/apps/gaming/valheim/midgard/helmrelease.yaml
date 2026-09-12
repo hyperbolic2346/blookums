@@ -56,10 +56,13 @@ spec:
         controller: main
         type: LoadBalancer
         externalTrafficPolicy: Cluster
-        # LAN pool IP, pinned so the UDM Pro port forward (UDP 2456-2457)
-        # keeps pointing at the right place across redeploys.
+        # Public AT&T static IP from pool-public (BGP-advertised, no port
+        # forward needed). Reachable at midgard.burntsheep.com:2456 via the
+        # DNSEndpoint in this directory.
+        labels:
+          io.cilium/lb-public: "true"
         annotations:
-          io.cilium/lb-ipam-ips: "192.168.14.20"
+          io.cilium/lb-ipam-ips: "99.136.248.252"
         ports:
           steam1:
             port: 2456

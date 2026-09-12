@@ -1,0 +1,22 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/externaldns.k8s.io/dnsendpoint_v1alpha1.json
+#
+# cloudflare-dns only auto-creates records for the `external` gateway, so the
+# public LoadBalancer IP needs an explicit DNSEndpoint (crd source is enabled).
+# Must stay unproxied: a proxied record would break raw UDP game traffic.
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: midgard-valheim
+  namespace: gaming
+  annotations:
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+spec:
+  endpoints:
+    - dnsName: "midgard.${SECRET_DOMAIN}"
+      recordType: A
+      recordTTL: 300
+      targets: ["99.136.248.252"]
+      providerSpecific:
+        - name: external-dns.alpha.kubernetes.io/cloudflare-proxied
+          value: "false"
