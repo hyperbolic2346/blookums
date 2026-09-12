@@ -38,9 +38,11 @@ spec:
               PUBLIC: "1"
               NAME: "Midgard Valheim"
               WORLD: "Midgard"
-              # Shares the Minion server password; swap for a dedicated
-              # 1Password-backed secret if this world needs its own.
-              PASSWORD: "${SECRET_VALHEIM_MINION_PW}"
+              PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: midgard-valheim-secret
+                    key: password
               TZ: ${TIMEZONE}
             resources:
               requests:
