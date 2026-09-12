@@ -1,0 +1,75 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2beta2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: &name midgard-valheim
+spec:
+  interval: 15m
+  chartRef:
+    kind: OCIRepository
+    name: midgard-valheim
+  install:
+    replace: true
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+      strategy: rollback
+    cleanupOnFail: true
+  uninstall:
+    keepHistory: false
+
+  values:
+    controllers:
+      main:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          main:
+            nameOverride: *name
+            image:
+              repository: docker.io/mbround18/valheim
+              tag: 3.8.0@sha256:6207154524e8dacf0d06627628434866931ed5696b2e3ec2ff95be3bc7a41319
+              pullPolicy: IfNotPresent
+            env:
+              PORT: "2456"
+              PUBLIC: "1"
+              NAME: "Midgard Valheim"
+              WORLD: "Midgard"
+              # Shares the Minion server password; swap for a dedicated
+              # 1Password-backed secret if this world needs its own.
+              PASSWORD: "${SECRET_VALHEIM_MINION_PW}"
+              TZ: ${TIMEZONE}
+            resources:
+              requests:
+                memory: 4Gi
+                cpu: 1000m
+              limits:
+                memory: 10Gi
+
+    service:
+      main:
+        controller: main
+        type: LoadBalancer
+        externalTrafficPolicy: Cluster
+        # LAN pool IP, pinned so the UDM Pro port forward (UDP 2456-2457)
+        # keeps pointing at the right place across redeploys.
+        annotations:
+          io.cilium/lb-ipam-ips: "192.168.14.20"
+        ports:
+          steam1:
+            port: 2456
+            protocol: UDP
+          steam2:
+            port: 2457
+            protocol: UDP
+
+    persistence:
+      data:
+        existingClaim: midgard-valheim-data
+        globalMounts:
+          - path: /home/steam/.config/unity3d/IronGate/Valheim/
+          - path: /home/steam/valheim/
+          - path: /home/steam/backups/
