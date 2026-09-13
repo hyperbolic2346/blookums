@@ -9,7 +9,7 @@ spec:
     - name: sutler.orders
       rules:
         - alert: SutlerOrderNeedsAttention
-          expr: sutler_orders{status="NEEDS_ATTENTION"} > 0
+          expr: max without (pod, instance) (sutler_orders{status="NEEDS_ATTENTION"}) > 0
           for: 15m
           labels:
             severity: warning
@@ -18,7 +18,7 @@ spec:
               {{ $value }} sutler order(s) in NEEDS_ATTENTION — a human must
               act (check /orders for the reason on each row).
         - alert: SutlerOrderStuckNew
-          expr: sutler_oldest_order_age_seconds{status="NEW"} > 3600
+          expr: max without (pod, instance) (sutler_oldest_order_age_seconds{status="NEW"}) > 3600
           for: 10m
           labels:
             severity: warning
@@ -29,7 +29,7 @@ spec:
         - alert: SutlerOrderUnshipped
           # 24h, not 48h: 48 spends the entire marketplace handling window
           # before the first word.
-          expr: sutler_oldest_unshipped_order_age_seconds > 86400
+          expr: max without (pod, instance) (sutler_oldest_unshipped_order_age_seconds) > 86400
           for: 30m
           labels:
             severity: warning
@@ -48,7 +48,7 @@ spec:
     - name: sutler.homework
       rules:
         - alert: SutlerManualOrderPending
-          expr: sutler_oldest_manual_placement_age_seconds > 7200
+          expr: max without (pod, instance) (sutler_oldest_manual_placement_age_seconds) > 7200
           for: 10m
           labels:
             severity: warning
@@ -58,7 +58,7 @@ spec:
               place it at the distributor by hand (DRY_RUN). The exact payload
               is on the row: https://sutler.burntsheep.com/orders
         - alert: SutlerManualOrderOverdue
-          expr: sutler_oldest_manual_placement_age_seconds > 86400
+          expr: max without (pod, instance) (sutler_oldest_manual_placement_age_seconds) > 86400
           for: 15m
           labels:
             severity: critical
@@ -70,7 +70,7 @@ spec:
         # Identity-carrying versions: the count-only alerts cannot say WHICH
         # sale, which is the first question at 11pm.
         - alert: SutlerOrderNeedsAttentionNamed
-          expr: sutler_open_order_age_seconds{status="NEEDS_ATTENTION"} > 900
+          expr: max without (pod, instance) (sutler_open_order_age_seconds{status="NEEDS_ATTENTION"}) > 900
           for: 5m
           labels:
             severity: warning
@@ -80,7 +80,7 @@ spec:
               needs you — blocked {{ $value | humanizeDuration }}. Reason is on
               the row: https://sutler.burntsheep.com/orders
         - alert: SutlerOrderUnshippedNamed
-          expr: sutler_open_order_age_seconds{status=~"SUBMITTED|CONFIRMED"} > 86400
+          expr: max without (pod, instance) (sutler_open_order_age_seconds{status=~"SUBMITTED|CONFIRMED"}) > 86400
           for: 30m
           labels:
             severity: warning
@@ -98,7 +98,7 @@ spec:
     - name: sutler.velocity
       rules:
         - alert: SutlerAutoOrderingPaused
-          expr: sutler_orders_held_by_breaker > 0
+          expr: max without (pod, instance) (sutler_orders_held_by_breaker) > 0
           for: 5m
           labels:
             severity: critical
@@ -108,7 +108,7 @@ spec:
               velocity breaker — check the price on the item before releasing.
               Nothing is cancelled; Submit on the row releases it.
         - alert: SutlerProductOrderBurst
-          expr: sutler_max_product_velocity_1h >= 3
+          expr: max without (pod, instance) (sutler_max_product_velocity_1h) >= 3
           for: 5m
           labels:
             severity: critical
@@ -121,7 +121,7 @@ spec:
           # Divided here so the annotation reads in dollars WITHOUT a literal
           # "$" before "{{" — Flux's post-build envsubst parses "${" as a
           # shell variable and fails the whole Kustomization if it can't.
-          expr: sutler_committed_spend_cents_1h / 100 > 500
+          expr: max without (pod, instance) (sutler_committed_spend_cents_1h) / 100 > 500
           for: 5m
           labels:
             severity: critical
@@ -144,7 +144,7 @@ spec:
               nothing has ended them. A buyer can order these right now and we
               cannot ship. End them, or check whether auto-list is running.
         - alert: SutlerReconcileNotRunning
-          expr: time() - sutler_reconcile_last_pass_timestamp_seconds > 7200
+          expr: time() - max without (pod, instance) (sutler_reconcile_last_pass_timestamp_seconds) > 7200
           for: 15m
           labels:
             severity: warning
@@ -158,8 +158,8 @@ spec:
           # the market is genuinely empty or the search is broken. This is
           # the difference: snapshots exist and NONE of them found anyone.
           expr: >-
-            sutler_market_snapshots{has_competitors="yes"} == 0
-            and sutler_market_snapshots{has_competitors="no"} > 5
+            max without (pod, instance) (sutler_market_snapshots{has_competitors="yes"}) == 0
+            and max without (pod, instance) (sutler_market_snapshots{has_competitors="no"}) > 5
           for: 1h
           labels:
             severity: warning
@@ -170,7 +170,7 @@ spec:
               (response parsing, UPC form, or Items-search permission) rather
               than an empty market.
         - alert: SutlerMarketScanFailing
-          expr: sutler_market_scan_last_status == 0
+          expr: max without (pod, instance) (sutler_market_scan_last_status) == 0
           for: 30m
           labels:
             severity: warning
@@ -202,8 +202,8 @@ spec:
       rules:
         - alert: SutlerFeedTruncated
           expr: >-
-            sutler_sync_items{kind="FULL",count="seen"}
-              < 0.80 * max_over_time(sutler_sync_items{kind="FULL",count="seen"}[7d])
+            max without (pod, instance) (sutler_sync_items{kind="FULL",count="seen"})
+              < 0.80 * max without (pod, instance) (max_over_time(sutler_sync_items{kind="FULL",count="seen"}[7d]))
           for: 5m
           labels:
             severity: critical
@@ -215,8 +215,8 @@ spec:
               untrustworthy until the next good sync.
         - alert: SutlerEligibleShelfCollapse
           expr: >-
-            sutler_funnel{stage="eligible"}
-              < 0.60 * avg_over_time(sutler_funnel{stage="eligible"}[6h] offset 6h)
+            max without (pod, instance) (sutler_funnel{stage="eligible"})
+              < 0.60 * max without (pod, instance) (avg_over_time(sutler_funnel{stage="eligible"}[6h] offset 6h))
           for: 10m
           labels:
             severity: critical
@@ -226,7 +226,7 @@ spec:
               the last 6h average) — a bad feed, not a real inventory move.
               Listings are being ended on the strength of it.
         - alert: SutlerEligibilityFlipStorm
-          expr: sutler_eligibility_flips{direction="lost", window="24h"} > 500
+          expr: max without (pod, instance) (sutler_eligibility_flips{direction="lost", window="24h"}) > 500
           for: 10m
           labels:
             severity: critical
@@ -237,8 +237,8 @@ spec:
               mass-ending rule, which needs a storefront big enough to notice.
         - alert: SutlerQuantityFeedChurnStorm
           expr: >-
-            sutler_sync_items{kind="QUANTITY",count="changed"}
-              > 0.25 * sutler_sync_items{kind="QUANTITY",count="seen"}
+            max without (pod, instance) (sutler_sync_items{kind="QUANTITY",count="changed"})
+              > 0.25 * max without (pod, instance) (sutler_sync_items{kind="QUANTITY",count="seen"})
           for: 5m
           labels:
             severity: critical
@@ -249,8 +249,8 @@ spec:
               Suspect a column shift zeroing quantities.
         - alert: SutlerMarginCliff
           expr: >-
-            sutler_eligible_margin_cents{agg="p50"}
-              < 0.50 * avg_over_time(sutler_eligible_margin_cents{agg="p50"}[24h] offset 24h)
+            max without (pod, instance) (sutler_eligible_margin_cents{agg="p50"})
+              < 0.50 * max without (pod, instance) (avg_over_time(sutler_eligible_margin_cents{agg="p50"}[24h] offset 24h))
           for: 15m
           labels:
             severity: critical
@@ -335,7 +335,7 @@ spec:
               A distributor sync has been stuck RUNNING for 30+ minutes —
               likely a crashed worker mid-sync; check the worker pod.
         - alert: SutlerMarketScanStale
-          expr: time() - sutler_market_scan_last_success_timestamp_seconds > 86400
+          expr: time() - max without (pod, instance) (sutler_market_scan_last_success_timestamp_seconds) > 86400
           for: 30m
           labels:
             severity: warning
@@ -344,7 +344,7 @@ spec:
               No successful market scan in 24+ hours — competitor-price data
               is stale and follow-market pricing is flying blind.
         - alert: SutlerOrderPollStale
-          expr: time() - sutler_last_poll_timestamp_seconds > 1800
+          expr: time() - max without (pod, instance) (sutler_last_poll_timestamp_seconds) > 1800
           for: 5m
           labels:
             severity: critical
@@ -353,7 +353,7 @@ spec:
               No successful {{ $labels.marketplace }} order poll in 30+
               minutes — sutler is blind to new sales.
         - alert: SutlerSyncStale
-          expr: time() - sutler_last_sync_success_timestamp_seconds > 21600
+          expr: time() - max without (pod, instance) (sutler_last_sync_success_timestamp_seconds) > 21600
           for: 15m
           labels:
             severity: warning
