@@ -19,7 +19,7 @@ spec:
       "refresh": "5m",
       "time": { "from": "now-14d", "to": "now" },
       "links": [
-        { "type": "link", "title": "Sutler UI", "url": "https://sutler.burntsheep.com", "icon": "external link", "targetBlank": true }
+        { "type": "link", "title": "Sutler UI", "url": "https://sutler.${SECRET_DOMAIN_SUTLER}", "icon": "external link", "targetBlank": true }
       ],
       "annotations": { "list": [
         {
@@ -67,7 +67,7 @@ spec:
           "type": "stat", "title": "Needs attention", "id": 6,
           "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
           "targets": [{ "expr": "sum(sutler_orders{status=\"NEEDS_ATTENTION\"}) or vector(0)", "instant": true, "refId": "A" }],
-          "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "links": [ { "title": "Open sutler orders", "url": "https://sutler.burntsheep.com/orders", "targetBlank": true } ], "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } } }
+          "fieldConfig": { "defaults": { "unit": "none", "decimals": 0, "links": [ { "title": "Open sutler orders", "url": "https://sutler.${SECRET_DOMAIN_SUTLER}/orders", "targetBlank": true } ], "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } } }
         },
         {
           "type": "timeseries", "title": "Profit per day", "id": 7,
@@ -107,7 +107,7 @@ spec:
           "targets": [{ "expr": "sutler_orders{status=~\"NEW|NEEDS_ATTENTION|SUBMITTED|CONFIRMED|SHIPPED\"}", "legendFormat": "{{status}}", "instant": true, "refId": "A" }],
           "options": { "displayMode": "basic", "orientation": "horizontal" },
           "fieldConfig": {
-            "defaults": { "unit": "none", "decimals": 0, "links": [ { "title": "Open sutler orders", "url": "https://sutler.burntsheep.com/orders", "targetBlank": true } ], "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] } },
+            "defaults": { "unit": "none", "decimals": 0, "links": [ { "title": "Open sutler orders", "url": "https://sutler.${SECRET_DOMAIN_SUTLER}/orders", "targetBlank": true } ], "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] } },
             "overrides": [
               { "matcher": { "id": "byRegexp", "options": ".*NEEDS_ATTENTION.*" }, "properties": [ { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } } ] },
               { "matcher": { "id": "byRegexp", "options": ".*NEW.*" }, "properties": [ { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1 } ] } } ] }
@@ -237,18 +237,19 @@ spec:
             {
               "type": "bargauge", "title": "Auto-list actions (24h)", "id": 32,
               "gridPos": { "x": 0, "y": 40, "w": 6, "h": 6 },
-              "targets": [{ "expr": "sum by (action) (sutler_reconcile_actions{window=\"24h\"})", "legendFormat": "{{action}}", "instant": true, "refId": "A" }],
+              "description": "Split by environment (sutler#125). sandbox=false is the real storefront and the only half the alerts look at; sandbox=true is eBay test activity, which used to be summed into the same bar and paged a human for a test. Bars with no sandbox= suffix predate the label.",
+              "targets": [{ "expr": "sum by (action, sandbox) (sutler_reconcile_actions{window=\"24h\"})", "legendFormat": "{{action}} sandbox={{sandbox}}", "instant": true, "refId": "A" }],
               "options": { "displayMode": "basic", "orientation": "horizontal" },
               "fieldConfig": {
                 "defaults": { "unit": "none", "decimals": 0 },
-                "overrides": [ { "matcher": { "id": "byName", "options": "failed" }, "properties": [ { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } } ] } ]
+                "overrides": [ { "matcher": { "id": "byRegexp", "options": "/^failed sandbox=false$/" }, "properties": [ { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } } ] } ]
               }
             },
             {
               "type": "bargauge", "title": "Held back (latest pass)", "id": 33,
               "gridPos": { "x": 6, "y": 40, "w": 6, "h": 6 },
-              "description": "pricing = held by margin/channel gates; errored = ERROR listings a human must clear; cooldown = anti-flap wait",
-              "targets": [{ "expr": "sum by (kind) (sutler_reconcile_held)", "legendFormat": "{{kind}}", "instant": true, "refId": "A" }],
+              "description": "pricing = held by margin/channel gates; errored = ERROR listings a human must clear; cooldown = anti-flap wait. Split by environment (sutler#125): sandbox holds are a test channel doing its job, not a backlog.",
+              "targets": [{ "expr": "sum by (kind, sandbox) (sutler_reconcile_held)", "legendFormat": "{{kind}} sandbox={{sandbox}}", "instant": true, "refId": "A" }],
               "options": { "displayMode": "basic", "orientation": "horizontal" },
               "fieldConfig": { "defaults": { "unit": "none", "decimals": 0 } }
             },

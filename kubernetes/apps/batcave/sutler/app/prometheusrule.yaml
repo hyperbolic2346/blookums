@@ -5,6 +5,37 @@ kind: PrometheusRule
 metadata:
   name: sutler
 spec:
+  # ENVIRONMENT SCOPING — sandbox="false"
+  #
+  # Every reconcile- and listing-derived rule below selects sandbox="false".
+  # sutler runs eBay against the SANDBOX host while GunBroker sells for real,
+  # and until sutler#125 both landed in the same series: the 2026-09-16 eBay
+  # sandbox pass (51 publishes, 21 failed actions) fired
+  # SutlerReconcileFailures and pushed SutlerReconcileMassPublishing into
+  # pending. Both were silenced for 24h. A test is not an outage.
+  #
+  # The label is emitted by sutler from the release carrying #125 (the first
+  # tag after v0.35.0) and is ABSENT on everything before it. A selector on a
+  # label a series does not have matches NOTHING, so between this merging and
+  # that release these rules are silent — they do not fire wrongly, they do
+  # not fire at all. Merge this AFTER the release is live in prod.
+  #
+  # To check what prod is actually emitting:
+  #   kubectl -n batcave exec deploy/sutler-api -- \
+  #     wget -qO- localhost:8000/api/metrics | grep sutler_reconcile_actions
+  # A HELP line and series with {...,sandbox="false"} means the release is in.
+  # In Grafana/Prometheus the same question is
+  # count(sutler_reconcile_actions{sandbox="false"}) — 0 or empty means not
+  # yet, and every rule here is dark. Drop the selectors again if that is ever
+  # a state we have to sit in.
+  #
+  # Two label values only, so nothing here multiplies series: the gauges are
+  # already per marketplace and this at most doubles them.
+  #
+  # NOT scoped, on purpose: sutler_orders / sutler_open_order_age_seconds and
+  # friends were only ever counted for non-sandbox orders inside sutler, and
+  # sutler_last_poll_timestamp_seconds carries no sandbox label at all (it is
+  # stamped on the channel config, not on a run record).
   groups:
     - name: sutler.orders
       rules:
@@ -136,7 +167,9 @@ spec:
         # than one channel live it is a per-marketplace question, not a single
         # cross-channel count.
         - alert: SutlerReconcileNotRunning
-          expr: time() - max without (pod, instance) (sutler_reconcile_last_pass_timestamp_seconds) > 7200
+          expr: >-
+            time() - max without (pod, instance)
+              (sutler_reconcile_last_pass_timestamp_seconds{sandbox="false"}) > 7200
           for: 15m
           labels:
             severity: warning
@@ -190,6 +223,35 @@ spec:
               No GunBroker order poll has EVER succeeded on this config. The
               staleness alert keys off a timestamp that does not exist yet, so
               it cannot fire — this is its go-live stand-in.
+        # The eBay twin #592 said this wanted. eBay polled successfully for
+        # the first time on 2026-09-16 ("eBay orders poll: 0 seen, 0 new" in
+        # the worker log), so the series exists and this resolves immediately
+        # — which is the point: from here on, its ABSENCE means the config
+        # was reset, reconnected wrong, or the poll was never scheduled, and
+        # SutlerOrderPollStale cannot say so because it keys off a timestamp
+        # that would not exist. A separate alert NAME rather than a second
+        # SutlerChannelNeverPolled rule: absent() produces no marketplace
+        # label to tell two firing copies apart in Alertmanager, and adding a
+        # static one to the GunBroker rule would re-fingerprint an alert that
+        # is working.
+        #
+        # Deliberately NOT scoped by sandbox: sutler_last_poll_timestamp_
+        # seconds carries no such label (it comes from
+        # TenantMarketplaceConfig.lastPollAt, not from a run record), and an
+        # order poll that never runs is a real fault on either host — a
+        # sandbox sale sutler never sees is still a bug in the poll.
+        - alert: SutlerEbayChannelNeverPolled
+          expr: absent(sutler_last_poll_timestamp_seconds{marketplace="ebay"})
+          for: 30m
+          labels:
+            severity: critical
+          annotations:
+            summary: >-
+              No eBay order poll has EVER succeeded on this config. eBay first
+              polled 2026-09-16, so this means the config was reset or the
+              poll is not being scheduled. SutlerOrderPollStale cannot fire —
+              it keys off a timestamp that does not exist:
+              https://sutler.${SECRET_DOMAIN_SUTLER}/orders
     - name: sutler.sanity
       rules:
         - alert: SutlerFeedTruncated
@@ -253,7 +315,9 @@ spec:
               CHEAPEST offer, so corrupt costs win every routing decision.
               Turn auto-list off before the next reconcile pass.
         - alert: SutlerReconcileMassPublishing
-          expr: sum(sutler_reconcile_actions{action="published", window="24h"}) > 50
+          expr: >-
+            sum(sutler_reconcile_actions{action="published", window="24h", sandbox="false"})
+              > 50
           for: 10m
           labels:
             severity: critical
@@ -271,7 +335,7 @@ spec:
         # the auto-list path, so with auto-list off nothing else notices a
         # rejected publish.
         - alert: SutlerListingErrors
-          expr: sum(sutler_listings{status="ERROR"}) > 0
+          expr: sum(sutler_listings{status="ERROR", sandbox="false"}) > 0
           for: 30m
           labels:
             severity: warning
@@ -307,7 +371,9 @@ spec:
         # pull a listing, it refused, and the item is STILL purchasable while
         # we believe it is coming down. That is the oversell path.
         - alert: SutlerListingStuckActive
-          expr: max without (pod, instance) (sutler_listings_stuck_active) > 0
+          expr: >-
+            max without (pod, instance)
+              (sutler_listings_stuck_active{sandbox="false"}) > 0
           for: 15m
           labels:
             severity: critical
@@ -318,7 +384,9 @@ spec:
               directly, then clear the row. Oversell risk while this is up:
               https://sutler.${SECRET_DOMAIN_SUTLER}/listings
         - alert: SutlerListingLiveNotListable
-          expr: max without (pod, instance) (sutler_listings_live_not_listable) > 0
+          expr: >-
+            max without (pod, instance)
+              (sutler_listings_live_not_listable{sandbox="false"}) > 0
           for: 30m
           labels:
             severity: critical
@@ -334,7 +402,9 @@ spec:
         # sitting there for a day, which is a different failure — nobody is
         # working the queue — and it names the channel that is stalled.
         - alert: SutlerListingErrorUnworked
-          expr: max without (pod, instance) (sutler_oldest_listing_error_age_seconds) > 86400
+          expr: >-
+            max without (pod, instance)
+              (sutler_oldest_listing_error_age_seconds{sandbox="false"}) > 86400
           for: 30m
           labels:
             severity: warning
@@ -350,7 +420,9 @@ spec:
         # also catches the reconciler being invoked and skipping every time —
         # per-channel kill switch, disabled config, failing connection test.
         - alert: SutlerChannelReconcileNotRunning
-          expr: time() - max without (pod, instance) (sutler_reconcile_last_run_timestamp_seconds) > 7200
+          expr: >-
+            time() - max without (pod, instance)
+              (sutler_reconcile_last_run_timestamp_seconds{sandbox="false"}) > 7200
           for: 15m
           labels:
             severity: warning
@@ -366,10 +438,10 @@ spec:
           # Absolute OR proportional: a 15-listing storefront can be wiped
           # entirely without ever reaching 20.
           expr: >-
-            sum(sutler_reconcile_actions{action="ended", window="24h"}) > 20
+            sum(sutler_reconcile_actions{action="ended", window="24h", sandbox="false"}) > 20
             or
-            sum(sutler_reconcile_actions{action="ended", window="24h"})
-              > 0.25 * clamp_min(sum(sutler_listings{status="ACTIVE"}), 1)
+            sum(sutler_reconcile_actions{action="ended", window="24h", sandbox="false"})
+              > 0.25 * clamp_min(sum(sutler_listings{status="ACTIVE", sandbox="false"}), 1)
           for: 10m
           labels:
             severity: critical
@@ -378,7 +450,9 @@ spec:
               Auto-list ended {{ $value }} listings in 24h — a feed glitch may
               be taking the catalog down; check the reconcile runs.
         - alert: SutlerReconcileFailures
-          expr: sum(sutler_reconcile_actions{action="failed", window="24h"}) > 0
+          expr: >-
+            sum(sutler_reconcile_actions{action="failed", window="24h", sandbox="false"})
+              > 0
           for: 2h
           labels:
             severity: warning
