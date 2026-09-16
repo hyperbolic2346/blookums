@@ -56,7 +56,7 @@ spec:
             summary: >-
               A sale has waited {{ $value | humanizeDuration }} for you to
               place it at the distributor by hand (DRY_RUN). The exact payload
-              is on the row: https://sutler.burntsheep.com/orders
+              is on the row: https://sutler.${SECRET_DOMAIN_SUTLER}/orders
         - alert: SutlerManualOrderOverdue
           expr: max without (pod, instance) (sutler_oldest_manual_placement_age_seconds) > 86400
           for: 15m
@@ -78,7 +78,7 @@ spec:
             summary: >-
               Order {{ $labels.external_order_id }} ({{ $labels.marketplace }})
               needs you — blocked {{ $value | humanizeDuration }}. Reason is on
-              the row: https://sutler.burntsheep.com/orders
+              the row: https://sutler.${SECRET_DOMAIN_SUTLER}/orders
         - alert: SutlerOrderUnshippedNamed
           expr: max without (pod, instance) (sutler_open_order_age_seconds{status=~"SUBMITTED|CONFIRMED"}) > 86400
           for: 30m
@@ -132,17 +132,9 @@ spec:
               recognise, pause fulfilment before it continues.
     - name: sutler.silent
       rules:
-        - alert: SutlerListingLiveNotListable
-          expr: sum(sutler_listings_live_not_listable) > 0
-          for: 10m
-          labels:
-            severity: critical
-          annotations:
-            summary: >-
-              {{ $value }} listing(s) are LIVE and purchasable but no longer
-              listable (out of stock, de-whitelisted, or channel-blocked) and
-              nothing has ended them. A buyer can order these right now and we
-              cannot ship. End them, or check whether auto-list is running.
+        # SutlerListingLiveNotListable lives in sutler.channels now: with more
+        # than one channel live it is a per-marketplace question, not a single
+        # cross-channel count.
         - alert: SutlerReconcileNotRunning
           expr: time() - max without (pod, instance) (sutler_reconcile_last_pass_timestamp_seconds) > 7200
           for: 15m
@@ -272,19 +264,9 @@ spec:
               profitable shows up here first.
     - name: sutler.listings
       rules:
-        # The one that means money is at risk: we asked the marketplace to
-        # pull a listing, it refused, and the item is STILL purchasable while
-        # we believe it is coming down. That is the oversell path.
-        - alert: SutlerListingStuckActive
-          expr: sum(sutler_listings_stuck_active) > 0
-          for: 10m
-          labels:
-            severity: critical
-          annotations:
-            summary: >-
-              {{ $value }} live listing(s) failed to end and are still
-              purchasable — end them on the marketplace directly, then clear
-              the row. Oversell risk while this is up.
+        # SutlerListingStuckActive — the oversell path — moved to
+        # sutler.channels, where it is aggregated per marketplace.
+        #
         # Covers MANUAL publishes too: the reconcile-failure alert only sees
         # the auto-list path, so with auto-list off nothing else notices a
         # rejected publish.
@@ -297,6 +279,87 @@ spec:
             summary: >-
               {{ $value }} production listing(s) in ERROR — the marketplace
               rejected the publish; inventory is not earning until it's fixed.
+    # Channel health, one alert per marketplace instead of one for the lot.
+    # Every expression here aggregates BY the marketplace label and never
+    # names a channel: "3 listings failed to end" reads identically whether
+    # GunBroker lost one and eBay two or eBay lost all three, and the first
+    # question at 11pm is which storefront to open. Nothing is hard-coded to
+    # ebay/gunbroker, so a third channel inherits all of these the day its
+    # first row appears.
+    #
+    # The eBay members of these series are only worth believing from sutler
+    # 0.32.0 onward. Before it the eBay adapter had no activeListings/inspect,
+    # so listing sync never reconciled an eBay row against eBay: stuck_active
+    # and live_not_listable described our own table, which nobody had checked
+    # against the marketplace. Alerts on those pre-0.32.0 values would have
+    # been noise about rows that were never verified.
+    #
+    # Order-poll staleness is per marketplace ALREADY and stays in
+    # sutler.pipeline: SutlerOrderPollStale, on sutler_last_poll_timestamp_
+    # seconds (the gauge is named last_poll, not last_order_poll), keeps the
+    # marketplace label through its max without (pod, instance) and fires at
+    # 30 minutes stale. SutlerChannelNeverPolled next to it is still
+    # GunBroker-only by necessity — absent() has no series to group by — and
+    # wants an eBay twin once eBay polls for the first time.
+    - name: sutler.channels
+      rules:
+        # The one that means money is at risk: we asked the marketplace to
+        # pull a listing, it refused, and the item is STILL purchasable while
+        # we believe it is coming down. That is the oversell path.
+        - alert: SutlerListingStuckActive
+          expr: max without (pod, instance) (sutler_listings_stuck_active) > 0
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: >-
+              {{ $value }} {{ $labels.marketplace }} listing(s) failed to end
+              and are still purchasable — end them on the marketplace
+              directly, then clear the row. Oversell risk while this is up:
+              https://sutler.${SECRET_DOMAIN_SUTLER}/listings
+        - alert: SutlerListingLiveNotListable
+          expr: max without (pod, instance) (sutler_listings_live_not_listable) > 0
+          for: 30m
+          labels:
+            severity: critical
+          annotations:
+            summary: >-
+              {{ $value }} {{ $labels.marketplace }} listing(s) are LIVE and
+              purchasable but no longer listable (out of stock, de-whitelisted,
+              or channel-blocked) and nothing has ended them. A buyer can order
+              these right now and we cannot ship. End them, or check whether
+              auto-list is running for that channel:
+              https://sutler.${SECRET_DOMAIN_SUTLER}/whitelist
+        # SutlerListingErrors says an ERROR row EXISTS; this says one has been
+        # sitting there for a day, which is a different failure — nobody is
+        # working the queue — and it names the channel that is stalled.
+        - alert: SutlerListingErrorUnworked
+          expr: max without (pod, instance) (sutler_oldest_listing_error_age_seconds) > 86400
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              A {{ $labels.marketplace }} listing has been in ERROR for
+              {{ $value | humanizeDuration }} with nobody clearing it — that
+              inventory has earned nothing for a day and the publish will not
+              retry itself: https://sutler.${SECRET_DOMAIN_SUTLER}/listings
+        # Twin of SutlerReconcileNotRunning, one gauge over: that one uses
+        # last_pass (a pass of ANY outcome) and catches the reconciler being
+        # dead. This uses last_run (a pass that actually DID something), so it
+        # also catches the reconciler being invoked and skipping every time —
+        # per-channel kill switch, disabled config, failing connection test.
+        - alert: SutlerChannelReconcileNotRunning
+          expr: time() - max without (pod, instance) (sutler_reconcile_last_run_timestamp_seconds) > 7200
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              No reconcile pass has RUN for {{ $labels.marketplace }} in 2h+ —
+              it is either not being called or skipping every pass. Nothing
+              will list, reprice, or end a listing on that channel until it
+              does: https://sutler.${SECRET_DOMAIN_SUTLER}/listings
     - name: sutler.autolist
       rules:
         - alert: SutlerReconcileMassEnding
