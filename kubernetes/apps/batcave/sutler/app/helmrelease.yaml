@@ -71,6 +71,13 @@ spec:
               API_PORT: "8000"
               REDIS_URL: "redis://sutler-redis.batcave.svc.cluster.local:6379"
               AUTH_CALLBACK_URL: "https://sutler.${SECRET_DOMAIN_SUTLER}/api/auth/google/callback"
+              # eBay marketplace account deletion/closure notifications. This
+              # URL is HASHED into the challenge answer, so it has to match
+              # what is registered on developer.ebay.com character for
+              # character — pinned here rather than derived. Its verification
+              # token is a secret (EBAY_ACCOUNT_DELETION_TOKEN, via envFrom);
+              # unset token = the routes 404 and eBay's validation fails.
+              EBAY_ACCOUNT_DELETION_ENDPOINT: "https://sutler.${SECRET_DOMAIN_SUTLER}/api/marketplaces/ebay/account-deletion"
             envFrom: *envFrom
             probes:
               liveness: &apiProbe
