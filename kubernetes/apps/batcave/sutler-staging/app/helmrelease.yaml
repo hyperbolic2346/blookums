@@ -177,7 +177,7 @@ spec:
           main:
             image:
               repository: ghcr.io/hyperbolic2346/sutler-web
-              tag: main-8433210-b305 # {"$imagepolicy": "flux-system:sutler-web-staging:tag"}
+              tag: main-86b8233-b306 # {"$imagepolicy": "flux-system:sutler-web-staging:tag"}
             env:
               PUBLIC_API_URL: "https://sutler-staging.${SECRET_DOMAIN_SUTLER}"
               # No Umami here on purpose — the web app only emits analytics when
