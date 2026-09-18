@@ -50,7 +50,9 @@ spec:
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
+              # The stock nginx image starts as root, chowns its cache dirs, then drops to uid 101.
               drop: ["ALL"]
+              add: ["CHOWN", "SETGID", "SETUID"]
 ---
 apiVersion: v1
 kind: Service
