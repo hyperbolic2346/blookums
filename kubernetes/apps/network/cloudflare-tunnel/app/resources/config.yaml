@@ -31,4 +31,16 @@ ingress:
       # Same wildcard listener/cert as prod (https-sutler matches
       # *.${SECRET_DOMAIN_SUTLER}), so only the SNI name differs.
       originServerName: "sutler-staging.${SECRET_DOMAIN_SUTLER}"
+  - hostname: "tally.${SECRET_DOMAIN_SUTLER}"
+    service: *svc-external
+    originRequest:
+      originServerName: "tally.${SECRET_DOMAIN_SUTLER}"
+  - hostname: "tally-api.${SECRET_DOMAIN_SUTLER}"
+    service: *svc-external
+    originRequest:
+      originServerName: "tally-api.${SECRET_DOMAIN_SUTLER}"
+  - hostname: "tally-teach.${SECRET_DOMAIN_SUTLER}"
+    service: *svc-external
+    originRequest:
+      originServerName: "tally-teach.${SECRET_DOMAIN_SUTLER}"
   - service: http_status:404

@@ -1,0 +1,13 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+# Copy this whole directory to blookums as kubernetes/apps/tally/tally/app/, and ks.yaml one
+# level up as kubernetes/apps/tally/tally/ks.yaml. See ../PUBLISH.md.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: tally
+
+resources:
+  - ./externalsecret.yaml
+  - ./api.yaml
+  - ./web.yaml
+  - ./teach.yaml

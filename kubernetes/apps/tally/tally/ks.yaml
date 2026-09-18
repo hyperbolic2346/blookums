@@ -1,0 +1,40 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/kustomization-kustomize-v1.json
+#
+# Goes in blookums at kubernetes/apps/tally/tally/ks.yaml, with ./app/ beside it.
+#
+# Modelled on kubernetes/apps/batcave/stockpile/ks.yaml:
+#   - dependsOn cloudnative-pg-cluster, because the API's init container creates its database
+#     on the shared cluster and will crashloop until that cluster is up;
+#   - dependsOn external-secrets-stores, because every credential here comes from 1Password;
+#   - postBuild.substituteFrom pulls in cluster-secrets / cluster-settings so ${...} variables
+#     resolve. This app does not actually use any — the hostnames are literal, because
+#     nerdbucket.org is not ${SECRET_DOMAIN} — but Flux's envsubst is strict and the other
+#     apps all carry it, so keep it for consistency.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: tally
+  namespace: tally
+spec:
+  dependsOn:
+    - name: cloudnative-pg-cluster
+      namespace: databases
+    - name: external-secrets-stores
+      namespace: kube-system
+  path: ./kubernetes/apps/tally/tally/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  wait: true
+  interval: 30m
+  retryInterval: 1m
+  timeout: 5m
+  postBuild:
+    substituteFrom:
+      - name: cluster-secrets
+        kind: Secret
+      - name: cluster-settings
+        kind: ConfigMap

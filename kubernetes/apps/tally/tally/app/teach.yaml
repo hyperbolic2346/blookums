@@ -1,0 +1,83 @@
+---
+# The teacher dashboard: a static SvelteKit SPA behind nginx.
+# Image: ghcr.io/hyperbolic2346/tally-teach (repo: tally-teach, deploy/publish.sh).
+#
+# VITE_API_BASE is baked in at build time, so the image is tied to the API host it was built
+# for. `?api=` still overrides it at runtime for testing.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tally-teach
+  namespace: tally
+  labels: &labels
+    app.kubernetes.io/name: tally
+    app.kubernetes.io/component: teach
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels: *labels
+  template:
+    metadata:
+      labels: *labels
+    spec:
+      imagePullSecrets:
+        - name: tally-ghcr-pull
+      containers:
+        - name: nginx
+          image: ghcr.io/hyperbolic2346/tally-teach:0.1.0
+          ports:
+            - name: http
+              containerPort: 8080
+          livenessProbe: &probe
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 20
+            timeoutSeconds: 2
+          readinessProbe: *probe
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tally-teach
+  namespace: tally
+spec:
+  selector:
+    app.kubernetes.io/name: tally
+    app.kubernetes.io/component: teach
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: tally-teach
+  namespace: tally
+spec:
+  parentRefs:
+    - name: external
+      namespace: kube-system
+      sectionName: https-sutler
+  hostnames: ["tally-teach.nerdbucket.org"]
+  rules:
+    - backendRefs:
+        - name: tally-teach
+          port: 80

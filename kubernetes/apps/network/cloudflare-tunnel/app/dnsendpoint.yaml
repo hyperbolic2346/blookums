@@ -24,3 +24,12 @@ spec:
     - dnsName: "sutler-staging.${SECRET_DOMAIN_SUTLER}"
       recordType: CNAME
       targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
+    - dnsName: "tally.${SECRET_DOMAIN_SUTLER}"
+      recordType: CNAME
+      targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
+    - dnsName: "tally-api.${SECRET_DOMAIN_SUTLER}"
+      recordType: CNAME
+      targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
+    - dnsName: "tally-teach.${SECRET_DOMAIN_SUTLER}"
+      recordType: CNAME
+      targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
