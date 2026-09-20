@@ -28,7 +28,10 @@ spec:
             key: api-token
     extraArgs:
       - --cloudflare-dns-records-per-page=1000
-      - --cloudflare-proxied
+      # Do NOT set --cloudflare-proxied globally. That flag made external-dns
+      # orange-cloud Valheim A records every minute (UDP dies), ignoring the
+      # per-record proxied=false on DNSEndpoints. Proxy only where an endpoint
+      # (or annotation) asks for it — tunnel CNAMEs set it explicitly.
       - --crd-source-apiversion=externaldns.k8s.io/v1alpha1
       - --crd-source-kind=DNSEndpoint
       - --gateway-name=external
