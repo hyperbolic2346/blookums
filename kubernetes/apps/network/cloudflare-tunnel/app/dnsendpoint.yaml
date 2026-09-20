@@ -9,6 +9,15 @@ spec:
     - dnsName: "external.${SECRET_DOMAIN}"
       recordType: CNAME
       targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
+    # Catch-all for apps on the external gateway (stockpile, hass, etc).
+    # Must be a CNAME to the tunnel — an A record to a public LB IP breaks HTTPS
+    # (Cloudflare 523). Exact game-server A records (midgard/prohacker) still win.
+    - dnsName: "*.${SECRET_DOMAIN}"
+      recordType: CNAME
+      targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
+    - dnsName: "stockpile.${SECRET_DOMAIN}"
+      recordType: CNAME
+      targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
     - dnsName: "fierypyropixy.com"
       recordType: CNAME
       targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
