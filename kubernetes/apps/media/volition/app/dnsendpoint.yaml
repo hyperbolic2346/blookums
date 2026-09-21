@@ -17,7 +17,6 @@ metadata:
   name: volition
   namespace: media
   annotations:
-    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
     external-dns.kubernetes.io/cloudflare-proxied: "false"
 spec:
   endpoints:
@@ -26,7 +25,5 @@ spec:
       recordTTL: 300
       targets: ["99.136.248.251"]
       providerSpecific:
-        - name: external-dns.alpha.kubernetes.io/cloudflare-proxied
-          value: "false"
         - name: external-dns.kubernetes.io/cloudflare-proxied
           value: "false"

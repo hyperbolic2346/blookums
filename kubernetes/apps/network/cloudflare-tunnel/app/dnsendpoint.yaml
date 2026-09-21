@@ -5,7 +5,6 @@ kind: DNSEndpoint
 metadata:
   name: cloudflare-tunnel
   annotations:
-    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
     external-dns.kubernetes.io/cloudflare-proxied: "true"
 spec:
   endpoints:
@@ -13,8 +12,6 @@ spec:
       recordType: CNAME
       targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
       providerSpecific:
-        - name: external-dns.alpha.kubernetes.io/cloudflare-proxied
-          value: "true"
         - name: external-dns.kubernetes.io/cloudflare-proxied
           value: "true"
     # Catch-all for apps on the external gateway (stockpile, hass, etc).
@@ -24,79 +21,59 @@ spec:
       recordType: CNAME
       targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
       providerSpecific:
-        - name: external-dns.alpha.kubernetes.io/cloudflare-proxied
-          value: "true"
         - name: external-dns.kubernetes.io/cloudflare-proxied
           value: "true"
     - dnsName: "stockpile.${SECRET_DOMAIN}"
       recordType: CNAME
       targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
       providerSpecific:
-        - name: external-dns.alpha.kubernetes.io/cloudflare-proxied
-          value: "true"
         - name: external-dns.kubernetes.io/cloudflare-proxied
           value: "true"
     - dnsName: "fierypyropixy.com"
       recordType: CNAME
       targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
       providerSpecific:
-        - name: external-dns.alpha.kubernetes.io/cloudflare-proxied
-          value: "true"
         - name: external-dns.kubernetes.io/cloudflare-proxied
           value: "true"
     - dnsName: "blog.fierypyropixy.com"
       recordType: CNAME
       targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
       providerSpecific:
-        - name: external-dns.alpha.kubernetes.io/cloudflare-proxied
-          value: "true"
         - name: external-dns.kubernetes.io/cloudflare-proxied
           value: "true"
     - dnsName: "joltwagon.com"
       recordType: CNAME
       targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
       providerSpecific:
-        - name: external-dns.alpha.kubernetes.io/cloudflare-proxied
-          value: "true"
         - name: external-dns.kubernetes.io/cloudflare-proxied
           value: "true"
     - dnsName: "sutler.${SECRET_DOMAIN_SUTLER}"
       recordType: CNAME
       targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
       providerSpecific:
-        - name: external-dns.alpha.kubernetes.io/cloudflare-proxied
-          value: "true"
         - name: external-dns.kubernetes.io/cloudflare-proxied
           value: "true"
     - dnsName: "sutler-staging.${SECRET_DOMAIN_SUTLER}"
       recordType: CNAME
       targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
       providerSpecific:
-        - name: external-dns.alpha.kubernetes.io/cloudflare-proxied
-          value: "true"
         - name: external-dns.kubernetes.io/cloudflare-proxied
           value: "true"
     - dnsName: "tally.${SECRET_DOMAIN_SUTLER}"
       recordType: CNAME
       targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
       providerSpecific:
-        - name: external-dns.alpha.kubernetes.io/cloudflare-proxied
-          value: "true"
         - name: external-dns.kubernetes.io/cloudflare-proxied
           value: "true"
     - dnsName: "tally-api.${SECRET_DOMAIN_SUTLER}"
       recordType: CNAME
       targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
       providerSpecific:
-        - name: external-dns.alpha.kubernetes.io/cloudflare-proxied
-          value: "true"
         - name: external-dns.kubernetes.io/cloudflare-proxied
           value: "true"
     - dnsName: "tally-teach.${SECRET_DOMAIN_SUTLER}"
       recordType: CNAME
       targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
       providerSpecific:
-        - name: external-dns.alpha.kubernetes.io/cloudflare-proxied
-          value: "true"
         - name: external-dns.kubernetes.io/cloudflare-proxied
           value: "true"

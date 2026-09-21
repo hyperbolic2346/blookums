@@ -28,25 +28,21 @@ spec:
             key: api-token
     extraArgs:
       - --cloudflare-dns-records-per-page=1000
-      # external-dns v0.22.0 switched the default annotation prefix to
-      # external-dns.kubernetes.io/ with no fallback, so every
-      # external-dns.alpha.kubernetes.io/* annotation in this repo went
-      # invisible. The external Gateway's /target then stopped being read and
-      # route hostnames were published as A records at the gateway's private
-      # LB IP (192.168.14.51) instead of CNAMEs to external.${SECRET_DOMAIN},
-      # which killed public access to hass/gate/plex/etc. Pin the old prefix.
-      # TODO: migrate all annotations to external-dns.kubernetes.io/ and drop.
-      - --annotation-prefix=external-dns.alpha.kubernetes.io/
+      # Annotations use the GA external-dns.kubernetes.io/ prefix (the default
+      # since v0.22.0, which dropped alpha with no fallback). That includes
+      # DNSEndpoint providerSpecific names: the cloudflare provider matches
+      # them by exact equality against <annotation-prefix>cloudflare-proxied,
+      # so an alpha-named entry is silently ignored and the record is proxied.
+      #
       # Proxy by default: everything on the external gateway must be
       # orange-clouded, or Cloudflare hands out the raw *.cfargotunnel.com
       # target, which has no public address. Setting cloudflare-proxied on the
       # Gateway instead does not work — only /target propagates from a Gateway
       # to its route-derived records, not this annotation.
       #
-      # This flag did previously orange-cloud the Valheim A records and break
-      # UDP, but only because v0.22.0's prefix change had made their per-record
-      # proxied=false invisible. With --annotation-prefix pinned above those
-      # opt-outs are honored again, so midgard/prohacker/volition stay grey.
+      # Game/file-share A records (midgard/prohacker/volition) opt out with a
+      # per-record external-dns.kubernetes.io/cloudflare-proxied: "false" and
+      # must stay grey — proxying breaks their raw UDP/TCP traffic.
       - --cloudflare-proxied
       - --crd-source-apiversion=externaldns.k8s.io/v1alpha1
       - --crd-source-kind=DNSEndpoint
