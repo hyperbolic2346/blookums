@@ -11,6 +11,7 @@ metadata:
   namespace: gaming
   annotations:
     external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+    external-dns.kubernetes.io/cloudflare-proxied: "false"
 spec:
   endpoints:
     - dnsName: "midgard.${SECRET_DOMAIN}"
@@ -19,4 +20,6 @@ spec:
       targets: ["99.136.248.252"]
       providerSpecific:
         - name: external-dns.alpha.kubernetes.io/cloudflare-proxied
+          value: "false"
+        - name: external-dns.kubernetes.io/cloudflare-proxied
           value: "false"

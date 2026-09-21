@@ -6,6 +6,7 @@ metadata:
   name: external
   annotations:
     external-dns.alpha.kubernetes.io/target: "external.${SECRET_DOMAIN}"
+    external-dns.kubernetes.io/target: "external.${SECRET_DOMAIN}"
     # NB: only /target propagates from a Gateway to its route-derived records.
     # Adding external-dns.alpha.kubernetes.io/cloudflare-proxied here has no
     # effect (verified against external-dns v0.22.0) — proxying is handled by
@@ -18,6 +19,7 @@ spec:
   infrastructure:
     annotations:
       external-dns.alpha.kubernetes.io/hostname: "external.${SECRET_DOMAIN}"
+      external-dns.kubernetes.io/hostname: "external.${SECRET_DOMAIN}"
   listeners:
     - name: http
       protocol: HTTP
