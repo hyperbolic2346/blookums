@@ -87,6 +87,9 @@ spec:
                 # 2026.7.x installs channel plugins via npm at startup; npm
                 # cache cannot live in read-only /home/node
                 NPM_CONFIG_CACHE: /tmp/.npm
+                # 2026.9.x uses $HOME/.cache for temp/cache; /home/node is read-only
+                # Point XDG cache to /tmp so OpenClaw can create its fallback dir
+                XDG_CACHE_HOME: /tmp
                 HASS_URL: http://home-assistant.home:8123
 
       persistence:
