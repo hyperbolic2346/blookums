@@ -1,5 +1,5 @@
 ---
-# Authentication configuration for Frigate 0.15.x
+# Authentication configuration for Frigate 0.18+
 auth:
   enabled: false  # Disable authentication for now to fix the 500 errors
 
@@ -139,7 +139,10 @@ cameras:
             - record
     motion:
       mask:
-        - 0,365,0,0,172,0
+        # Frigate 0.18+: masks are named objects (migrator can't rewrite a read-only ConfigMap)
+        corner:
+          enabled: true
+          coordinates: "0,365,0,0,172,0"
     zones:
       back_drive:
         coordinates: 174,254,332,54,1149,136,1062,350,884,292,488,362,270,470
@@ -192,7 +195,9 @@ cameras:
           max_area: 150000
         person:
           mask:
-            - 0.372,0.894,0.289,0.854,0.217,0.398,0.288,0.301,0.237,0.103,0.174,0.135,0.092,0.383,0.189,0.417,0.277,0.863,0.231,0.893,0.202,1,0.405,1
+            roadside:
+              enabled: true
+              coordinates: "0.372,0.894,0.289,0.854,0.217,0.398,0.288,0.301,0.237,0.103,0.174,0.135,0.092,0.383,0.189,0.417,0.277,0.863,0.231,0.893,0.202,1,0.405,1"
   # --
   south-drive:
     detect:
