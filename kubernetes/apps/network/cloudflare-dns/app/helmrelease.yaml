@@ -37,10 +37,17 @@ spec:
       # which killed public access to hass/gate/plex/etc. Pin the old prefix.
       # TODO: migrate all annotations to external-dns.kubernetes.io/ and drop.
       - --annotation-prefix=external-dns.alpha.kubernetes.io/
-      # Do NOT set --cloudflare-proxied globally. That flag made external-dns
-      # orange-cloud Valheim A records every minute (UDP dies), ignoring the
-      # per-record proxied=false on DNSEndpoints. Proxy only where an endpoint
-      # (or annotation) asks for it — tunnel CNAMEs set it explicitly.
+      # Proxy by default: everything on the external gateway must be
+      # orange-clouded, or Cloudflare hands out the raw *.cfargotunnel.com
+      # target, which has no public address. Setting cloudflare-proxied on the
+      # Gateway instead does not work — only /target propagates from a Gateway
+      # to its route-derived records, not this annotation.
+      #
+      # This flag did previously orange-cloud the Valheim A records and break
+      # UDP, but only because v0.22.0's prefix change had made their per-record
+      # proxied=false invisible. With --annotation-prefix pinned above those
+      # opt-outs are honored again, so midgard/prohacker/volition stay grey.
+      - --cloudflare-proxied
       - --crd-source-apiversion=externaldns.k8s.io/v1alpha1
       - --crd-source-kind=DNSEndpoint
       - --gateway-name=external

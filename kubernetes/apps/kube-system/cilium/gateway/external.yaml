@@ -6,12 +6,10 @@ metadata:
   name: external
   annotations:
     external-dns.alpha.kubernetes.io/target: "external.${SECRET_DOMAIN}"
-    # Records derived from routes on this gateway must be orange-clouded,
-    # otherwise Cloudflare hands out the raw *.cfargotunnel.com name, which
-    # does not resolve publicly. Set here rather than via the global
-    # --cloudflare-proxied flag, which would also proxy the Valheim A
-    # records and break UDP.
-    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
+    # NB: only /target propagates from a Gateway to its route-derived records.
+    # Adding external-dns.alpha.kubernetes.io/cloudflare-proxied here has no
+    # effect (verified against external-dns v0.22.0) — proxying is handled by
+    # --cloudflare-proxied on the cloudflare-dns HelmRelease instead.
 spec:
   gatewayClassName: cilium
   addresses:
