@@ -28,6 +28,15 @@ spec:
             key: api-token
     extraArgs:
       - --cloudflare-dns-records-per-page=1000
+      # external-dns v0.22.0 switched the default annotation prefix to
+      # external-dns.kubernetes.io/ with no fallback, so every
+      # external-dns.alpha.kubernetes.io/* annotation in this repo went
+      # invisible. The external Gateway's /target then stopped being read and
+      # route hostnames were published as A records at the gateway's private
+      # LB IP (192.168.14.51) instead of CNAMEs to external.${SECRET_DOMAIN},
+      # which killed public access to hass/gate/plex/etc. Pin the old prefix.
+      # TODO: migrate all annotations to external-dns.kubernetes.io/ and drop.
+      - --annotation-prefix=external-dns.alpha.kubernetes.io/
       # Do NOT set --cloudflare-proxied globally. That flag made external-dns
       # orange-cloud Valheim A records every minute (UDP dies), ignoring the
       # per-record proxied=false on DNSEndpoints. Proxy only where an endpoint
