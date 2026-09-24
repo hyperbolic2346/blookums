@@ -36,3 +36,5 @@ spec:
       VOLSYNC_CLAIM: radarr-config
       VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
       VOLSYNC_CAPACITY: 10Gi
+      # Default 1Gi cache ENOSPC on ~2.7Gi config+MediaCover (stuck since 2026-09-19). Match plex.
+      VOLSYNC_CACHE_CAPACITY: 10Gi
