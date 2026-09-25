@@ -1,0 +1,153 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/helmrelease-helm-v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: vaultmistress
+  namespace: vaultmistress
+spec:
+  interval: 30m
+  # The WooCommerce download on a cold PVC can outrun the 5m Helm default.
+  timeout: 10m
+  chartRef:
+    kind: OCIRepository
+    name: vaultmistress
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    controllers:
+      main:
+        annotations:
+          reloader.stakater.com/auto: "true"
+
+        initContainers:
+          # Seed WooCommerce onto the (persistent) wp-content volume on first
+          # boot only. Once the directory exists this is a no-op, so WordPress'
+          # own updater owns the plugin from then on and we never clobber a
+          # version the store has been upgraded to.
+          01-woocommerce:
+            image:
+              repository: docker.io/library/alpine
+              tag: "3.22"
+            command:
+              - /bin/sh
+              - -c
+              - |
+                set -eu
+                if [ -d /var/www/html/wp-content/plugins/woocommerce ]; then
+                  echo "woocommerce already installed - leaving updates to wordpress"
+                  exit 0
+                fi
+                echo "seeding woocommerce"
+                apk add --no-cache curl unzip >/dev/null
+                mkdir -p /var/www/html/wp-content/plugins
+                curl -fsSL -o /tmp/woocommerce.zip \
+                  https://downloads.wordpress.org/plugin/woocommerce.latest-stable.zip
+                unzip -q /tmp/woocommerce.zip -d /var/www/html/wp-content/plugins
+                chown -R 33:33 /var/www/html/wp-content/plugins/woocommerce
+
+        containers:
+          main:
+            image:
+              repository: docker.io/library/wordpress
+              tag: 7-apache
+            envFrom:
+              - secretRef:
+                  name: vaultmistress-secret
+            env:
+              WORDPRESS_TABLE_PREFIX: "wp_"
+              # Pinned here rather than left to the DB so the canonical URL is
+              # version-controlled: when vaultmistress.com is registered and
+              # added to the gateway, these two lines are the cutover.
+              WORDPRESS_CONFIG_EXTRA: |
+                define('WP_HOME', 'https://vaultmistress.${SECRET_DOMAIN}');
+                define('WP_SITEURL', 'https://vaultmistress.${SECRET_DOMAIN}');
+                define('FORCE_SSL_ADMIN', true);
+                define('WP_MEMORY_LIMIT', '512M');
+                if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+                    $_SERVER['HTTPS'] = 'on';
+                }
+                // Order records and WooCommerce fraud tooling are worthless if
+                // every order logs the envoy pod IP. This gateway is only
+                // reachable through cloudflared, so the header is trustworthy.
+                if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+                    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP'];
+                }
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /wp-cron.php
+                    port: 80
+                  initialDelaySeconds: 15
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 3
+              readiness: *probes
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              # WooCommerce is a good deal heavier than the blogs next door;
+              # cart/checkout and the admin analytics pages want the headroom.
+              limits:
+                memory: 1536Mi
+
+        pod:
+          securityContext:
+            fsGroup: 33
+
+    service:
+      main:
+        controller: main
+        ports:
+          http:
+            port: 80
+
+    configMaps:
+      php:
+        data:
+          zz-vaultmistress.ini: |
+            ; Stock PHP caps uploads at 2M, which is under a single product photo.
+            upload_max_filesize = 64M
+            post_max_size = 64M
+            memory_limit = 512M
+            max_execution_time = 300
+            max_input_vars = 5000
+
+    persistence:
+      data:
+        existingClaim: vaultmistress-data
+        globalMounts:
+          - path: /var/www/html/wp-content
+      php:
+        type: configMap
+        name: vaultmistress
+        globalMounts:
+          - path: /usr/local/etc/php/conf.d/zz-vaultmistress.ini
+            subPath: zz-vaultmistress.ini
+            readOnly: true
+
+    route:
+      main:
+        hostnames: ["vaultmistress.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: external
+            namespace: kube-system
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: main
+                port: 80

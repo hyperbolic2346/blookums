@@ -58,6 +58,12 @@ spec:
       passwordSecretRef:
         name: percona-xtradb-secret
         key: OLIVERBLOG_DB_PASSWORD
+    - name: vaultmistress
+      db: vaultmistress
+      withGrantOption: false
+      passwordSecretRef:
+        name: percona-xtradb-secret
+        key: VAULTMISTRESS_DB_PASSWORD
 
   backup:
     image: percona/percona-xtrabackup:8.4.0-5.1
