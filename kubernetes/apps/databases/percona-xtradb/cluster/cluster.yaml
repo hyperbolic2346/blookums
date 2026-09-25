@@ -58,8 +58,16 @@ spec:
       passwordSecretRef:
         name: percona-xtradb-secret
         key: OLIVERBLOG_DB_PASSWORD
+    # NB: the field is `dbs` (a list) + `grants`, not `db`. A bare `db:` is not
+    # in the CRD schema, so the API server prunes it silently and the operator
+    # creates neither the database nor any grant. The wordpress/oliverblog
+    # entries above still carry that dead `db:` field — their databases were
+    # made by hand, so they work in spite of it, not because of it.
     - name: vaultmistress
-      db: vaultmistress
+      dbs:
+        - vaultmistress
+      grants:
+        - ALL
       withGrantOption: false
       passwordSecretRef:
         name: percona-xtradb-secret
