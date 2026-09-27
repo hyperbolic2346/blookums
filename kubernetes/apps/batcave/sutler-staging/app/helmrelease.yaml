@@ -261,6 +261,22 @@ spec:
             # (the plain `https` listener only matches *.${SECRET_DOMAIN}).
             sectionName: https-sutler
         rules:
+          # Keep metrics on the internal network, same as prod: the gateway
+          # answers /api/metrics with a redirect to the site root and never
+          # forwards it.
+          - matches:
+              - path:
+                  # Case-insensitive, like the api's own routing.
+                  type: RegularExpression
+                  value: "(?i)/api/metrics(/.*)?"
+            filters:
+              - type: RequestRedirect
+                requestRedirect:
+                  scheme: https
+                  path:
+                    type: ReplaceFullPath
+                    replaceFullPath: /
+                  statusCode: 302
           # /api -> NestJS backend (more specific prefix wins per Gateway API)
           - matches:
               - path:
