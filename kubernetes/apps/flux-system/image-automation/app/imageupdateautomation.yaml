@@ -38,5 +38,32 @@ spec:
     push:
       branch: main
   update:
-    path: ./kubernetes/apps
+    path: ./kubernetes/apps/batcave
+    strategy: Setters
+---
+# Same as above, limited to the sutler-staging tree.
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageUpdateAutomation
+metadata:
+  name: blookums-sutler-staging
+  namespace: flux-system
+spec:
+  interval: 10m
+  sourceRef:
+    kind: GitRepository
+    name: blookums-write
+  git:
+    checkout:
+      ref:
+        branch: main
+    commit:
+      author:
+        email: flux@burntsheep.com
+        name: fluxcdbot
+      messageTemplate: |
+        chore(images): {{ range .Changed.Changes }}{{ print .OldValue }} -> {{ println .NewValue }}{{ end }}
+    push:
+      branch: main
+  update:
+    path: ./kubernetes/apps/sutler-staging
     strategy: Setters
