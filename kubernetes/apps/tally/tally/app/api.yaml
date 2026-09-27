@@ -102,11 +102,9 @@ spec:
   parentRefs:
     - name: external
       namespace: kube-system
-      # NOTE: this section does not exist on the external Gateway yet. nerdbucket.org is not
-      # ${SECRET_DOMAIN}; a listener and a certificate have to be added first — see
-      # ../PUBLISH.md step 4 and gateway-tls.yaml.
+      # The listener for this app's domain (not the cluster's default one).
       sectionName: https-sutler
-  hostnames: ["tally-api.nerdbucket.org"]
+  hostnames: ["tally-api.${SECRET_DOMAIN_SUTLER}"]
   rules:
     - backendRefs:
         - name: tally-api
