@@ -1,0 +1,101 @@
+---
+# Ingress rules for the sutler pods. Each policy selects one component by
+# its app-template labels; other pods in the namespace are not selected.
+#
+# Sources:
+#   host       - kubelet probes (the node the pod runs on)
+#   ingress    - the Cilium Gateway API proxy (kube-system/external), which
+#                is how HTTPRoute traffic reaches the api and web services
+#   prometheus - observability/kube-prometheus-stack, scraping /api/metrics
+#                through the ServiceMonitor in this directory
+#
+# Ingress only. Egress is unchanged.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: sutler-api
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: sutler
+      app.kubernetes.io/controller: api
+  ingress:
+    - fromEntities:
+        - host
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "8000"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: observability
+            app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "8000"
+              protocol: TCP
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: sutler-web
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: sutler
+      app.kubernetes.io/controller: web
+  ingress:
+    - fromEntities:
+        - host
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "3000"
+              protocol: TCP
+---
+# The worker's only listener is its /healthz liveness endpoint (8090), which
+# the kubelet calls; only the node is admitted.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: sutler-worker
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: sutler
+      app.kubernetes.io/controller: worker
+  ingress:
+    - fromEntities:
+        - host
+---
+# Redis is used by this release's api and worker only.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: sutler-redis
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: sutler
+      app.kubernetes.io/controller: redis
+  ingress:
+    - fromEntities:
+        - host
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/instance: sutler
+            app.kubernetes.io/controller: api
+        - matchLabels:
+            app.kubernetes.io/instance: sutler
+            app.kubernetes.io/controller: worker
+      toPorts:
+        - ports:
+            - port: "6379"
+              protocol: TCP
