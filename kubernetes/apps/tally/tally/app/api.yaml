@@ -37,9 +37,10 @@ spec:
         # 1) create the tally database + role on the shared cluster
         - name: 01-init-db
           image: ghcr.io/home-operations/postgres-init:18.6
-          envFrom: &envFrom
+          # Database init credentials are mounted here and nowhere else.
+          envFrom:
             - secretRef:
-                name: tally-secret
+                name: tally-db-init
           securityContext: &hardened
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -49,7 +50,9 @@ spec:
         - name: 02-migrate
           image: &apiImage ghcr.io/hyperbolic2346/tally-server:0.1.0
           command: ["npx", "prisma", "migrate", "deploy"]
-          envFrom: *envFrom
+          envFrom: &envFrom
+            - secretRef:
+                name: tally-secret
           securityContext: *hardened
       containers:
         - name: api
@@ -102,11 +105,9 @@ spec:
   parentRefs:
     - name: external
       namespace: kube-system
-      # NOTE: this section does not exist on the external Gateway yet. nerdbucket.org is not
-      # ${SECRET_DOMAIN}; a listener and a certificate have to be added first — see
-      # ../PUBLISH.md step 4 and gateway-tls.yaml.
+      # The listener for this app's domain (not the cluster's default one).
       sectionName: https-sutler
-  hostnames: ["tally-api.nerdbucket.org"]
+  hostnames: ["tally-api.${SECRET_DOMAIN_SUTLER}"]
   rules:
     - backendRefs:
         - name: tally-api

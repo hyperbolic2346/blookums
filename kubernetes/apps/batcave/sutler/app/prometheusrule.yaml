@@ -498,3 +498,52 @@ spec:
             summary: >-
               No successful {{ $labels.distributor }} sync in 6+ hours —
               listed quantities are drifting from reality (oversell risk).
+    # sutler#151: tenant secrets are encrypted at rest. sutler_secret_fields
+    # counts the stored secret fields by state (current / stale / plaintext /
+    # undecryptable); sutler_secrets_plaintext_allowed is 1 while the
+    # migration window (SECRETS_MIGRATION_ALLOW_PLAINTEXT) is open. Both are
+    # absent before the release carrying #151, so these are silent until then.
+    - name: sutler.secrets
+      rules:
+        - alert: SutlerSecretUnreadable
+          # The wrong key deployed, a value altered in the database, or one
+          # copied between rows (each value is bound to its tenant + field).
+          # Whatever needs that secret — a sync, an order, a listing pass — is
+          # stopped until it is fixed or re-entered.
+          expr: max without (pod, instance) (sutler_secret_fields{state="undecryptable"}) > 0
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: >-
+              {{ $value }} stored {{ $labels.kind }} secret(s) do not decrypt
+              under sutler's key — wrong key deployed, altered, or copied
+              between rows. Whatever uses them is stopped (sutler
+              docs/secrets.md).
+        - alert: SutlerPlaintextSecret
+          # With the window closed the database refuses sutler's own plaintext
+          # writes, so one of these came from outside sutler.
+          expr: >-
+            max without (pod, instance) (sutler_secret_fields{state="plaintext"}) > 0
+            and on() max(sutler_secrets_plaintext_allowed) == 0
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: >-
+              {{ $value }} {{ $labels.kind }} secret(s) are stored in
+              PLAINTEXT with the migration window closed. Sutler refuses to use
+              them; find out how they got there, then re-enter them.
+        - alert: SutlerSecretsMigrationWindowOpen
+          expr: >-
+            max(sutler_secrets_plaintext_allowed) == 1
+            and on() sum(sutler_secret_fields{state="plaintext"}) == 0
+          for: 24h
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              Every sutler secret is encrypted, but
+              SECRETS_MIGRATION_ALLOW_PLAINTEXT is still "true". Remove it from
+              the api, the worker and 04-encrypt-secrets (sutler
+              docs/secrets.md step 5), so plaintext is an error again.

@@ -81,6 +81,8 @@ spec:
               # token is a secret (EBAY_ACCOUNT_DELETION_TOKEN, via envFrom);
               # unset token = the routes 404 and eBay's validation fails.
               EBAY_ACCOUNT_DELETION_ENDPOINT: "https://sutler.${SECRET_DOMAIN_SUTLER}/api/marketplaces/ebay/account-deletion"
+              # Temporary application flag; removed in a later change.
+              SECRETS_MIGRATION_ALLOW_PLAINTEXT: "true"
             envFrom: *envFrom
             probes:
               liveness: &apiProbe
@@ -151,6 +153,8 @@ spec:
             command: ["node", "dist/worker/main.js"]
             env:
               REDIS_URL: "redis://sutler-redis.batcave.svc.cluster.local:6379"
+              # Temporary application flag; removed with the api's.
+              SECRETS_MIGRATION_ALLOW_PLAINTEXT: "true"
             envFrom: *envFrom
             probes:
               # The worker is headless, so the chart's port-shaped defaults
@@ -272,6 +276,23 @@ spec:
             # (the plain `https` listener only matches *.${SECRET_DOMAIN}).
             sectionName: https-sutler
         rules:
+          # Keep metrics on the internal network: the ServiceMonitor scrapes the
+          # api Service directly, so the gateway answers /api/metrics itself
+          # with a redirect to the site root and never forwards it. (A rule
+          # with no backend and no redirect answers 500 on Cilium, not 404.)
+          - matches:
+              - path:
+                  # Case-insensitive, like the api's own routing.
+                  type: RegularExpression
+                  value: "(?i)/api/metrics(/.*)?"
+            filters:
+              - type: RequestRedirect
+                requestRedirect:
+                  scheme: https
+                  path:
+                    type: ReplaceFullPath
+                    replaceFullPath: /
+                  statusCode: 302
           # /api -> NestJS backend (more specific prefix wins per Gateway API)
           - matches:
               - path:

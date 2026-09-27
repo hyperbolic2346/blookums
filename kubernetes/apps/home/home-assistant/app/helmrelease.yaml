@@ -38,9 +38,9 @@ spec:
             image:
               repository: ghcr.io/home-operations/postgres-init
               tag: 18.6@sha256:b6d3af974df781c673d37e49bdddfa14a6f5be28b18d2cb7713f0449bea4057b
-            envFrom: &envFrom
+            envFrom:
               - secretRef:
-                  name: home-assistant-secret
+                  name: home-assistant-db-init
         containers:
           main:
             image:
@@ -65,7 +65,9 @@ spec:
               HASS_PURGE_KEEP_DAYS: 30
               HASS_EXTERNAL_URL: https://hass.${SECRET_DOMAIN}
               HASS_TRUSTED_PROXIES: ${CLUSTER_CIDR}
-            envFrom: *envFrom
+            envFrom:
+              - secretRef:
+                  name: home-assistant-secret
             probes:
               liveness:
                 enabled: false
