@@ -2,8 +2,8 @@
 # The game: the Unity WebGL player behind nginx. Image: ghcr.io/hyperbolic2346/tally-web
 # (repo: tally, deploy/publish.sh, which stages Builds/WebGL into the image).
 #
-# Entirely static, no database, no secrets. The player talks to tally-api.nerdbucket.org from
-# the browser, so the API's CORS_ORIGINS has to name https://tally.nerdbucket.org.
+# Entirely static, no database, no secrets. The player talks to the tally-api host from
+# the browser, so the API's CORS_ORIGINS has to name this site's origin.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -78,7 +78,7 @@ spec:
     - name: external
       namespace: kube-system
       sectionName: https-sutler
-  hostnames: ["tally.nerdbucket.org"]
+  hostnames: ["tally.${SECRET_DOMAIN_SUTLER}"]
   rules:
     - backendRefs:
         - name: tally-web
