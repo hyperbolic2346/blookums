@@ -84,6 +84,8 @@ spec:
               # staging box has fresh data is a bad trade. It takes a catalog copy instead.
               SYNC_SCHEDULE_ENABLED: "false"
               AUTH_CALLBACK_URL: "https://sutler-staging.${SECRET_DOMAIN_SUTLER}/api/auth/google/callback"
+              # Temporary application flag; removed in a later change.
+              SECRETS_MIGRATION_ALLOW_PLAINTEXT: "true"
             envFrom: *envFrom
             probes:
               liveness: &apiProbe
@@ -158,6 +160,8 @@ spec:
               # pull RSR on a schedule; a third set of periodic FTPS logins just so a
               # staging box has fresh data is a bad trade. It takes a catalog copy instead.
               SYNC_SCHEDULE_ENABLED: "false"
+              # Temporary application flag; removed with the api's.
+              SECRETS_MIGRATION_ALLOW_PLAINTEXT: "true"
             envFrom: *envFrom
             probes:
               liveness:

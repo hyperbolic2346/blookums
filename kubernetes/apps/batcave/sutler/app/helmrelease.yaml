@@ -78,6 +78,8 @@ spec:
               # token is a secret (EBAY_ACCOUNT_DELETION_TOKEN, via envFrom);
               # unset token = the routes 404 and eBay's validation fails.
               EBAY_ACCOUNT_DELETION_ENDPOINT: "https://sutler.${SECRET_DOMAIN_SUTLER}/api/marketplaces/ebay/account-deletion"
+              # Temporary application flag; removed in a later change.
+              SECRETS_MIGRATION_ALLOW_PLAINTEXT: "true"
             envFrom: *envFrom
             probes:
               liveness: &apiProbe
@@ -148,6 +150,8 @@ spec:
             command: ["node", "dist/worker/main.js"]
             env:
               REDIS_URL: "redis://sutler-redis.batcave.svc.cluster.local:6379"
+              # Temporary application flag; removed with the api's.
+              SECRETS_MIGRATION_ALLOW_PLAINTEXT: "true"
             envFrom: *envFrom
             probes:
               # The worker is headless, so the chart's port-shaped defaults
