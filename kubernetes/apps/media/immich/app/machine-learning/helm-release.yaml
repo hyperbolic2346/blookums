@@ -49,9 +49,9 @@ spec:
             image:
               repository: ghcr.io/immich-app/immich-machine-learning
               tag: v3.2.2
+            # Machine learning reads no database settings, so it gets no
+            # database credentials.
             envFrom:
-              - secretRef:
-                  name: immich-secret
               - configMapRef:
                   name: immich-configmap
 
