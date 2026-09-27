@@ -11,4 +11,7 @@ spec:
     operation: copy
   ref:
     tag: 1.18.6
-  url: oci://ghcr.io/home-operations/charts-mirror/cilium
+  # home-operations/charts-mirror deprecates a chart once upstream publishes its
+  # own OCI chart, and prunes it 6 months later. Its newest cilium was 1.18.6, so
+  # renovate had nothing to offer and we silently froze. Upstream chart from here on.
+  url: oci://quay.io/cilium/charts/cilium
