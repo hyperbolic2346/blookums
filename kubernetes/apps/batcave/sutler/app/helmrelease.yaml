@@ -44,9 +44,10 @@ spec:
             image:
               repository: ghcr.io/home-operations/postgres-init
               tag: 18.6@sha256:b6d3af974df781c673d37e49bdddfa14a6f5be28b18d2cb7713f0449bea4057b
-            envFrom: &envFrom
+            # Database init credentials are mounted here and nowhere else.
+            envFrom:
               - secretRef:
-                  name: sutler-secret
+                  name: sutler-db-init
           # 2) apply Prisma migrations before the seed runs. The api image's
           # default CMD also runs `migrate deploy` on boot; doing it here first
           # keeps the init ordering correct (init-db -> migrate -> seed -> api)
@@ -56,7 +57,9 @@ spec:
               repository: ghcr.io/hyperbolic2346/sutler-api
               tag: 0.42.0 # {"$imagepolicy": "flux-system:sutler-api:tag"}
             command: ["npx", "prisma", "migrate", "deploy"]
-            envFrom: *envFrom
+            envFrom: &envFrom
+              - secretRef:
+                  name: sutler-secret
           # 3) seed baseline data (idempotent upserts)
           03-seed:
             image: *apiImage

@@ -35,16 +35,19 @@ spec:
             image:
               repository: ghcr.io/home-operations/postgres-init
               tag: 18.6@sha256:b6d3af974df781c673d37e49bdddfa14a6f5be28b18d2cb7713f0449bea4057b
-            envFrom: &envFrom
+            # Database init credentials are mounted here and nowhere else.
+            envFrom:
               - secretRef:
-                  name: stockpile-secret
+                  name: stockpile-db-init
           # 2) apply Prisma migrations
           02-migrate:
             image: &apiImage
               repository: ghcr.io/hyperbolic2346/stockpile-api
               tag: main-58e7a2c-b137 # {"$imagepolicy": "flux-system:stockpile-api:tag"}
             command: ["npx", "prisma", "migrate", "deploy"]
-            envFrom: *envFrom
+            envFrom: &envFrom
+              - secretRef:
+                  name: stockpile-secret
           # 3) seed vendors/tenants/catalog (idempotent upserts)
           03-seed:
             image: *apiImage
