@@ -27,9 +27,9 @@ spec:
             image:
               repository: ghcr.io/home-operations/postgres-init
               tag: 18.6@sha256:b6d3af974df781c673d37e49bdddfa14a6f5be28b18d2cb7713f0449bea4057b
-            envFrom: &envFrom
+            envFrom:
               - secretRef:
-                  name: fierypyropixy-secret
+                  name: fierypyropixy-db-init
 
         containers:
           main:
@@ -39,7 +39,9 @@ spec:
             env:
               UMAMI_WEBSITE_ID: "98c07e44-963d-49e8-b1bf-4da57deafb2a"
               UMAMI_DOMAIN: "${SECRET_DOMAIN}"
-            envFrom: *envFrom
+            envFrom:
+              - secretRef:
+                  name: fierypyropixy-secret
             probes:
               liveness: &probes
                 enabled: true
