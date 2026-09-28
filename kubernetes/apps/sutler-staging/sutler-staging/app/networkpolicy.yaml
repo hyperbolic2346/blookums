@@ -1,0 +1,91 @@
+---
+# Ingress rules for the sutler-staging pods. Each policy selects one
+# component by its app-template labels; other pods in the namespace are not
+# selected. Selectors match on the sutler-staging release only, never prod.
+#
+# Sources:
+#   host    - kubelet probes (the node the pod runs on)
+#   ingress - the Cilium Gateway API proxy (kube-system/external), which is
+#             how HTTPRoute traffic reaches the api and web services
+#
+# Ingress only. Egress is unchanged.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: sutler-staging-api
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: sutler-staging
+      app.kubernetes.io/controller: api
+  ingress:
+    - fromEntities:
+        - host
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "8000"
+              protocol: TCP
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: sutler-staging-web
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: sutler-staging
+      app.kubernetes.io/controller: web
+  ingress:
+    - fromEntities:
+        - host
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "3000"
+              protocol: TCP
+---
+# The worker serves nothing; only the node is admitted.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: sutler-staging-worker
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: sutler-staging
+      app.kubernetes.io/controller: worker
+  ingress:
+    - fromEntities:
+        - host
+---
+# Redis is used by this release's api and worker only.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: sutler-staging-redis
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: sutler-staging
+      app.kubernetes.io/controller: redis
+  ingress:
+    - fromEntities:
+        - host
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/instance: sutler-staging
+            app.kubernetes.io/controller: api
+        - matchLabels:
+            app.kubernetes.io/instance: sutler-staging
+            app.kubernetes.io/controller: worker
+      toPorts:
+        - ports:
+            - port: "6379"
+              protocol: TCP

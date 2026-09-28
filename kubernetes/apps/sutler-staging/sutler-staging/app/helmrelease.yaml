@@ -1,11 +1,13 @@
 # Sutler STAGING — tracks `main`, so it gets whatever just merged.
 #
-# Prod (../sutler) tracks semver tags instead, which is the point of the pair:
-# schema migrations run automatically as an initContainer, so without this split
+# Prod (kubernetes/apps/batcave/sutler) tracks semver tags instead, which is
+# the point of the pair: schema migrations run automatically as an
+# initContainer, so without this split
 # every merge to main would apply migrations straight to the production
 # database. Staging takes that hit first, against a throwaway DB.
 #
 # Isolation from prod:
+#   - its own namespace (sutler-staging)
 #   - its own database (sutler_staging) on the shared CNPG cluster
 #   - its own 1Password item, with GunBroker SANDBOX credentials only
 #   - its own Redis, so BullMQ jobs can't cross over
@@ -14,13 +16,13 @@
 #
 # Rebuilding its data (needs a catalog first — let the worker sync, or run
 # rsr:sync):
-#   kubectl -n batcave exec deploy/sutler-staging-api -- \
+#   kubectl -n sutler-staging exec deploy/sutler-staging-api -- \
 #     node dist/seed/multivendor.js
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: sutler-staging
-  namespace: batcave
+  namespace: sutler-staging
 spec:
   interval: 30m
   # Cold image pulls + the init chain (init-db, migrate, seed) can exceed the
@@ -81,7 +83,7 @@ spec:
             # `npx prisma migrate deploy && node dist/main.js`.
             env:
               API_PORT: "8000"
-              REDIS_URL: "redis://sutler-staging-redis.batcave.svc.cluster.local:6379"
+              REDIS_URL: "redis://sutler-staging-redis.sutler-staging.svc.cluster.local:6379"
               # Do NOT schedule distributor syncs here. stockpile and sutler prod already
               # pull RSR on a schedule; a third set of periodic FTPS logins just so a
               # staging box has fresh data is a bad trade. It takes a catalog copy instead.
@@ -158,7 +160,7 @@ spec:
             image: *apiImage
             command: ["node", "dist/worker/main.js"]
             env:
-              REDIS_URL: "redis://sutler-staging-redis.batcave.svc.cluster.local:6379"
+              REDIS_URL: "redis://sutler-staging-redis.sutler-staging.svc.cluster.local:6379"
               # Do NOT schedule distributor syncs here. stockpile and sutler prod already
               # pull RSR on a schedule; a third set of periodic FTPS logins just so a
               # staging box has fresh data is a bad trade. It takes a catalog copy instead.
