@@ -154,6 +154,16 @@
       matchFileNames: ["kubernetes/apps/gaming/**"],
       automerge: false,
     },
+    {
+      description: "Actions Runner Controller Group (manual merge): controller and scale set charts must stay on the same version",
+      groupName: "actions-runner-controller",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["/actions-runner-controller-charts/"],
+      group: {
+        commitMessageTopic: "{{{groupName}}} group",
+      },
+      automerge: false,
+    },
   ],
   customDatasources: {
     hangar: {
