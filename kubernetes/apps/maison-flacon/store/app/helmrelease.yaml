@@ -52,7 +52,7 @@ spec:
           02-migrate:
             image: &backendImage
               repository: ghcr.io/hyperbolic2346/maison-flacon-backend
-              tag: main-66b9d17-b15 # {"$imagepolicy": "flux-system:maison-flacon-backend:tag"}
+              tag: main-7229db5-b16 # {"$imagepolicy": "flux-system:maison-flacon-backend:tag"}
             command: ["medusa", "db:migrate"]
             env: &backendEnv
               REDIS_URL: "redis://maison-flacon-redis.maison-flacon.svc.cluster.local:6379"
@@ -92,13 +92,25 @@ spec:
               - medusa user -e "$ADMIN_EMAIL" -p "$ADMIN_PASSWORD" || echo "admin user already exists"
             env: *backendEnv
             envFrom: *backendEnvFrom
-          # 4) offer the payment providers that have credentials
+          # 4) offer the payment providers that have credentials. With none,
+          #    checkout is closed: ALLOW_MANUAL_PAYMENT is deliberately not
+          #    set here, so nobody can place an order without paying.
           04-payment-providers:
             image: *backendImage
             command:
               - medusa
               - exec
               - ./src/scripts/sync-payment-providers.js
+            env: *backendEnv
+            envFrom: *backendEnvFrom
+          # 5) point uploaded product images at the address the store is
+          #    served on; changes nothing unless the hostname changed
+          05-image-origin:
+            image: *backendImage
+            command:
+              - medusa
+              - exec
+              - ./src/scripts/sync-image-origin.js
             env: *backendEnv
             envFrom: *backendEnvFrom
         containers:
@@ -140,7 +152,7 @@ spec:
           main:
             image:
               repository: ghcr.io/hyperbolic2346/maison-flacon-storefront
-              tag: main-66b9d17-b15 # {"$imagepolicy": "flux-system:maison-flacon-storefront:tag"}
+              tag: main-7229db5-b16 # {"$imagepolicy": "flux-system:maison-flacon-storefront:tag"}
             env:
               # Server-side rendering talks to the backend in-cluster...
               MEDUSA_BACKEND_URL_INTERNAL: "http://maison-flacon-backend.maison-flacon.svc.cluster.local:9000"
