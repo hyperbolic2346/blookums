@@ -38,5 +38,6 @@ spec:
     push:
       branch: main
   update:
-    path: ./kubernetes/apps/batcave
+    # Opt-in: only fields carrying an $imagepolicy marker are rewritten.
+    path: ./kubernetes/apps
     strategy: Setters
