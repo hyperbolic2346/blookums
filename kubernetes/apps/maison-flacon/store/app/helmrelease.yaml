@@ -57,17 +57,17 @@ spec:
             env: &backendEnv
               REDIS_URL: "redis://maison-flacon-redis.maison-flacon.svc.cluster.local:6379"
               # Public origin: admin API calls and uploaded image URLs.
-              MEDUSA_BACKEND_URL: "https://test.${SECRET_DOMAIN}"
-              STORE_CORS: "https://test.${SECRET_DOMAIN}"
-              ADMIN_CORS: "https://test.${SECRET_DOMAIN}"
-              AUTH_CORS: "https://test.${SECRET_DOMAIN}"
+              MEDUSA_BACKEND_URL: "https://maison-flacon.com"
+              STORE_CORS: "https://maison-flacon.com"
+              ADMIN_CORS: "https://maison-flacon.com"
+              AUTH_CORS: "https://maison-flacon.com"
               MEDUSA_WORKER_MODE: "shared"
               ADMIN_EMAIL: "mike@nerdbucket.org"
               # Starting value for the owner's alerts; she changes it in the
               # admin under Settings > Alerts.
               OWNER_EMAIL: "mike@nerdbucket.org"
               # Links in emails (password reset) point here.
-              STOREFRONT_URL: "https://test.${SECRET_DOMAIN}"
+              STOREFRONT_URL: "https://maison-flacon.com"
             envFrom: &backendEnvFrom
               - secretRef:
                   name: maison-flacon-secret
@@ -157,8 +157,8 @@ spec:
               # Server-side rendering talks to the backend in-cluster...
               MEDUSA_BACKEND_URL_INTERNAL: "http://maison-flacon-backend.maison-flacon.svc.cluster.local:9000"
               # ...the browser uses the public origin.
-              NEXT_PUBLIC_MEDUSA_BACKEND_URL: "https://test.${SECRET_DOMAIN}"
-              NEXT_PUBLIC_BASE_URL: "https://test.${SECRET_DOMAIN}"
+              NEXT_PUBLIC_MEDUSA_BACKEND_URL: "https://maison-flacon.com"
+              NEXT_PUBLIC_BASE_URL: "https://maison-flacon.com"
               NEXT_PUBLIC_DEFAULT_REGION: "us"
             envFrom:
               # Browser-side keys for Stripe and PayPal. Optional, as above.
@@ -250,14 +250,11 @@ spec:
               - path: /app/static
     route:
       app:
-        hostnames: ["test.${SECRET_DOMAIN}"]
-        # Internal only while the store is being evaluated: reachable on the
-        # home network, not from the internet. Payment webhooks and Apple Pay
-        # need `external`, which comes with the move to the real domain.
+        hostnames: ["maison-flacon.com"]
         parentRefs:
-          - name: internal
+          - name: external
             namespace: kube-system
-            sectionName: https
+            sectionName: https-maison-flacon-bare
         rules:
           # Medusa: admin dashboard, the three API surfaces, webhooks and
           # uploaded files. /bootstrap is deliberately not routed.
@@ -277,3 +274,18 @@ spec:
             backendRefs:
               - identifier: storefront
                 port: 8000
+      # www answers with a redirect to the bare domain, so there is one
+      # address for the shop, its cookies and its links.
+      www:
+        hostnames: ["www.maison-flacon.com"]
+        parentRefs:
+          - name: external
+            namespace: kube-system
+            sectionName: https-maison-flacon
+        rules:
+          - filters:
+              - type: RequestRedirect
+                requestRedirect:
+                  scheme: https
+                  hostname: maison-flacon.com
+                  statusCode: 301
