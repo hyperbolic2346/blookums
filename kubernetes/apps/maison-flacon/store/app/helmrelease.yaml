@@ -232,8 +232,11 @@ spec:
     route:
       app:
         hostnames: ["test.${SECRET_DOMAIN}"]
+        # Internal only while the store is being evaluated: reachable on the
+        # home network, not from the internet. Payment webhooks and Apple Pay
+        # need `external`, which comes with the move to the real domain.
         parentRefs:
-          - name: external
+          - name: internal
             namespace: kube-system
             sectionName: https
         rules:
