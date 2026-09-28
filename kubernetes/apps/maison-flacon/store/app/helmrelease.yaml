@@ -63,11 +63,18 @@ spec:
               AUTH_CORS: "https://test.${SECRET_DOMAIN}"
               MEDUSA_WORKER_MODE: "shared"
               ADMIN_EMAIL: "mike@nerdbucket.org"
+              # Links in emails (password reset) point here.
+              STOREFRONT_URL: "https://test.${SECRET_DOMAIN}"
             envFrom: &backendEnvFrom
               - secretRef:
                   name: maison-flacon-secret
               - secretRef:
                   name: maison-flacon-generated
+              # Stripe, PayPal and SMTP settings. Optional: each feature is
+              # off until its settings exist (see externalsecret.yaml).
+              - secretRef:
+                  name: maison-flacon-integrations
+                  optional: true
           # 3) first admin user; a no-op failure once it exists
           03-admin-user:
             image: *backendImage
@@ -75,6 +82,15 @@ spec:
               - sh
               - -c
               - medusa user -e "$ADMIN_EMAIL" -p "$ADMIN_PASSWORD" || echo "admin user already exists"
+            env: *backendEnv
+            envFrom: *backendEnvFrom
+          # 4) offer the payment providers that have credentials
+          04-payment-providers:
+            image: *backendImage
+            command:
+              - medusa
+              - exec
+              - ./src/scripts/sync-payment-providers.js
             env: *backendEnv
             envFrom: *backendEnvFrom
         containers:
@@ -124,6 +140,11 @@ spec:
               NEXT_PUBLIC_MEDUSA_BACKEND_URL: "https://test.${SECRET_DOMAIN}"
               NEXT_PUBLIC_BASE_URL: "https://test.${SECRET_DOMAIN}"
               NEXT_PUBLIC_DEFAULT_REGION: "us"
+            envFrom:
+              # Browser-side keys for Stripe and PayPal. Optional, as above.
+              - secretRef:
+                  name: maison-flacon-storefront
+                  optional: true
             probes:
               liveness: &storefrontProbe
                 enabled: true
