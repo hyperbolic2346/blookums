@@ -285,8 +285,8 @@ spec:
         rules:
           - filters:
               - type: RequestRedirect
-                # No scheme here: naming one makes the gateway add ":443" to
-                # the address. Requests arrive over https from the tunnel.
+                # The gateway writes the address as maison-flacon.com:443,
+                # with or without a scheme here. Browsers follow it normally.
                 requestRedirect:
                   hostname: maison-flacon.com
                   statusCode: 301
