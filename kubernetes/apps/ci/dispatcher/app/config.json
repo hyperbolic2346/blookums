@@ -2,7 +2,7 @@
   "owner": "hyperbolic2346",
   "statusContext": "cluster/build",
   "releaseStatusContext": "cluster/release",
-  "tagMode": "test",
+  "tagMode": "release",
   "testTagPrefix": "cluster-",
   "buildNumberFloor": 1000,
   "maxMainBacklog": 20,
