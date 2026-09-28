@@ -136,8 +136,11 @@ nodes:
         mtu: 1500
   - hostname: "phil"
     ipAddress: "10.0.14.17"
+    # BOSS-S1 on 13G only exposes virtual disks, and its firmware is RAID1-only,
+    # so the boot disk is a 2-stick RAID1 VD (Intel SSDSCKKB240G8R x2) created
+    # with mvcli on 2026-09-27, replacing the 29GB IDSDM.
     installDiskSelector:
-      model: "IDSDM"
+      model: "DELLBOSS VD"
     machineSpec:
       secureboot: false
     talosImageURL: factory.talos.dev/installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba
