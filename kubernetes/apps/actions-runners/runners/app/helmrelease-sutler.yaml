@@ -1,0 +1,172 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/helmrelease-helm-v2.json
+# Runner scale set for hyperbolic2346/sutler. Workflows select it with
+# `runs-on: blookums-sutler`.
+#
+# Private repositories only: never point a scale set at a public
+# repository, and never at this (blookums) repository.
+#
+# Runner pods are ephemeral (one job each) and run Docker-in-Docker as a
+# native sidecar so that workflow `services:` containers and buildx work
+# unchanged. The pod spec is written out here rather than using the chart's
+# `containerMode: dind` so that the dind container can be pinned, given
+# resources and given its own data volume.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: &name blookums-sutler
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: gha-runner-scale-set
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      strategy: rollback
+      retries: 3
+  values:
+    githubConfigUrl: https://github.com/hyperbolic2346/sutler
+    githubConfigSecret: actions-runner-controller-github-app
+    runnerScaleSetName: *name
+    minRunners: 0
+    maxRunners: 3
+    controllerServiceAccount:
+      name: actions-runner-controller
+      namespace: actions-runner-system
+    template:
+      spec:
+        automountServiceAccountToken: false
+        enableServiceLinks: false
+        priorityClassName: actions-runner
+        securityContext:
+          seccompProfile:
+            type: RuntimeDefault
+          # docker group in the runner image; owns the dind socket
+          supplementalGroups: [123]
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                    - key: node-role.kubernetes.io/control-plane
+                      operator: DoesNotExist
+                    # limited image storage
+                    - key: kubernetes.io/hostname
+                      operator: NotIn
+                      values: ["wally"]
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                preference:
+                  matchExpressions:
+                    - key: kubernetes.io/hostname
+                      operator: In
+                      values: ["asok", "dogbert"]
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 50
+                podAffinityTerm:
+                  topologyKey: kubernetes.io/hostname
+                  labelSelector:
+                    matchLabels:
+                      actions-ephemeral-runner: "True"
+        initContainers:
+          - name: init-dind-externals
+            image: &runnerImage ghcr.io/actions/actions-runner:2.337.0@sha256:e5496277be5d09bc968b3d64911b74e219ac4a3f2edce956a3ecf9271bea1ef4
+            command: ["cp"]
+            args: ["-r", "/home/runner/externals/.", "/home/runner/tmpDir/"]
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                memory: 128Mi
+            securityContext: &runnerSecurityContext
+              runAsNonRoot: true
+              runAsUser: 1001
+              runAsGroup: 1001
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+            volumeMounts:
+              - name: dind-externals
+                mountPath: /home/runner/tmpDir
+          # Native sidecar: starts before the runner and stops after it.
+          - name: dind
+            image: docker:29.8.1-dind@sha256:3f3c01aaaebf7cce837356b688b7c059a4749f10bd7660dec7c58fc454a283f0
+            restartPolicy: Always
+            args:
+              - dockerd
+              - --host=unix:///var/run/docker.sock
+              - --group=$(DOCKER_GROUP_GID)
+            env:
+              - name: DOCKER_GROUP_GID
+                value: "123"
+            securityContext:
+              privileged: true
+            startupProbe:
+              exec:
+                command: ["docker", "info"]
+              initialDelaySeconds: 0
+              failureThreshold: 24
+              periodSeconds: 5
+            resources:
+              requests:
+                cpu: 500m
+                memory: 1Gi
+                ephemeral-storage: 8Gi
+              limits:
+                cpu: "4"
+                memory: 8Gi
+                ephemeral-storage: 40Gi
+            volumeMounts:
+              - name: work
+                mountPath: /home/runner/_work
+              - name: dind-sock
+                mountPath: /var/run
+              - name: dind-externals
+                mountPath: /home/runner/externals
+              - name: docker-data
+                mountPath: /var/lib/docker
+        containers:
+          - name: runner
+            image: *runnerImage
+            command: ["/home/runner/run.sh"]
+            env:
+              - name: DOCKER_HOST
+                value: unix:///var/run/docker.sock
+              - name: RUNNER_WAIT_FOR_DOCKER_IN_SECONDS
+                value: "120"
+            resources:
+              requests:
+                cpu: 250m
+                memory: 512Mi
+                ephemeral-storage: 2Gi
+              limits:
+                cpu: "2"
+                memory: 4Gi
+                ephemeral-storage: 20Gi
+            securityContext: *runnerSecurityContext
+            volumeMounts:
+              - name: work
+                mountPath: /home/runner/_work
+              - name: dind-sock
+                mountPath: /var/run
+        volumes:
+          # Checkout, node toolcache and node_modules.
+          - name: work
+            emptyDir:
+              sizeLimit: 15Gi
+          - name: dind-sock
+            emptyDir: {}
+          - name: dind-externals
+            emptyDir: {}
+          # Docker image store for the job (service images, BuildKit
+          # state). Discarded with the pod; the layer cache between runs
+          # is the GitHub Actions cache (type=gha).
+          - name: docker-data
+            emptyDir:
+              sizeLimit: 40Gi

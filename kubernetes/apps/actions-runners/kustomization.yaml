@@ -1,0 +1,12 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+# Runner pods for the GitHub Actions runner scale sets. This namespace does
+# not include the common component: nothing here uses Flux substitution, so
+# the shared cluster settings are not copied into it.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: actions-runners
+
+resources:
+  - ./namespace.yaml
+  - ./runners/ks.yaml

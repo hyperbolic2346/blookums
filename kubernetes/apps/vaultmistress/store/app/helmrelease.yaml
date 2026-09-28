@@ -65,11 +65,11 @@ spec:
             env:
               WORDPRESS_TABLE_PREFIX: "wp_"
               # Pinned here rather than left to the DB so the canonical URL is
-              # version-controlled: when vaultmistress.com is registered and
-              # added to the gateway, these two lines are the cutover.
+              # version-controlled. The store trades as Maison Flacon; the
+              # k8s/DB/volsync names stay `vaultmistress`.
               WORDPRESS_CONFIG_EXTRA: |
-                define('WP_HOME', 'https://vaultmistress.${SECRET_DOMAIN}');
-                define('WP_SITEURL', 'https://vaultmistress.${SECRET_DOMAIN}');
+                define('WP_HOME', 'https://maison-flacon.com');
+                define('WP_SITEURL', 'https://maison-flacon.com');
                 define('FORCE_SSL_ADMIN', true);
                 define('WP_MEMORY_LIMIT', '512M');
                 if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
@@ -142,8 +142,19 @@ spec:
 
     route:
       main:
-        hostnames: ["vaultmistress.${SECRET_DOMAIN}"]
+        # www and the old burntsheep hostname stay routed so WordPress can
+        # redirect them to the canonical bare domain.
+        hostnames:
+          - "maison-flacon.com"
+          - "www.maison-flacon.com"
+          - "vaultmistress.${SECRET_DOMAIN}"
         parentRefs:
+          - name: external
+            namespace: kube-system
+            sectionName: https-maison-flacon-bare
+          - name: external
+            namespace: kube-system
+            sectionName: https-maison-flacon
           - name: external
             namespace: kube-system
             sectionName: https

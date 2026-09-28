@@ -43,4 +43,12 @@ ingress:
     service: *svc-external
     originRequest:
       originServerName: "tally-teach.${SECRET_DOMAIN_SUTLER}"
+  - hostname: "maison-flacon.com"
+    service: *svc-external
+    originRequest:
+      originServerName: "maison-flacon.com"
+  - hostname: "www.maison-flacon.com"
+    service: *svc-external
+    originRequest:
+      originServerName: "www.maison-flacon.com"
   - service: http_status:404

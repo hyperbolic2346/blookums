@@ -6,6 +6,7 @@ resources:
   - ./certificate.yaml
   - ./certificate-fierypyropixy.yaml
   - ./certificate-joltwagon.yaml
+  - ./certificate-maison-flacon.yaml
   - ./certificate-sutler.yaml
   - ./external.yaml
   - ./internal.yaml

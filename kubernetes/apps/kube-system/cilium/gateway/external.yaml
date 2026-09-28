@@ -48,3 +48,27 @@ spec:
         certificateRefs:
           - kind: Secret
             name: ${SECRET_DOMAIN_SUTLER/./-}-production-tls
+    # A wildcard listener does not match the apex, so the bare domain (the
+    # store's canonical URL) needs its own listener alongside the wildcard.
+    - name: https-maison-flacon-bare
+      protocol: HTTPS
+      port: 443
+      hostname: "maison-flacon.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        certificateRefs:
+          - kind: Secret
+            name: maison-flacon-com-production-tls
+    - name: https-maison-flacon
+      protocol: HTTPS
+      port: 443
+      hostname: "*.maison-flacon.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        certificateRefs:
+          - kind: Secret
+            name: maison-flacon-com-production-tls
