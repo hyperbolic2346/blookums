@@ -47,11 +47,12 @@ spec:
             envFrom:
               - secretRef:
                   name: maison-flacon-db-init
-          # 2) schema migrations, then the one-time data seeds
+          # 2) schema migrations, then the one-time data seeds (store setup
+          #    and the product catalog)
           02-migrate:
             image: &backendImage
               repository: ghcr.io/hyperbolic2346/maison-flacon-backend
-              tag: main-27f57c1-b2 # {"$imagepolicy": "flux-system:maison-flacon-backend:tag"}
+              tag: main-bfea8f8-b3 # {"$imagepolicy": "flux-system:maison-flacon-backend:tag"}
             command: ["medusa", "db:migrate"]
             env: &backendEnv
               REDIS_URL: "redis://maison-flacon-redis.maison-flacon.svc.cluster.local:6379"
@@ -115,7 +116,7 @@ spec:
           main:
             image:
               repository: ghcr.io/hyperbolic2346/maison-flacon-storefront
-              tag: main-27f57c1-b2 # {"$imagepolicy": "flux-system:maison-flacon-storefront:tag"}
+              tag: main-bfea8f8-b3 # {"$imagepolicy": "flux-system:maison-flacon-storefront:tag"}
             env:
               # Server-side rendering talks to the backend in-cluster...
               MEDUSA_BACKEND_URL_INTERNAL: "http://maison-flacon-backend.maison-flacon.svc.cluster.local:9000"
@@ -202,6 +203,9 @@ spec:
         storageClass: ceph-ssd-3-replica
         advancedMounts:
           backend:
+            # The catalog seed uploads product images during migration.
+            02-migrate:
+              - path: /app/static
             main:
               - path: /app/static
     route:
