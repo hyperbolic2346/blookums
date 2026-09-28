@@ -63,6 +63,9 @@ spec:
               AUTH_CORS: "https://test.${SECRET_DOMAIN}"
               MEDUSA_WORKER_MODE: "shared"
               ADMIN_EMAIL: "mike@nerdbucket.org"
+              # Starting value for the owner's alerts; she changes it in the
+              # admin under Settings > Alerts.
+              OWNER_EMAIL: "mike@nerdbucket.org"
               # Links in emails (password reset) point here.
               STOREFRONT_URL: "https://test.${SECRET_DOMAIN}"
             envFrom: &backendEnvFrom

@@ -11,6 +11,10 @@ spec:
       namespace: databases
     - name: external-secrets-stores
       namespace: kube-system
+    - name: volsync
+      namespace: volsync-system
+  components:
+    - ../../../../components/volsync
   path: ./kubernetes/apps/maison-flacon/store/app
   prune: true
   sourceRef:
@@ -28,3 +32,13 @@ spec:
         kind: Secret
       - name: cluster-settings
         kind: ConfigMap
+    substitute:
+      APP: maison-flacon
+      # Uploaded images: product photos and the packing slip logo. The
+      # database is backed up with the rest of the CNPG cluster.
+      VOLSYNC_CLAIM: maison-flacon-uploads
+      VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
+      VOLSYNC_CAPACITY: 10Gi
+      # The backend runs as node (1000), so the restic mover must too.
+      APP_UID: "1000"
+      APP_GID: "1000"
