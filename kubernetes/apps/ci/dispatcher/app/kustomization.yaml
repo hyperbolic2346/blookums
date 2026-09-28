@@ -1,0 +1,36 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ./deployment.yaml
+  - ./externalsecret.yaml
+  - ./httproute.yaml
+  - ./networkpolicy.yaml
+  - ./podtemplates.yaml
+  - ./priorityclass.yaml
+  - ./pvc.yaml
+  - ./rbac.yaml
+configMapGenerator:
+  # The dispatcher program and its settings. The name hash rolls the
+  # Deployment when either changes.
+  - name: dispatcher
+    files:
+      - ./config.json
+      - ./dispatcher.mjs
+    options:
+      annotations:
+        kustomize.toolkit.fluxcd.io/substitute: disabled
+  # Referenced by name from the build PodTemplates, which kustomize does not
+  # rewrite, so these keep fixed names.
+  - name: ci-buildkitd
+    files:
+      - ./buildkitd.toml
+    options:
+      disableNameSuffixHash: true
+  - name: ci-build-postgres
+    files:
+      - ./pg_hba.conf
+      - ./init.sql
+    options:
+      disableNameSuffixHash: true

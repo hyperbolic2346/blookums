@@ -1,0 +1,11 @@
+# BuildKit daemon settings for the build step. The daemon state (layer
+# cache) lives on the lane's ci-cache-* volume; these limits keep it well
+# inside that volume.
+[worker.oci]
+  gc = true
+  reservedSpace = "2GB"
+  maxUsedSpace = "14GB"
+  minFreeSpace = "4GB"
+
+[worker.containerd]
+  enabled = false

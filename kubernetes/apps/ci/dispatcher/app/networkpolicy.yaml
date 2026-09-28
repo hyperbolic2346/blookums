@@ -1,0 +1,109 @@
+---
+# Traffic rules for the ci namespace. Every pod here is selected by the
+# first policy; the other two add what the build pods and the dispatcher
+# need. Anything not listed is denied.
+#
+# All pods:
+#   ingress  host (kubelet probes) only
+#   egress   kube-dns (53)
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: ci-default
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEntities:
+        - host
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+---
+# Build pods (clone, test, build and push steps; their Postgres and Redis
+# run inside the pod on localhost).
+#   egress   public internet only: GitHub, package and container
+#            registries. Private, shared, link-local and loopback ranges
+#            are excluded, so the home network and node addresses are not
+#            reachable; other namespaces, Services and the Kubernetes API
+#            are not listed and so are denied.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: ci-build
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/component: build
+  egress:
+    - toCIDRSet:
+        - cidr: 0.0.0.0/0
+          except:
+            - 0.0.0.0/8
+            - 10.0.0.0/8
+            - 100.64.0.0/10
+            - 127.0.0.0/8
+            - 169.254.0.0/16
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+            - 224.0.0.0/4
+            - 240.0.0.0/4
+---
+# Dispatcher.
+#   ingress  the Cilium Gateway API proxy (`ingress` entity): webhooks on
+#            8080 from the external gateway, log pages on 8081 from the
+#            internal gateway
+#   egress   the Kubernetes API (build Jobs); GitHub over ssh (22, fetch)
+#            and https (443, commit statuses) on public addresses only
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: ci-dispatcher
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: dispatcher
+  ingress:
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+            - port: "8081"
+              protocol: TCP
+  egress:
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "6443"
+              protocol: TCP
+    - toCIDRSet:
+        - cidr: 0.0.0.0/0
+          except:
+            - 0.0.0.0/8
+            - 10.0.0.0/8
+            - 100.64.0.0/10
+            - 127.0.0.0/8
+            - 169.254.0.0/16
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+            - 224.0.0.0/4
+            - 240.0.0.0/4
+      toPorts:
+        - ports:
+            - port: "22"
+              protocol: TCP
+            - port: "443"
+              protocol: TCP

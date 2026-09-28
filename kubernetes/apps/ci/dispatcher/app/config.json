@@ -1,0 +1,29 @@
+{
+  "owner": "hyperbolic2346",
+  "statusContext": "cluster/build",
+  "releaseStatusContext": "cluster/release",
+  "tagMode": "test",
+  "testTagPrefix": "cluster-",
+  "buildNumberFloor": 1000,
+  "maxMainBacklog": 20,
+  "pollSeconds": 300,
+  "activeDeadlineSeconds": 3600,
+  "jobTtlSeconds": 259200,
+  "logRetentionDays": 30,
+  "logMaxBytes": 2147483648,
+  "repos": {
+    "stockpile": {
+      "images": [
+        { "name": "api", "dockerfile": "apps/api/Dockerfile", "repository": "ghcr.io/hyperbolic2346/stockpile-api" },
+        { "name": "web", "dockerfile": "apps/web/Dockerfile", "repository": "ghcr.io/hyperbolic2346/stockpile-web" }
+      ]
+    },
+    "sutler": {
+      "versionBuildArg": "VERSION",
+      "images": [
+        { "name": "api", "dockerfile": "apps/api/Dockerfile", "repository": "ghcr.io/hyperbolic2346/sutler-api" },
+        { "name": "web", "dockerfile": "apps/web/Dockerfile", "repository": "ghcr.io/hyperbolic2346/sutler-web" }
+      ]
+    }
+  }
+}

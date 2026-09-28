@@ -1,0 +1,35 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/kustomization-kustomize-v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: &app ci-dispatcher
+  # In flux-system so that substitution reads cluster-secrets and
+  # cluster-settings there; see ../kustomization.yaml.
+  namespace: flux-system
+spec:
+  commonMetadata:
+    labels:
+      app.kubernetes.io/name: *app
+  dependsOn:
+    - name: external-secrets-stores
+      namespace: kube-system
+  path: ./kubernetes/apps/ci/dispatcher/app
+  postBuild:
+    substituteFrom:
+      - name: cluster-secrets
+        kind: Secret
+      - name: cluster-settings
+        kind: ConfigMap
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: ci
+  # Not waiting on health: the ExternalSecrets stay unsynced until their
+  # 1Password items exist, and the dispatcher runs idle until then.
+  wait: false
+  interval: 30m
+  retryInterval: 1m
+  timeout: 5m

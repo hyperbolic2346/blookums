@@ -1,0 +1,40 @@
+---
+# GitHub webhooks for the application repositories. Only the /hooks/github/
+# prefix is routed; the dispatcher checks each delivery's signature.
+# yaml-language-server: $schema=https://github.com/datreeio/CRDs-catalog/raw/refs/heads/main/gateway.networking.k8s.io/httproute_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: ci-webhook
+spec:
+  hostnames: ["ci-webhook.${SECRET_DOMAIN}"]
+  parentRefs:
+    - name: external
+      namespace: kube-system
+      sectionName: https
+  rules:
+    - backendRefs:
+        - name: dispatcher-hooks
+          port: 80
+      matches:
+        - path:
+            type: PathPrefix
+            value: /hooks/github/
+---
+# Build list and logs (the target of the commit status links), on the
+# internal gateway only.
+# yaml-language-server: $schema=https://github.com/datreeio/CRDs-catalog/raw/refs/heads/main/gateway.networking.k8s.io/httproute_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: ci
+spec:
+  hostnames: ["ci.${SECRET_DOMAIN}"]
+  parentRefs:
+    - name: internal
+      namespace: kube-system
+      sectionName: https
+  rules:
+    - backendRefs:
+        - name: dispatcher-logs
+          port: 80
