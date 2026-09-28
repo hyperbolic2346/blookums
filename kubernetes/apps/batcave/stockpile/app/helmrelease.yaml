@@ -29,6 +29,18 @@ spec:
       api:
         annotations:
           reloader.stakater.com/auto: "true"
+        # app-template defaults to Recreate. Surge the new pod first; the old
+        # one keeps serving until the new one passes readiness
+        # (/api/health/ready: database answering, schema current). Relies on
+        # migrations being compatible with the previous release (stockpile
+        # CLAUDE.md, "Migrations and deploys").
+        strategy: RollingUpdate
+        rollingUpdate:
+          surge: 1
+          unavailable: 0
+        pod:
+          # The api drains for 5s on SIGTERM and exits within 20s.
+          terminationGracePeriodSeconds: 30
         initContainers:
           # 1) create the stockpile database + role on the shared CNPG cluster
           01-init-db:
@@ -80,7 +92,17 @@ spec:
                   periodSeconds: 15
                   timeoutSeconds: 2
                   failureThreshold: 3
-              readiness: *apiProbe
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/health/ready
+                    port: 8000
+                  initialDelaySeconds: 5
+                  periodSeconds: 5
+                  timeoutSeconds: 2
+                  failureThreshold: 2
               startup:
                 enabled: false
             resources:
@@ -92,6 +114,12 @@ spec:
       worker:
         annotations:
           reloader.stakater.com/auto: "true"
+        # One worker at a time by design (boot-time cleanup of in-progress
+        # sync runs assumes a single worker).
+        strategy: Recreate
+        pod:
+          # Running jobs get up to 25s to finish on SIGTERM.
+          terminationGracePeriodSeconds: 30
         containers:
           main:
             image: *apiImage
@@ -100,10 +128,32 @@ spec:
               REDIS_URL: "redis://stockpile-redis.batcave.svc.cluster.local:6379"
             envFrom: *envFrom
             probes:
+              # /healthz: 200 while the worker's Redis + database self-check
+              # heartbeat is fresh (and while it waits for the schema at boot).
               liveness:
-                enabled: false
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: 8091
+                  initialDelaySeconds: 30
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 4
+              # /readyz: 503 until the database schema matches this image's
+              # migrations and the worker has started.
               readiness:
-                enabled: false
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /readyz
+                    port: 8091
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 3
               startup:
                 enabled: false
             resources:
@@ -113,6 +163,11 @@ spec:
               limits:
                 memory: 384Mi
       web:
+        # Stateless: surge the new pod first, like the api.
+        strategy: RollingUpdate
+        rollingUpdate:
+          surge: 1
+          unavailable: 0
         containers:
           main:
             image:
