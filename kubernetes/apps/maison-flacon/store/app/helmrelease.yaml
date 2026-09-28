@@ -78,6 +78,11 @@ spec:
               - secretRef:
                   name: maison-flacon-integrations
                   optional: true
+              # EasyPost key for buying postage. Optional in the same way; it
+              # is separate so labels can be tried before payments are set up.
+              - secretRef:
+                  name: maison-flacon-easypost
+                  optional: true
           # 3) first admin user; a no-op failure once it exists
           03-admin-user:
             image: *backendImage
