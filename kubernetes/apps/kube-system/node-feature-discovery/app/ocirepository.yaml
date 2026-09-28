@@ -10,5 +10,7 @@ spec:
     mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
     operation: copy
   ref:
-    tag: 0.18.0
-  url: oci://ghcr.io/home-operations/charts-mirror/node-feature-discovery
+    tag: 0.19.0
+  # charts-mirror froze at 0.18.0 once upstream began publishing its own OCI
+  # chart (and prunes deprecated charts after 6 months), so renovate went quiet.
+  url: oci://registry.k8s.io/nfd/charts/node-feature-discovery
