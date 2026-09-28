@@ -97,3 +97,34 @@ spec:
   policy:
     numerical:
       order: asc
+---
+# Maison Flacon (Medusa test build) follows main.
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: maison-flacon-backend
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: maison-flacon-backend
+  filterTags:
+    pattern: '^main-[0-9a-f]+-b(?P<build>\d+)$'
+    extract: '$build'
+  policy:
+    numerical:
+      order: asc
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: maison-flacon-storefront
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: maison-flacon-storefront
+  filterTags:
+    pattern: '^main-[0-9a-f]+-b(?P<build>\d+)$'
+    extract: '$build'
+  policy:
+    numerical:
+      order: asc

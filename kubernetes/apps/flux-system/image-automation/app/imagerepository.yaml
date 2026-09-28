@@ -42,3 +42,25 @@ spec:
   interval: 10m
   secretRef:
     name: ghcr-pull
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: maison-flacon-backend
+  namespace: flux-system
+spec:
+  image: ghcr.io/hyperbolic2346/maison-flacon-backend
+  interval: 10m
+  secretRef:
+    name: ghcr-pull
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: maison-flacon-storefront
+  namespace: flux-system
+spec:
+  image: ghcr.io/hyperbolic2346/maison-flacon-storefront
+  interval: 10m
+  secretRef:
+    name: ghcr-pull
