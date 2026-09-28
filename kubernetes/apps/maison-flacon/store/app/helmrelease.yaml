@@ -220,11 +220,10 @@ spec:
             port: 6379
     persistence:
       # Product images uploaded through the admin (file-local provider).
+      # The claim comes from the volsync component (see ks.yaml), which
+      # backs it up to R2 nightly and restores it if the volume is ever lost.
       uploads:
-        type: persistentVolumeClaim
-        accessMode: ReadWriteOnce
-        size: 10Gi
-        storageClass: ceph-ssd-3-replica
+        existingClaim: maison-flacon-uploads
         advancedMounts:
           backend:
             # The catalog seed uploads product images during migration.
