@@ -1,4 +1,3 @@
----
 # yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/helmrelease-helm-v2.json
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
@@ -116,7 +115,7 @@ spec:
           main:
             image:
               repository: ghcr.io/hyperbolic2346/maison-flacon-storefront
-              tag: main-e099f1b-b1 # {"$imagepolicy": "flux-system:maison-flacon-storefront:tag"}
+              tag: main-27f57c1-b2 # {"$imagepolicy": "flux-system:maison-flacon-storefront:tag"}
             env:
               # Server-side rendering talks to the backend in-cluster...
               MEDUSA_BACKEND_URL_INTERNAL: "http://maison-flacon-backend.maison-flacon.svc.cluster.local:9000"
