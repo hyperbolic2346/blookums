@@ -65,7 +65,12 @@ spec:
               ADMIN_EMAIL: "mike@nerdbucket.org"
               # Starting value for the owner's alerts; she changes it in the
               # admin under Settings > Alerts.
-              OWNER_EMAIL: "mike@nerdbucket.org"
+              OWNER_EMAIL: "sales@maison-flacon.com"
+              # Google Workspace. The password is in maison-flacon-email.
+              SMTP_HOST: "smtp.gmail.com"
+              SMTP_PORT: "587"
+              SMTP_USER: "sales@maison-flacon.com"
+              SMTP_FROM: "Maison Flacon <sales@maison-flacon.com>"
               # Links in emails (password reset) point here.
               STOREFRONT_URL: "https://maison-flacon.com"
             envFrom: &backendEnvFrom
@@ -78,6 +83,8 @@ spec:
               - secretRef:
                   name: maison-flacon-stripe
                   optional: true
+              - secretRef:
+                  name: maison-flacon-email
               - secretRef:
                   name: maison-flacon-integrations
                   optional: true
