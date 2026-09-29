@@ -157,7 +157,7 @@ spec:
           main:
             image:
               repository: ghcr.io/hyperbolic2346/maison-flacon-storefront
-              tag: main-d6d004f-b17 # {"$imagepolicy": "flux-system:maison-flacon-storefront:tag"}
+              tag: main-345fe27-b19 # {"$imagepolicy": "flux-system:maison-flacon-storefront:tag"}
             env:
               # Server-side rendering talks to the backend in-cluster...
               MEDUSA_BACKEND_URL_INTERNAL: "http://maison-flacon-backend.maison-flacon.svc.cluster.local:9000"
