@@ -63,19 +63,6 @@ spec:
     # creates neither the database nor any grant. The wordpress/oliverblog
     # entries above still carry that dead `db:` field — their databases were
     # made by hand, so they work in spite of it, not because of it.
-    # The WooCommerce store this belonged to was replaced by the Medusa store
-    # (namespace maison-flacon) on 2026-09-28. The database and this user are
-    # kept so the old store can be brought back or read; remove both once
-    # nobody needs it.
-    - name: vaultmistress
-      dbs:
-        - vaultmistress
-      grants:
-        - ALL
-      withGrantOption: false
-      passwordSecretRef:
-        name: percona-xtradb-secret
-        key: VAULTMISTRESS_DB_PASSWORD
 
   backup:
     image: percona/percona-xtrabackup:8.4.0-5.1
