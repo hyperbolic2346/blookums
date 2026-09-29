@@ -1,1 +1,459 @@
-views: []
+views:
+  - title: Home Climate
+    path: climate
+    icon: mdi:thermometer
+    subview: false
+    cards:
+      - type: horizontal-stack
+        cards:
+          # LEFT COLUMN: Zone list with temps and quick toggles
+          - type: vertical-stack
+            cards:
+              - type: heading
+                heading: Zones
+                heading_style: title
+                icon: mdi:home-thermometer
+
+              # BAF zones
+              - type: heading
+                heading: Fans (Auto Comfort)
+                heading_style: subtitle
+                icon: mdi:fan
+
+              # Master Bed
+              - type: horizontal-stack
+                cards:
+                  - type: button
+                    name: Master Bed
+                    icon: mdi:bed-king
+                    entity: sensor.master_bedroom_temperature
+                    show_state: true
+                    tap_action:
+                      action: call-service
+                      service: input_select.select_option
+                      target:
+                        entity_id: input_select.climate_zone
+                      data:
+                        option: Master Bed
+                  - type: button
+                    entity: fan.master_bedroom
+                    name: Fan
+                    icon: mdi:fan
+                    show_state: true
+                    tap_action:
+                      action: toggle
+
+              # Library
+              - type: horizontal-stack
+                cards:
+                  - type: button
+                    name: Library
+                    icon: mdi:bookshelf
+                    entity: sensor.library_temperature
+                    show_state: true
+                    tap_action:
+                      action: call-service
+                      service: input_select.select_option
+                      target:
+                        entity_id: input_select.climate_zone
+                      data:
+                        option: Library
+                  - type: button
+                    entity: fan.library
+                    name: Fan
+                    icon: mdi:fan
+                    show_state: true
+                    tap_action:
+                      action: toggle
+
+              # Office
+              - type: horizontal-stack
+                cards:
+                  - type: button
+                    name: Office
+                    icon: mdi:desktop-classic
+                    entity: sensor.office_temperature
+                    show_state: true
+                    tap_action:
+                      action: call-service
+                      service: input_select.select_option
+                      target:
+                        entity_id: input_select.climate_zone
+                      data:
+                        option: Office
+                  - type: button
+                    entity: fan.office
+                    name: Fan
+                    icon: mdi:fan
+                    show_state: true
+                    tap_action:
+                      action: toggle
+
+              # Oliver's Room
+              - type: horizontal-stack
+                cards:
+                  - type: button
+                    name: "Oliver's"
+                    icon: mdi:baby-face-outline
+                    entity: sensor.olivers_fan_temperature
+                    show_state: true
+                    tap_action:
+                      action: call-service
+                      service: input_select.select_option
+                      target:
+                        entity_id: input_select.climate_zone
+                      data:
+                        option: "Oliver's"
+                  - type: button
+                    entity: fan.olivers_fan
+                    name: Fan
+                    icon: mdi:fan
+                    show_state: true
+                    tap_action:
+                      action: toggle
+
+              # Master Bath
+              - type: heading
+                heading: Master Bath
+                heading_style: subtitle
+                icon: mdi:bathtub
+              - type: horizontal-stack
+                cards:
+                  - type: button
+                    name: Master Bath
+                    icon: mdi:bathtub
+                    entity: sensor.master_bath1_temperature
+                    show_state: true
+                    tap_action:
+                      action: call-service
+                      service: input_select.select_option
+                      target:
+                        entity_id: input_select.climate_zone
+                      data:
+                        option: Master Bath
+                  - type: button
+                    entity: switch.master_bath_fan
+                    name: Fan
+                    icon: mdi:fan
+                    show_state: true
+                    tap_action:
+                      action: toggle
+
+              # Sensor-only rooms
+              - type: heading
+                heading: Sensors
+                heading_style: subtitle
+                icon: mdi:thermometer-lines
+              - type: horizontal-stack
+                cards:
+                  - type: button
+                    name: Master Hall
+                    icon: mdi:walk
+                    entity: sensor.master_hall_temperature
+                    show_state: true
+                    tap_action:
+                      action: call-service
+                      service: input_select.select_option
+                      target:
+                        entity_id: input_select.climate_zone
+                      data:
+                        option: Master Hall
+                  - type: button
+                    name: Master Closet
+                    icon: mdi:hanger
+                    entity: sensor.master_closet1_temperature
+                    show_state: true
+                    tap_action:
+                      action: call-service
+                      service: input_select.select_option
+                      target:
+                        entity_id: input_select.climate_zone
+                      data:
+                        option: Master Closet
+              - type: horizontal-stack
+                cards:
+                  - type: button
+                    name: Guest Bath
+                    icon: mdi:shower
+                    entity: sensor.guest_bath_temperature
+                    show_state: true
+                    tap_action:
+                      action: call-service
+                      service: input_select.select_option
+                      target:
+                        entity_id: input_select.climate_zone
+                      data:
+                        option: Guest Bath
+                  - type: button
+                    name: Entry
+                    icon: mdi:door
+                    entity: sensor.entry1_temperature
+                    show_state: true
+                    tap_action:
+                      action: call-service
+                      service: input_select.select_option
+                      target:
+                        entity_id: input_select.climate_zone
+                      data:
+                        option: Entry
+
+              - type: weather-forecast
+                entity: weather.forecast_home
+                show_current: true
+                show_forecast: false
+
+          # RIGHT COLUMN: Details for selected zone
+          - type: vertical-stack
+            cards:
+              - type: heading
+                heading: Details
+                heading_style: title
+                icon: mdi:tune-variant
+
+              # Master Bed detail
+              - type: conditional
+                conditions:
+                  - entity: input_select.climate_zone
+                    state: Master Bed
+                card:
+                  type: vertical-stack
+                  cards:
+                    - type: heading
+                      heading: Master Bed
+                      heading_style: subtitle
+                      icon: mdi:bed-king
+                    - type: conditional
+                      conditions:
+                        - entity: climate.master_bedroom_auto_comfort
+                          state_not: unavailable
+                      card:
+                        type: thermostat
+                        entity: climate.master_bedroom_auto_comfort
+                        name: Master Bed
+                    - type: conditional
+                      conditions:
+                        - entity: climate.master_bedroom_auto_comfort
+                          state: unavailable
+                      card:
+                        type: markdown
+                        content: >
+                          Fan Auto Comfort is currently unavailable.
+                          Check power/network for the Master Bedroom BAF.
+                    - type: entities
+                      entities:
+                        - entity: fan.master_bedroom
+                          name: Fan
+                        - entity: switch.master_bedroom_whoosh
+                          name: Whoosh
+
+              # Library detail
+              - type: conditional
+                conditions:
+                  - entity: input_select.climate_zone
+                    state: Library
+                card:
+                  type: vertical-stack
+                  cards:
+                    - type: heading
+                      heading: Library
+                      heading_style: subtitle
+                      icon: mdi:bookshelf
+                    - type: conditional
+                      conditions:
+                        - entity: climate.library_auto_comfort
+                          state_not: unavailable
+                      card:
+                        type: thermostat
+                        entity: climate.library_auto_comfort
+                        name: Library
+                    - type: conditional
+                      conditions:
+                        - entity: climate.library_auto_comfort
+                          state: unavailable
+                      card:
+                        type: markdown
+                        content: Fan Auto Comfort is currently unavailable in the Library.
+                    - type: entities
+                      entities:
+                        - entity: fan.library
+                          name: Fan
+                        - entity: switch.library_whoosh
+                          name: Whoosh
+
+              # Office detail
+              - type: conditional
+                conditions:
+                  - entity: input_select.climate_zone
+                    state: Office
+                card:
+                  type: vertical-stack
+                  cards:
+                    - type: heading
+                      heading: Office
+                      heading_style: subtitle
+                      icon: mdi:desktop-classic
+                    - type: conditional
+                      conditions:
+                        - entity: climate.office_auto_comfort
+                          state_not: unavailable
+                      card:
+                        type: thermostat
+                        entity: climate.office_auto_comfort
+                        name: Office
+                    - type: conditional
+                      conditions:
+                        - entity: climate.office_auto_comfort
+                          state: unavailable
+                      card:
+                        type: markdown
+                        content: Fan Auto Comfort is currently unavailable in the Office.
+                    - type: entities
+                      entities:
+                        - entity: fan.office
+                          name: Fan
+                        - entity: switch.office_whoosh
+                          name: Whoosh
+
+              # Oliver's detail
+              - type: conditional
+                conditions:
+                  - entity: input_select.climate_zone
+                    state: "Oliver's"
+                card:
+                  type: vertical-stack
+                  cards:
+                    - type: heading
+                      heading: "Oliver's Room"
+                      heading_style: subtitle
+                      icon: mdi:baby-face-outline
+                    - type: conditional
+                      conditions:
+                        - entity: climate.olivers_fan_auto_comfort
+                          state_not: unavailable
+                      card:
+                        type: thermostat
+                        entity: climate.olivers_fan_auto_comfort
+                        name: "Oliver's Room"
+                    - type: conditional
+                      conditions:
+                        - entity: climate.olivers_fan_auto_comfort
+                          state: unavailable
+                      card:
+                        type: markdown
+                        content: Fan Auto Comfort is currently unavailable in Oliver's Room.
+                    - type: entities
+                      entities:
+                        - entity: fan.olivers_fan
+                          name: Fan
+
+              # Master Bath detail
+              - type: conditional
+                conditions:
+                  - entity: input_select.climate_zone
+                    state: Master Bath
+                card:
+                  type: vertical-stack
+                  cards:
+                    - type: heading
+                      heading: Master Bath
+                      heading_style: subtitle
+                      icon: mdi:bathtub
+                    - type: glance
+                      title: Climate
+                      columns: 4
+                      entities:
+                        - entity: sensor.master_bath1_temperature
+                          name: Temp
+                        - entity: sensor.master_bath1_humidity
+                          name: Humidity
+                        - entity: sensor.master_bath_dew_point
+                          name: Dew pt
+                        - entity: sensor.master_bath_dew_point_excess
+                          name: Excess
+                    - type: entities
+                      title: Exhaust
+                      entities:
+                        - entity: switch.master_bath_fan
+                          name: Fan
+                          icon: mdi:fan
+                        - entity: input_button.master_bath_fan_timed
+                          name: Fan 30 min
+                          icon: mdi:fan-clock
+
+              # Sensor-only detail
+              - type: conditional
+                conditions:
+                  - entity: input_select.climate_zone
+                    state: Master Hall
+                card:
+                  type: entities
+                  title: Master Hall
+                  entities:
+                    - entity: sensor.master_hall_temperature
+                      name: Temperature
+                    - entity: sensor.master_hall_humidity
+                      name: Humidity
+                    - entity: sensor.master_hall_dew_point
+                      name: Dew Point
+
+              - type: conditional
+                conditions:
+                  - entity: input_select.climate_zone
+                    state: Master Closet
+                card:
+                  type: entities
+                  title: Master Closet
+                  entities:
+                    - entity: sensor.master_closet1_temperature
+                      name: Temperature
+                    - entity: sensor.master_closet1_humidity
+                      name: Humidity
+                    - entity: sensor.master_closet_dew_point
+                      name: Dew Point
+
+              - type: conditional
+                conditions:
+                  - entity: input_select.climate_zone
+                    state: Guest Bath
+                card:
+                  type: entities
+                  title: Guest Bath
+                  entities:
+                    - entity: sensor.guest_bath_temperature
+                      name: Temperature
+                    - entity: sensor.guest_bath_humidity
+                      name: Humidity
+                    - entity: sensor.guest_bath_dew_point
+                      name: Dew Point
+
+              - type: conditional
+                conditions:
+                  - entity: input_select.climate_zone
+                    state: Entry
+                card:
+                  type: entities
+                  title: Entry
+                  entities:
+                    - entity: sensor.entry1_temperature
+                      name: Temperature
+                    - entity: sensor.entry1_humidity
+                      name: Humidity
+                    - entity: sensor.entry_dew_point
+                      name: Dew Point
+
+              - type: conditional
+                conditions:
+                  - entity: input_select.climate_zone
+                    state: Outside
+                card:
+                  type: weather-forecast
+                  entity: weather.forecast_home
+                  show_current: true
+                  show_forecast: true
+
+              # HVAC placeholders
+              - type: markdown
+                content: >
+                  Upstairs HVAC and Downstairs HVAC thermostats will be added
+                  here once Z-Wave Plus thermostats are installed and paired.
+                  No Nest entities are referenced in this dashboard.
