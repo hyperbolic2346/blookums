@@ -59,7 +59,7 @@ views:
                       data:
                         option: Library
                   - type: button
-                    entity: fan.office
+                    entity: fan.library
                     name: Fan
                     icon: mdi:fan
                     show_state: true
@@ -82,7 +82,7 @@ views:
                       data:
                         option: Office
                   - type: button
-                    entity: fan.library
+                    entity: fan.office
                     name: Fan
                     icon: mdi:fan
                     show_state: true
