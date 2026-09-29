@@ -31,6 +31,20 @@ input_select:
       - forest_creek
     initial: sound_princess
     icon: mdi:music-note
+  climate_zone:
+    name: Selected Climate Zone
+    options:
+      - Master Bed
+      - Library
+      - Office
+      - Oliver's
+      - Master Bath
+      - Master Hall
+      - Master Closet
+      - Guest Bath
+      - Entry
+      - Outside
+    initial: Master Bed
 
 input_button:
   master_bath_fan_timed:
@@ -186,8 +200,8 @@ lovelace:
       filename: dashboards/map.yaml
     dashboard-minimalist:
       mode: yaml
-      title: Minimalist
-      icon: mdi:home-assistant
+      title: Home Climate
+      icon: mdi:thermometer
       show_in_sidebar: true
       filename: dashboards/dashboard_minimalist.yaml
     dashboard-ipad:
