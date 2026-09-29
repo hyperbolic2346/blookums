@@ -73,8 +73,11 @@ spec:
                   name: maison-flacon-secret
               - secretRef:
                   name: maison-flacon-generated
-              # Stripe, PayPal and SMTP settings. Optional: each feature is
-              # off until its settings exist (see externalsecret.yaml).
+              # Stripe, then PayPal and SMTP settings. Optional: each feature
+              # is off until its settings exist (see externalsecret.yaml).
+              - secretRef:
+                  name: maison-flacon-stripe
+                  optional: true
               - secretRef:
                   name: maison-flacon-integrations
                   optional: true
@@ -148,6 +151,8 @@ spec:
       # Next.js storefront. Builds when the container starts (it needs the
       # running backend and its publishable key), so startup is slow by design.
       storefront:
+        annotations:
+          reloader.stakater.com/auto: "true"
         containers:
           main:
             image:
