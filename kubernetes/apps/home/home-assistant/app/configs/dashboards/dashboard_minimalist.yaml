@@ -457,3 +457,141 @@ views:
                   Upstairs HVAC and Downstairs HVAC thermostats will be added
                   here once Z-Wave Plus thermostats are installed and paired.
                   No Nest entities are referenced in this dashboard.
+
+  - title: Energy
+    path: energy
+    icon: mdi:lightning-bolt
+    subview: false
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: heading
+            heading: Energy Overview
+            heading_style: title
+            icon: mdi:lightning-bolt
+
+          - type: horizontal-stack
+            cards:
+              - type: gauge
+                name: House Power
+                entity: sensor.house_power
+                min: 0
+                max: 20000
+              - type: gauge
+                name: Left Panel Power
+                entity: sensor.left_panel_power
+                min: 0
+                max: 12000
+              - type: gauge
+                name: Right Panel Power
+                entity: sensor.right_panel_power
+                min: 0
+                max: 12000
+
+          - type: heading
+            heading: Totals
+            heading_style: subtitle
+            icon: mdi:counter
+          - type: entities
+            entities:
+              - entity: sensor.house_energy
+                name: House Energy
+              - entity: sensor.left_panel_energy
+                name: Left Panel Energy
+              - entity: sensor.right_panel_energy
+                name: Right Panel Energy
+              - entity: sensor.electric_rate
+                name: Electric Rate
+
+          - type: heading
+            heading: Known Loads (Z-Wave lights)
+            heading_style: subtitle
+            icon: mdi:lightbulb-group
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.back_porch_electric_consumption_w
+                name: Back Porch
+              - entity: sensor.booster_electric_consumption_w
+                name: Laundry Booster
+              - entity: sensor.cans_electric_consumption_w
+                name: Library Cans
+              - entity: sensor.couch_cans_electric_consumption_w
+                name: Couch Cans
+              - entity: sensor.dining_cans_electric_consumption_w
+                name: Dining Cans
+              - entity: sensor.door_light_electric_consumption_w
+                name: Door Light
+              - entity: sensor.light_electric_consumption_w
+                name: Porch Light
+              - entity: sensor.living_room_tv_cans_electric_w
+                name: Living Room TV Cans
+              - entity: sensor.sconces_electric_consumption_w
+                name: Stair Sconces
+              - entity: sensor.shelves_electric_consumption_w
+                name: Library Shelves
+              - entity: sensor.tv_cans_electric_consumption_w
+                name: TV Cans
+
+          - type: heading
+            heading: EV Charging (placeholder)
+            heading_style: subtitle
+            icon: mdi:ev-station
+          - type: markdown
+            content: >
+              Hummer EV charge state and charge-cost will appear here after
+              onstar2mqtt is deployed and entities are available.
+
+          - type: heading
+            heading: Garage
+            heading_style: subtitle
+            icon: mdi:garage
+          - type: horizontal-stack
+            cards:
+              - show_name: true
+                show_icon: true
+                type: button
+                tap_action:
+                  action: toggle
+                entity: cover.left_bay_door
+                name: Left Bay
+              - show_name: true
+                show_icon: true
+                type: button
+                tap_action:
+                  action: toggle
+                entity: cover.middle_bay_door
+                name: Middle Bay
+              - show_name: true
+                show_icon: true
+                type: button
+                tap_action:
+                  action: toggle
+                entity: cover.right_bay_door
+                name: Right Bay
+
+  - title: Music
+    path: music
+    icon: mdi:music
+    subview: false
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: heading
+            heading: House Music
+            heading_style: title
+            icon: mdi:music
+          - type: horizontal-stack
+            cards:
+              - type: media-control
+                entity: media_player.living_room
+              - type: media-control
+                entity: media_player.master_bedroom
+          - type: horizontal-stack
+            cards:
+              - type: media-control
+                entity: media_player.library
+              - type: media-control
+                entity: media_player.office
+          - type: media-control
+            entity: media_player.master_bathroom
