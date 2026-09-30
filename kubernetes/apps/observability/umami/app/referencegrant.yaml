@@ -1,0 +1,19 @@
+---
+# Lets the Maison Flacon shop's HTTPRoute send two paths to Umami, so its
+# visit statistics are served from the shop's own domain (ad blockers block
+# the umami host). Only the tracker script and the event endpoint are routed;
+# see kubernetes/apps/maison-flacon/store/app/umami-route.yaml.
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: maison-flacon-to-umami
+  namespace: observability
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: maison-flacon
+  to:
+    - group: ""
+      kind: Service
+      name: umami
