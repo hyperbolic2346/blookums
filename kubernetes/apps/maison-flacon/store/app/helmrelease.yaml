@@ -52,7 +52,7 @@ spec:
           02-migrate:
             image: &backendImage
               repository: ghcr.io/hyperbolic2346/maison-flacon-backend
-              tag: main-fdb19db-b20 # {"$imagepolicy": "flux-system:maison-flacon-backend:tag"}
+              tag: main-00bdc39-b21 # {"$imagepolicy": "flux-system:maison-flacon-backend:tag"}
             command: ["medusa", "db:migrate"]
             env: &backendEnv
               REDIS_URL: "redis://maison-flacon-redis.maison-flacon.svc.cluster.local:6379"
@@ -164,7 +164,7 @@ spec:
           main:
             image:
               repository: ghcr.io/hyperbolic2346/maison-flacon-storefront
-              tag: main-fdb19db-b20 # {"$imagepolicy": "flux-system:maison-flacon-storefront:tag"}
+              tag: main-00bdc39-b21 # {"$imagepolicy": "flux-system:maison-flacon-storefront:tag"}
             env:
               # Server-side rendering talks to the backend in-cluster...
               MEDUSA_BACKEND_URL_INTERNAL: "http://maison-flacon-backend.maison-flacon.svc.cluster.local:9000"
@@ -172,6 +172,10 @@ spec:
               NEXT_PUBLIC_MEDUSA_BACKEND_URL: "https://maison-flacon.com"
               NEXT_PUBLIC_BASE_URL: "https://maison-flacon.com"
               NEXT_PUBLIC_DEFAULT_REGION: "us"
+              # Umami (observability namespace). Only the real site is counted.
+              UMAMI_SRC: "https://umami.${SECRET_DOMAIN}/script.js"
+              UMAMI_WEBSITE_ID: "ef8c80e6-79de-42fe-975e-c39727a4e4de"
+              UMAMI_DOMAINS: "maison-flacon.com"
             envFrom:
               # Browser-side keys for Stripe and PayPal. Optional, as above.
               - secretRef:
