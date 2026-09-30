@@ -55,7 +55,7 @@ spec:
           02-migrate:
             image: &apiImage
               repository: ghcr.io/hyperbolic2346/stockpile-api
-              tag: main-00e3c03-b207 # {"$imagepolicy": "flux-system:stockpile-api:tag"}
+              tag: main-32dc5ef-b210 # {"$imagepolicy": "flux-system:stockpile-api:tag"}
             command: ["npx", "prisma", "migrate", "deploy"]
             envFrom: &envFrom
               - secretRef:
