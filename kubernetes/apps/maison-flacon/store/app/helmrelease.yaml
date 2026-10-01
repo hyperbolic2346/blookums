@@ -71,7 +71,7 @@ spec:
           02-migrate:
             image: &backendImage
               repository: ghcr.io/hyperbolic2346/maison-flacon-backend
-              tag: main-f411125-b25 # {"$imagepolicy": "flux-system:maison-flacon-backend:tag"}
+              tag: main-636b3b2-b26 # {"$imagepolicy": "flux-system:maison-flacon-backend:tag"}
             command: ["medusa", "db:migrate"]
             env: &backendEnv
               REDIS_URL: "redis://maison-flacon-redis.maison-flacon.svc.cluster.local:6379"
@@ -150,7 +150,7 @@ spec:
           main:
             image: *backendImage
             env:
-              <<: *backendEnv
+              !!merge <<: *backendEnv
               # Web requests only; subscribers and jobs run in the worker.
               MEDUSA_WORKER_MODE: "server"
             envFrom: *backendEnvFrom
@@ -197,7 +197,7 @@ spec:
           main:
             image: *backendImage
             env:
-              <<: *backendEnv
+              !!merge <<: *backendEnv
               MEDUSA_WORKER_MODE: "worker"
               DISABLE_MEDUSA_ADMIN: "true"
             envFrom: *backendEnvFrom
