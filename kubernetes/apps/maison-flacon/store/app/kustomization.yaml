@@ -7,4 +7,5 @@ resources:
   - ./helmrelease.yaml
   - ./ocirepository.yaml
   - ./poddisruptionbudget.yaml
+  - ./storefront-copies-service.yaml
   - ./umami-route.yaml

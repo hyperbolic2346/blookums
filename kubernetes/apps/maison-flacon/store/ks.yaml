@@ -24,7 +24,6 @@ spec:
   wait: true
   interval: 30m
   retryInterval: 1m
-  # The storefront runs `next build` when its container starts.
   timeout: 15m
   postBuild:
     substituteFrom:

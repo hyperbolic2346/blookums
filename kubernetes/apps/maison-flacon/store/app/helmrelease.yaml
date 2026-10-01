@@ -92,6 +92,9 @@ spec:
               # Told to drop its cached catalog after admin edits, with the
               # secret in maison-flacon-revalidate.
               STOREFRONT_INTERNAL_URL: "http://maison-flacon-storefront.maison-flacon.svc.cluster.local:8000"
+              # Every storefront copy, one address each (headless Service), so
+              # all of them drop their cached catalog, not just one.
+              STOREFRONT_REVALIDATE_DNS: "maison-flacon-storefront-copies.maison-flacon.svc.cluster.local:8000"
               # Links in emails (password reset) point here.
               STOREFRONT_URL: "https://maison-flacon.com"
             envFrom: &backendEnvFrom
@@ -219,11 +222,27 @@ spec:
                 memory: 384Mi
               limits:
                 memory: 1Gi
-      # Next.js storefront. Builds when the container starts (it needs the
-      # running backend and its publishable key), so startup is slow by design.
+      # Next.js storefront. The image is built once in CI and configured
+      # here at runtime, so every copy is identical and starts in well under
+      # a second. Rolling updates: a new copy must be ready before an old one
+      # stops.
       storefront:
+        replicas: 2
+        strategy: RollingUpdate
+        rollingUpdate:
+          surge: 1
+          unavailable: 0
         annotations:
           reloader.stakater.com/auto: "true"
+        pod:
+          topologySpreadConstraints:
+            - maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: ScheduleAnyway
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: maison-flacon
+                  app.kubernetes.io/controller: storefront
         containers:
           main:
             image:
@@ -251,13 +270,16 @@ spec:
               - secretRef:
                   name: maison-flacon-revalidate
             probes:
+              # /api/health does not ask the backend, so a backend restart
+              # does not get healthy storefront copies killed.
               liveness: &storefrontProbe
                 enabled: true
                 custom: true
                 spec:
-                  tcpSocket:
+                  httpGet:
+                    path: /api/health
                     port: 8000
-                  periodSeconds: 20
+                  periodSeconds: 10
                   timeoutSeconds: 3
                   failureThreshold: 3
               readiness: *storefrontProbe
@@ -265,18 +287,17 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  tcpSocket:
+                  httpGet:
+                    path: /api/health
                     port: 8000
-                  periodSeconds: 10
-                  # Waiting for the backend plus `next build`: up to 10 minutes.
-                  failureThreshold: 60
+                  periodSeconds: 2
+                  failureThreshold: 30
             resources:
               requests:
-                cpu: 50m
-                memory: 384Mi
-              # `next build` is the peak, not serving.
+                cpu: 25m
+                memory: 192Mi
               limits:
-                memory: 3Gi
+                memory: 768Mi
       # Dedicated ephemeral Redis: event bus, workflow engine, cache, locks
       # and admin sessions.
       redis:

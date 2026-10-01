@@ -1,0 +1,20 @@
+---
+# One DNS address per storefront copy, so the backend can tell each of them
+# to drop its cached catalog after an admin edit (STOREFRONT_REVALIDATE_DNS).
+# Copies that are starting or briefly unready are included, so none misses a
+# refresh. Visitors reach the storefront through the normal Service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: maison-flacon-storefront-copies
+  namespace: maison-flacon
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/instance: maison-flacon
+    app.kubernetes.io/controller: storefront
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
