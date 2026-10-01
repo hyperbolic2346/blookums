@@ -34,7 +34,7 @@ spec:
               # MQTT broker (reuse Mosquitto in-cluster)
               MQTT_HOST: mosquitto.home.svc.cluster.local
               MQTT_PORT: "8883"
-              MQTT_TLS: "true"
+              MQTT_TLS: "false"
               MQTT_USERNAME: ${SECRET_MQTT_USERNAME}
               MQTT_PASSWORD: ${SECRET_MQTT_PASSWORD}
               # Home Assistant MQTT discovery and naming
