@@ -1,0 +1,67 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: onstar2mqtt
+  namespace: home
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: onstar2mqtt
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    controllers:
+      main:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          main:
+            image:
+              repository: ghcr.io/bigthundersr/onstar2mqtt
+              tag: latest
+            env:
+              TZ: ${TIMEZONE}
+              # MQTT broker (reuse Mosquitto in-cluster)
+              MQTT_HOST: mosquitto.home.svc.cluster.local
+              MQTT_PORT: "8883"
+              MQTT_TLS: "true"
+              MQTT_USERNAME: ${SECRET_MQTT_USERNAME}
+              MQTT_PASSWORD: ${SECRET_MQTT_PASSWORD}
+              # Home Assistant MQTT discovery and naming
+              VEHICLE_NAME: hummer
+              DISCOVERY_PREFIX: homeassistant
+              # OnStar client configuration
+              ONSTAR_STATE_CACHE: "true"
+              TOKEN_LOCATION: /data/tokens
+              UNIT_CACHE_DIR: /data/cache
+              # Device identifier should be stable and unique per account
+              ONSTAR_DEVICEID: "983c42c5-4678-4907-8d38-fc4b1e6e6ad9"
+            envFrom:
+              - secretRef:
+                  name: onstar2mqtt-secret
+            resources:
+              requests:
+                cpu: 15m
+                memory: 64Mi
+              limits:
+                memory: 256Mi
+
+    persistence:
+      data:
+        enabled: true
+        existingClaim: onstar2mqtt-data
+        globalMounts:
+          - path: /data/tokens
+            subPath: tokens
+          - path: /data/cache
+            subPath: cache
