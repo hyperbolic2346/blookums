@@ -1,0 +1,11 @@
+---
+# Build pods sit below every other workload (default priority 0) and never
+# preempt anything. Under node pressure they are evicted first.
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: ci-build
+value: -100
+preemptionPolicy: Never
+globalDefault: false
+description: Image build pods in the ci namespace; lower than all other workloads.

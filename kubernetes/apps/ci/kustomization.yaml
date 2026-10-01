@@ -1,0 +1,13 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+# Image builds for the application repositories: a dispatcher that turns
+# GitHub pushes, tags and pull requests into one Job per build.
+#
+# This namespace does not include the common component, so the shared
+# cluster-secrets / cluster-settings are not copied into it. The Flux
+# Kustomization lives in flux-system and substitutes from the copies there.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ./namespace.yaml
+  - ./dispatcher/ks.yaml

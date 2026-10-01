@@ -1,0 +1,51 @@
+---
+# The dispatcher manages build Jobs and its own state ConfigMap in this
+# namespace, reads build pods and their logs, and reads the build
+# PodTemplates. Nothing outside the namespace.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dispatcher
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dispatcher
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["podtemplates"]
+    resourceNames: ["build-trusted", "build-untrusted"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["dispatcher-state"]
+    verbs: ["get", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dispatcher
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: dispatcher
+subjects:
+  - kind: ServiceAccount
+    name: dispatcher
+---
+# Build pods run under this account. It has no role bindings, and its
+# token is not mounted.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ci-build
+automountServiceAccountToken: false

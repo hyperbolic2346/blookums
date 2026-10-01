@@ -1,0 +1,675 @@
+---
+# Pod for main-branch and v* tag builds. The dispatcher (dispatcher.mjs)
+# copies this spec into a Job per build, sets the CI_* environment on every
+# container, points the `cache` volume at ci-cache-<repo>-trusted and limits
+# `deploy-key` to that repository's key.
+#
+# Steps, in order:
+#   clone     fetch the commit with the read-only deploy key
+#   postgres  service for the test step (localhost:5432), runs to the end
+#   redis     service for the test step (localhost:6379), runs to the end
+#   test      the repository's own .ci/test.sh
+#   build     rootless BuildKit builds each image into an OCI archive
+#   push      uploads the archives and tags them
+#
+# Only `push` mounts the registry credential. It runs no repository code and
+# starts after every step that does has exited.
+#
+# Scripts here use $VAR, never the braced form, so that they pass through
+# Flux substitution untouched (it is disabled for this object as well).
+apiVersion: v1
+kind: PodTemplate
+metadata:
+  name: build-trusted
+  annotations:
+    kustomize.toolkit.fluxcd.io/substitute: disabled
+template:
+  metadata:
+    labels:
+      app.kubernetes.io/name: ci-build
+      app.kubernetes.io/component: build
+  spec:
+    serviceAccountName: ci-build
+    automountServiceAccountToken: false
+    enableServiceLinks: false
+    priorityClassName: ci-build
+    restartPolicy: Never
+    terminationGracePeriodSeconds: 10
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+      fsGroupChangePolicy: OnRootMismatch
+      seccompProfile:
+        type: RuntimeDefault
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: node-role.kubernetes.io/control-plane
+                  operator: DoesNotExist
+                # limited image storage
+                - key: kubernetes.io/hostname
+                  operator: NotIn
+                  values: ["wally"]
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+                - key: kubernetes.io/hostname
+                  operator: In
+                  values: ["asok", "dogbert"]
+    initContainers:
+      - name: clone
+        image: docker.io/alpine/git:v2.54.0@sha256:832b1cd1a271509f3d5272a1a62d4cb2ab1a53426ebde1f6c2cb7349f907dc6f
+        command: ["sh", "-c"]
+        args:
+          - |
+            set -eu
+            umask 0002
+            export HOME=/tmp
+            export GIT_SSH_COMMAND="ssh -i /deploy-key/identity -o IdentitiesOnly=yes -o BatchMode=yes -o UserKnownHostsFile=/deploy-key/known_hosts -o StrictHostKeyChecking=yes"
+            git init -q /workspace/src
+            cd /workspace/src
+            git remote add origin "$CI_CLONE_URL"
+            git fetch -q --depth=1 --no-tags origin "$CI_SHA"
+            git -c advice.detachedHead=false checkout -q FETCH_HEAD
+            test "$(git rev-parse HEAD)" = "$CI_SHA"
+            git log -1 --format='%H %s'
+            mkdir -p /cache/npm /cache/buildkit
+        securityContext:
+          # nobody: the image has no user 1000, and ssh needs a passwd entry
+          runAsUser: 65534
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+          limits:
+            memory: 512Mi
+            ephemeral-storage: 1Gi
+        volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+          - name: cache
+            mountPath: /cache
+          - name: deploy-key
+            mountPath: /deploy-key
+            readOnly: true
+      - name: postgres
+        image: docker.io/library/postgres:16.15-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+        restartPolicy: Always
+        args:
+          - -c
+          - hba_file=/etc/ci-postgres/pg_hba.conf
+          - -c
+          - listen_addresses=127.0.0.1
+          - -c
+          - fsync=off
+          - -c
+          - synchronous_commit=off
+          - -c
+          - full_page_writes=off
+        env:
+          # The generated pg_hba.conf is replaced by hba_file above, which
+          # admits the superuser on the container-local socket only.
+          - name: POSTGRES_HOST_AUTH_METHOD
+            value: trust
+          - name: PGDATA
+            value: /var/lib/postgresql/data/pgdata
+        securityContext:
+          runAsUser: 70
+          runAsGroup: 70
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        startupProbe:
+          exec:
+            command: ["pg_isready", "-h", "127.0.0.1", "-U", "ci", "-d", "ci_test"]
+          periodSeconds: 1
+          failureThreshold: 120
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            memory: 1Gi
+            ephemeral-storage: 1Gi
+        volumeMounts:
+          - name: pgdata
+            mountPath: /var/lib/postgresql/data
+          - name: postgres-config
+            mountPath: /etc/ci-postgres
+            readOnly: true
+          - name: postgres-config
+            mountPath: /docker-entrypoint-initdb.d/init.sql
+            subPath: init.sql
+            readOnly: true
+      - name: redis
+        image: docker.io/library/redis:7.4.11-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+        restartPolicy: Always
+        args: ["redis-server", "--bind", "127.0.0.1", "--save", "", "--appendonly", "no"]
+        securityContext:
+          runAsUser: 999
+          runAsGroup: 1000
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        startupProbe:
+          exec:
+            command: ["redis-cli", "-h", "127.0.0.1", "ping"]
+          periodSeconds: 1
+          failureThreshold: 60
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            memory: 512Mi
+            ephemeral-storage: 256Mi
+      - name: test
+        image: docker.io/library/node:22.23.3-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402
+        command: ["sh", "-c"]
+        args:
+          - |
+            set -eu
+            cd /workspace/src
+            if [ ! -f .ci/test.sh ]; then
+              echo "This commit has no .ci/test.sh; there is no test gate to run." >&2
+              exit 1
+            fi
+            exec sh .ci/test.sh
+        env:
+          - name: CI
+            value: "true"
+          - name: TEST_DATABASE_URL
+            value: postgresql://ci:ci@127.0.0.1:5432/ci_test?schema=public
+          - name: REDIS_URL
+            value: redis://127.0.0.1:6379
+          - name: npm_config_cache
+            value: /cache/npm
+          - name: npm_config_update_notifier
+            value: "false"
+          - name: npm_config_fund
+            value: "false"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        resources:
+          requests:
+            cpu: "1"
+            memory: 2Gi
+            ephemeral-storage: 2Gi
+          limits:
+            cpu: "4"
+            memory: 6Gi
+            ephemeral-storage: 10Gi
+        volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+          - name: cache
+            mountPath: /cache/npm
+            subPath: npm
+      - name: build
+        image: docker.io/moby/buildkit:v0.33.0-rootless@sha256:80b15f0735e87bab7bf59ec4d695dfb4a7cfb25521cf56dc75d6f256285b63ef
+        command: ["sh", "-c"]
+        args:
+          - |
+            set -eu
+            grep -E '^(Uid|CapEff|CapBnd|NoNewPrivs|Seccomp):' /proc/self/status
+            cd /workspace/src
+            rm -rf /workspace/out
+            mkdir -p /workspace/out
+            rootlesskit buildkitd --oci-worker-no-process-sandbox --config=/etc/buildkit/buildkitd.toml \
+              --root=/cache/buildkit > /workspace/out/buildkitd.log 2>&1 &
+            daemon=$!
+            n=0
+            until buildctl debug workers > /dev/null 2>&1; do
+              n=$((n + 1))
+              if [ $n -gt 120 ]; then cat /workspace/out/buildkitd.log; exit 1; fi
+              sleep 0.5
+            done
+            build() {
+              name=$1
+              dockerfile=$2
+              set -- --frontend dockerfile.v0 --local context=. \
+                --local "dockerfile=$(dirname "$dockerfile")" --opt "filename=$(basename "$dockerfile")" \
+                --opt platform=linux/amd64 --output "type=oci,dest=/workspace/out/$name.tar" --progress plain
+              for arg in $CI_BUILD_ARGS; do set -- "$@" --opt "build-arg:$arg"; done
+              for label in $CI_LABELS; do set -- "$@" --opt "label:$label"; done
+              buildctl build "$@"
+            }
+            pids=""
+            for spec in $CI_IMAGES; do
+              name=$(echo "$spec" | cut -d= -f1)
+              dockerfile=$(echo "$spec" | cut -d= -f2-)
+              ( set -o pipefail; build "$name" "$dockerfile" 2>&1 | while IFS= read -r line; do echo "[$name] $line"; done ) &
+              pids="$pids $!"
+            done
+            rc=0
+            for pid in $pids; do wait "$pid" || rc=1; done
+            kill -TERM "$daemon" 2> /dev/null || true
+            wait "$daemon" 2> /dev/null || true
+            if [ "$rc" -ne 0 ]; then tail -n 50 /workspace/out/buildkitd.log; exit "$rc"; fi
+            ls -l /workspace/out
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+          # rootlesskit creates a user namespace (unshare) and mounts inside
+          # it; the runtime's default seccomp profile refuses both.
+          seccompProfile:
+            type: Unconfined
+          # newuidmap/newgidmap get CAP_SETUID/CAP_SETGID from file
+          # capabilities, which no_new_privs would block. No other
+          # capability is kept.
+          allowPrivilegeEscalation: true
+          capabilities:
+            drop: ["ALL"]
+            add: ["SETUID", "SETGID"]
+        resources:
+          requests:
+            cpu: "2"
+            memory: 4Gi
+            ephemeral-storage: 4Gi
+          limits:
+            cpu: "8"
+            memory: 12Gi
+            ephemeral-storage: 30Gi
+        volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+          - name: cache
+            mountPath: /cache/buildkit
+            subPath: buildkit
+          - name: buildkitd-config
+            mountPath: /etc/buildkit
+            readOnly: true
+    containers:
+      - name: push
+        image: ghcr.io/regclient/regctl:v0.11.6-alpine@sha256:5fe7c6a6206e1d9d71af719674c9db03e74a4ae221a32089b691f5b55533d6ea
+        command: ["sh", "-c"]
+        args:
+          - |
+            set -eu
+            if [ -z "$CI_TAGS" ]; then echo "no tags for this build; nothing to push"; exit 0; fi
+            for spec in $CI_PUSH; do
+              name=$(echo "$spec" | cut -d= -f1)
+              repo=$(echo "$spec" | cut -d= -f2-)
+              first=""
+              for tag in $CI_TAGS; do
+                if [ -z "$first" ]; then
+                  regctl image import "$repo:$tag" "/workspace/out/$name.tar"
+                  first=$tag
+                else
+                  regctl image copy "$repo:$first" "$repo:$tag"
+                fi
+                echo "pushed $repo:$tag"
+              done
+              echo "digest $repo@$(regctl image digest "$repo:$first")"
+            done
+        env:
+          - name: HOME
+            value: /tmp
+          - name: DOCKER_CONFIG
+            value: /registry-auth
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            memory: 1Gi
+        volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+            readOnly: true
+          - name: tmp
+            mountPath: /tmp
+          - name: registry-auth
+            mountPath: /registry-auth
+            readOnly: true
+    volumes:
+      - name: workspace
+        emptyDir:
+          sizeLimit: 20Gi
+      - name: tmp
+        emptyDir:
+          sizeLimit: 64Mi
+      - name: pgdata
+        emptyDir:
+          sizeLimit: 2Gi
+      - name: cache
+        persistentVolumeClaim:
+          claimName: set-by-dispatcher
+      - name: deploy-key
+        secret:
+          secretName: ci-deploy-keys
+          defaultMode: 0440
+          # The dispatcher replaces this list with the building
+          # repository's key and known_hosts.
+          items:
+            - key: known_hosts
+              path: known_hosts
+      - name: postgres-config
+        configMap:
+          name: ci-build-postgres
+      - name: buildkitd-config
+        configMap:
+          name: ci-buildkitd
+      - name: registry-auth
+        secret:
+          secretName: ci-registry-push
+          defaultMode: 0440
+          items:
+            - key: .dockerconfigjson
+              path: config.json
+---
+# Pod for pull-request builds: the same clone, test and build steps as
+# build-trusted, with no push step and no registry credential, and its own
+# cache volume (ci-cache-<repo>-untrusted), so nothing a pull request runs
+# can reach the credential or the cache that release builds use.
+apiVersion: v1
+kind: PodTemplate
+metadata:
+  name: build-untrusted
+  annotations:
+    kustomize.toolkit.fluxcd.io/substitute: disabled
+template:
+  metadata:
+    labels:
+      app.kubernetes.io/name: ci-build
+      app.kubernetes.io/component: build
+  spec:
+    serviceAccountName: ci-build
+    automountServiceAccountToken: false
+    enableServiceLinks: false
+    priorityClassName: ci-build
+    restartPolicy: Never
+    terminationGracePeriodSeconds: 10
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+      fsGroupChangePolicy: OnRootMismatch
+      seccompProfile:
+        type: RuntimeDefault
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: node-role.kubernetes.io/control-plane
+                  operator: DoesNotExist
+                # limited image storage
+                - key: kubernetes.io/hostname
+                  operator: NotIn
+                  values: ["wally"]
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+                - key: kubernetes.io/hostname
+                  operator: In
+                  values: ["asok", "dogbert"]
+    initContainers:
+      - name: clone
+        image: docker.io/alpine/git:v2.54.0@sha256:832b1cd1a271509f3d5272a1a62d4cb2ab1a53426ebde1f6c2cb7349f907dc6f
+        command: ["sh", "-c"]
+        args:
+          - |
+            set -eu
+            umask 0002
+            export HOME=/tmp
+            export GIT_SSH_COMMAND="ssh -i /deploy-key/identity -o IdentitiesOnly=yes -o BatchMode=yes -o UserKnownHostsFile=/deploy-key/known_hosts -o StrictHostKeyChecking=yes"
+            git init -q /workspace/src
+            cd /workspace/src
+            git remote add origin "$CI_CLONE_URL"
+            git fetch -q --depth=1 --no-tags origin "$CI_SHA"
+            git -c advice.detachedHead=false checkout -q FETCH_HEAD
+            test "$(git rev-parse HEAD)" = "$CI_SHA"
+            git log -1 --format='%H %s'
+            mkdir -p /cache/npm /cache/buildkit
+        securityContext:
+          # nobody: the image has no user 1000, and ssh needs a passwd entry
+          runAsUser: 65534
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+          limits:
+            memory: 512Mi
+            ephemeral-storage: 1Gi
+        volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+          - name: cache
+            mountPath: /cache
+          - name: deploy-key
+            mountPath: /deploy-key
+            readOnly: true
+      - name: postgres
+        image: docker.io/library/postgres:16.15-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+        restartPolicy: Always
+        args:
+          - -c
+          - hba_file=/etc/ci-postgres/pg_hba.conf
+          - -c
+          - listen_addresses=127.0.0.1
+          - -c
+          - fsync=off
+          - -c
+          - synchronous_commit=off
+          - -c
+          - full_page_writes=off
+        env:
+          - name: POSTGRES_HOST_AUTH_METHOD
+            value: trust
+          - name: PGDATA
+            value: /var/lib/postgresql/data/pgdata
+        securityContext:
+          runAsUser: 70
+          runAsGroup: 70
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        startupProbe:
+          exec:
+            command: ["pg_isready", "-h", "127.0.0.1", "-U", "ci", "-d", "ci_test"]
+          periodSeconds: 1
+          failureThreshold: 120
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            memory: 1Gi
+            ephemeral-storage: 1Gi
+        volumeMounts:
+          - name: pgdata
+            mountPath: /var/lib/postgresql/data
+          - name: postgres-config
+            mountPath: /etc/ci-postgres
+            readOnly: true
+          - name: postgres-config
+            mountPath: /docker-entrypoint-initdb.d/init.sql
+            subPath: init.sql
+            readOnly: true
+      - name: redis
+        image: docker.io/library/redis:7.4.11-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+        restartPolicy: Always
+        args: ["redis-server", "--bind", "127.0.0.1", "--save", "", "--appendonly", "no"]
+        securityContext:
+          runAsUser: 999
+          runAsGroup: 1000
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        startupProbe:
+          exec:
+            command: ["redis-cli", "-h", "127.0.0.1", "ping"]
+          periodSeconds: 1
+          failureThreshold: 60
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            memory: 512Mi
+            ephemeral-storage: 256Mi
+      - name: test
+        image: docker.io/library/node:22.23.3-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402
+        command: ["sh", "-c"]
+        args:
+          - |
+            set -eu
+            cd /workspace/src
+            if [ ! -f .ci/test.sh ]; then
+              echo "This commit has no .ci/test.sh; there is no test gate to run." >&2
+              exit 1
+            fi
+            exec sh .ci/test.sh
+        env:
+          - name: CI
+            value: "true"
+          - name: TEST_DATABASE_URL
+            value: postgresql://ci:ci@127.0.0.1:5432/ci_test?schema=public
+          - name: REDIS_URL
+            value: redis://127.0.0.1:6379
+          - name: npm_config_cache
+            value: /cache/npm
+          - name: npm_config_update_notifier
+            value: "false"
+          - name: npm_config_fund
+            value: "false"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        resources:
+          requests:
+            cpu: "1"
+            memory: 2Gi
+            ephemeral-storage: 2Gi
+          limits:
+            cpu: "4"
+            memory: 6Gi
+            ephemeral-storage: 10Gi
+        volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+          - name: cache
+            mountPath: /cache/npm
+            subPath: npm
+    containers:
+      - name: build
+        image: docker.io/moby/buildkit:v0.33.0-rootless@sha256:80b15f0735e87bab7bf59ec4d695dfb4a7cfb25521cf56dc75d6f256285b63ef
+        command: ["sh", "-c"]
+        args:
+          - |
+            set -eu
+            grep -E '^(Uid|CapEff|CapBnd|NoNewPrivs|Seccomp):' /proc/self/status
+            cd /workspace/src
+            rm -rf /workspace/out
+            mkdir -p /workspace/out
+            rootlesskit buildkitd --oci-worker-no-process-sandbox --config=/etc/buildkit/buildkitd.toml \
+              --root=/cache/buildkit > /workspace/out/buildkitd.log 2>&1 &
+            daemon=$!
+            n=0
+            until buildctl debug workers > /dev/null 2>&1; do
+              n=$((n + 1))
+              if [ $n -gt 120 ]; then cat /workspace/out/buildkitd.log; exit 1; fi
+              sleep 0.5
+            done
+            build() {
+              name=$1
+              dockerfile=$2
+              set -- --frontend dockerfile.v0 --local context=. \
+                --local "dockerfile=$(dirname "$dockerfile")" --opt "filename=$(basename "$dockerfile")" \
+                --opt platform=linux/amd64 --output "type=oci,dest=/workspace/out/$name.tar" --progress plain
+              for arg in $CI_BUILD_ARGS; do set -- "$@" --opt "build-arg:$arg"; done
+              for label in $CI_LABELS; do set -- "$@" --opt "label:$label"; done
+              buildctl build "$@"
+            }
+            pids=""
+            for spec in $CI_IMAGES; do
+              name=$(echo "$spec" | cut -d= -f1)
+              dockerfile=$(echo "$spec" | cut -d= -f2-)
+              ( set -o pipefail; build "$name" "$dockerfile" 2>&1 | while IFS= read -r line; do echo "[$name] $line"; done ) &
+              pids="$pids $!"
+            done
+            rc=0
+            for pid in $pids; do wait "$pid" || rc=1; done
+            kill -TERM "$daemon" 2> /dev/null || true
+            wait "$daemon" 2> /dev/null || true
+            if [ "$rc" -ne 0 ]; then tail -n 50 /workspace/out/buildkitd.log; exit "$rc"; fi
+            ls -l /workspace/out
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+          # rootlesskit creates a user namespace (unshare) and mounts inside
+          # it; the runtime's default seccomp profile refuses both.
+          seccompProfile:
+            type: Unconfined
+          # newuidmap/newgidmap get CAP_SETUID/CAP_SETGID from file
+          # capabilities, which no_new_privs would block. No other
+          # capability is kept.
+          allowPrivilegeEscalation: true
+          capabilities:
+            drop: ["ALL"]
+            add: ["SETUID", "SETGID"]
+        resources:
+          requests:
+            cpu: "2"
+            memory: 4Gi
+            ephemeral-storage: 4Gi
+          limits:
+            cpu: "8"
+            memory: 12Gi
+            ephemeral-storage: 30Gi
+        volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+          - name: cache
+            mountPath: /cache/buildkit
+            subPath: buildkit
+          - name: buildkitd-config
+            mountPath: /etc/buildkit
+            readOnly: true
+    volumes:
+      - name: workspace
+        emptyDir:
+          sizeLimit: 20Gi
+      - name: pgdata
+        emptyDir:
+          sizeLimit: 2Gi
+      - name: cache
+        persistentVolumeClaim:
+          claimName: set-by-dispatcher
+      - name: deploy-key
+        secret:
+          secretName: ci-deploy-keys
+          defaultMode: 0440
+          # The dispatcher replaces this list with the building
+          # repository's key and known_hosts.
+          items:
+            - key: known_hosts
+              path: known_hosts
+      - name: postgres-config
+        configMap:
+          name: ci-build-postgres
+      - name: buildkitd-config
+        configMap:
+          name: ci-buildkitd

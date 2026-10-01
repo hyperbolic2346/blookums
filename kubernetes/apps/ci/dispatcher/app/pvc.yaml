@@ -1,0 +1,61 @@
+---
+# Build logs kept by the dispatcher (config.json: logRetentionDays,
+# logMaxBytes).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ci-dispatcher-logs
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: ${CLUSTER_STORAGE_BLOCK_SSD_3_REPLICA}
+---
+# Build caches, one per repository and lane: npm's download cache for the
+# test step and BuildKit's layer store for the build step (bounded by
+# buildkitd.toml). Builds in a lane run one at a time, so each volume has a
+# single user. Pull-request builds never mount the trusted volumes.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ci-cache-stockpile-trusted
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 25Gi
+  storageClassName: ${CLUSTER_STORAGE_BLOCK_SSD_3_REPLICA}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ci-cache-stockpile-untrusted
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 25Gi
+  storageClassName: ${CLUSTER_STORAGE_BLOCK_SSD_3_REPLICA}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ci-cache-sutler-trusted
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 25Gi
+  storageClassName: ${CLUSTER_STORAGE_BLOCK_SSD_3_REPLICA}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ci-cache-sutler-untrusted
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 25Gi
+  storageClassName: ${CLUSTER_STORAGE_BLOCK_SSD_3_REPLICA}
