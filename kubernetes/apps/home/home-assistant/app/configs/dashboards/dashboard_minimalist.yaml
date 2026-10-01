@@ -541,26 +541,24 @@ views:
             cards:
               - type: gauge
                 name: Hummer Battery
-                entity: sensor.hummer_battery_percent
+                entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_charge_state
                 min: 0
                 max: 100
               - type: gauge
                 name: Hummer Range (mi)
-                entity: sensor.hummer_range_miles
-                min: 0
-                max: 400
+                entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_range_mi
           - type: entities
-            title: Hummer EV Status
-            show_header_toggle: false
             entities:
-              - entity: binary_sensor.hummer_plugged_in
+              - entity: binary_sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_plug_state
                 name: Plugged In
-              - entity: binary_sensor.hummer_charging
+              - entity: binary_sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_charge_state
                 name: Charging
-              - entity: sensor.hummer_charging_power_kw
-                name: Charging Power (kW)
-              - entity: sensor.hummer_charge_energy_kwh
-                name: Charge Energy (kWh)
+              - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_charge_voltage
+                name: Charge Voltage
+              - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_lifetime_energy_used
+                name: Lifetime Energy (kWh)
+              - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_odo_read_mi
+                name: Odometer (mi)
 
           - type: heading
             heading: Garage
