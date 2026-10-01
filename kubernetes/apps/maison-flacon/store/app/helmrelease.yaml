@@ -29,7 +29,16 @@ spec:
     controllers:
       # Medusa API + admin dashboard (/app). Recreate (the chart default)
       # because the uploads volume is ReadWriteOnce.
+      # Medusa web servers: Store API, admin dashboard and uploads. Rolling
+      # updates: a new copy must pass its health check before an old one
+      # stops, so the shop stays up through a deploy. Uploads are on CephFS
+      # (ReadWriteMany), which every copy mounts.
       backend:
+        replicas: 1
+        strategy: RollingUpdate
+        rollingUpdate:
+          surge: 1
+          unavailable: 0
         annotations:
           reloader.stakater.com/auto: "true"
         pod:
@@ -61,7 +70,6 @@ spec:
               STORE_CORS: "https://maison-flacon.com"
               ADMIN_CORS: "https://maison-flacon.com"
               AUTH_CORS: "https://maison-flacon.com"
-              MEDUSA_WORKER_MODE: "shared"
               ADMIN_EMAIL: "mike@nerdbucket.org"
               # Starting value for the owner's alerts; she changes it in the
               # admin under Settings > Alerts.
@@ -131,7 +139,10 @@ spec:
         containers:
           main:
             image: *backendImage
-            env: *backendEnv
+            env:
+              <<: *backendEnv
+              # Web requests only; subscribers and jobs run in the worker.
+              MEDUSA_WORKER_MODE: "server"
             envFrom: *backendEnvFrom
             probes:
               liveness: &backendProbe
@@ -160,6 +171,44 @@ spec:
                 memory: 512Mi
               limits:
                 memory: 1536Mi
+      # Medusa worker: event subscribers (emails, alerts, storefront refresh)
+      # and scheduled jobs. Exactly one, so each event is handled once. It
+      # runs no migrations; the web servers' init containers do.
+      worker:
+        replicas: 1
+        strategy: Recreate
+        annotations:
+          reloader.stakater.com/auto: "true"
+        pod:
+          securityContext:
+            fsGroup: 1000
+            fsGroupChangePolicy: OnRootMismatch
+        containers:
+          main:
+            image: *backendImage
+            env:
+              <<: *backendEnv
+              MEDUSA_WORKER_MODE: "worker"
+              DISABLE_MEDUSA_ADMIN: "true"
+            envFrom: *backendEnvFrom
+            probes:
+              liveness: *backendProbe
+              readiness: *backendProbe
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: 9000
+                  periodSeconds: 5
+                  failureThreshold: 36
+            resources:
+              requests:
+                cpu: 25m
+                memory: 384Mi
+              limits:
+                memory: 1Gi
       # Next.js storefront. Builds when the container starts (it needs the
       # running backend and its publishable key), so startup is slow by design.
       storefront:
@@ -265,13 +314,17 @@ spec:
       # Product images uploaded through the admin (file-local provider).
       # The claim comes from the volsync component (see ks.yaml), which
       # backs it up to R2 nightly and restores it if the volume is ever lost.
+      # It is CephFS, shared by every backend copy and the worker.
       uploads:
-        existingClaim: maison-flacon-uploads
+        existingClaim: maison-flacon-media
         advancedMounts:
           backend:
             # The catalog seed uploads product images during migration.
             02-migrate:
               - path: /app/static
+            main:
+              - path: /app/static
+          worker:
             main:
               - path: /app/static
     route:
