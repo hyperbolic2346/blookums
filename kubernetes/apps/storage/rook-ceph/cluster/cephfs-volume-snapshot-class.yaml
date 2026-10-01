@@ -1,0 +1,17 @@
+---
+# Snapshots for the shared CephFS filesystem (storage class
+# ceph-ssd-3-replica-filesystem), so volsync can back up CephFS volumes the
+# same way it backs up block volumes (csi-ceph-block, made by the chart).
+# Kept out of the rook-ceph-cluster HelmRelease on purpose: enabling the
+# chart's cephFileSystemVolumeSnapshotClass would mean upgrading the Ceph
+# release for a one-object change.
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: csi-ceph-filesystem
+driver: storage.cephfs.csi.ceph.com
+deletionPolicy: Delete
+parameters:
+  clusterID: storage
+  csi.storage.k8s.io/snapshotter-secret-name: rook-csi-cephfs-provisioner
+  csi.storage.k8s.io/snapshotter-secret-namespace: storage
