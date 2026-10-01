@@ -34,7 +34,7 @@ spec:
       # stops, so the shop stays up through a deploy. Uploads are on CephFS
       # (ReadWriteMany), which every copy mounts.
       backend:
-        replicas: 1
+        replicas: 2
         strategy: RollingUpdate
         rollingUpdate:
           surge: 1
@@ -46,6 +46,16 @@ spec:
             # Image runs as node (1000); the uploads volume must be writable.
             fsGroup: 1000
             fsGroupChangePolicy: OnRootMismatch
+          # One copy per machine where possible, so losing a node does not
+          # take both down.
+          topologySpreadConstraints:
+            - maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: ScheduleAnyway
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: maison-flacon
+                  app.kubernetes.io/controller: backend
         initContainers:
           # 1) create the maison_flacon database on the shared CNPG cluster
           01-init-db:
