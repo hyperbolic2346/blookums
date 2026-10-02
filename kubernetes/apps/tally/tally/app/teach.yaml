@@ -29,7 +29,7 @@ spec:
         - name: tally-ghcr-pull
       containers:
         - name: nginx
-          image: ghcr.io/hyperbolic2346/tally-teach:0.2.0
+          image: ghcr.io/hyperbolic2346/tally-teach:97d29c1
           ports:
             - name: http
               containerPort: 8080

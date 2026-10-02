@@ -19,8 +19,14 @@ spec:
   replicas: 1
   # `prisma migrate deploy` runs in an init container; Recreate keeps exactly one migrator
   # running across a rollout.
+  # Rolling, with the old pod kept until the new one is Ready: a missing or broken image must
+  # never take the API down (Recreate did exactly that for ten hours on 2026-10-02).
+  # Migrations are additive, so old and new can overlap briefly.
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels: *labels
   template:
@@ -48,7 +54,7 @@ spec:
               drop: ["ALL"]
         # 2) apply the Prisma migrations before anything serves
         - name: 02-migrate
-          image: &apiImage ghcr.io/hyperbolic2346/tally-server:0.2.0
+          image: &apiImage ghcr.io/hyperbolic2346/tally-server:6ae1519
           command: ["npx", "prisma", "migrate", "deploy"]
           envFrom: &envFrom
             - secretRef:
