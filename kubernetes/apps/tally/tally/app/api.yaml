@@ -48,7 +48,7 @@ spec:
               drop: ["ALL"]
         # 2) apply the Prisma migrations before anything serves
         - name: 02-migrate
-          image: &apiImage ghcr.io/hyperbolic2346/tally-server:0.1.0
+          image: &apiImage ghcr.io/hyperbolic2346/tally-server:0.2.0
           command: ["npx", "prisma", "migrate", "deploy"]
           envFrom: &envFrom
             - secretRef:
