@@ -238,6 +238,11 @@ Master Bath Fan:
   # 2026-08-17 and left the fan idle at +28pp with the bathroom at 90%.
   reference_mode: min
   start_gap_pp: 35
+  # v3.1 shower-start trigger: a shower steps the sensor 30-45pp in 2min, a bath
+  # creeps ~1pp/min (never >7pp in 2min). Fires immediately, ahead of the gap test.
+  jump_pp: 12
+  jump_seconds: 180
+  jump_quiet_minutes: 45
   stop_gap_pp: 22
   # Everyday ending: 15min after you leave, provided the room is no longer badly
   # soaked. Above +25pp it keeps working instead of quitting with the mirror

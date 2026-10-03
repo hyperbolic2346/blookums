@@ -36,6 +36,12 @@ import time
 # soaked_gap_pp: above this the fan keeps going even though the room is empty,
 #                rather than stopping with the mirror still fogged (default 25)
 # min_runtime_minutes: floor on any run, prevents chatter (default 10)
+# jump_pp / jump_seconds: SHOWER START. If the bath sensor rises jump_pp above the
+#                    lowest reading in effect over the last jump_seconds, start
+#                    at once - no gap test, no confirm, no cooldown (defaults
+#                    12 / 180). 0 disables.
+# jump_quiet_minutes: ignore jumps for this long after the fan stops (default 45) -
+#                    a wet room rebounds 12-20pp once the fan is off.
 # start_confirm_seconds: the start gap must hold this long before the fan starts,
 #                    so a transient (HA restarting, MQTT entities repopulating
 #                    one by one) cannot trigger a run (default 90)
@@ -53,6 +59,27 @@ import time
 # timed_minutes: how long a timed run lasts (default 30)
 #
 # Release Notes
+#
+# Version 3.1:
+#   Fast shower-start trigger in front of the differential. v3.0 waited for a
+#   +35pp gap held 90s and only re-checked once a minute, so the fan (and the
+#   shower light it drives) came on 2-3 minutes into every shower, and missed
+#   some outright: on 2026-10-03 the bath went 56->71% in one reading but
+#   entry1 rose alongside it and the gap topped out at +33.
+#
+#   A shower is a near-vertical step - 30-45pp inside two minutes in every
+#   shower over 2026-09-19..10-03. Baths creep ~1pp/min and never rose more
+#   than 7pp in any two minutes. +12pp over 3 minutes caught every shower and
+#   none of the baths in that replay. Baseline is the MIN in effect over the
+#   window (including the reading carried in from before it - the sensor only
+#   reports on change), not a median, so a fast ramp can't chase itself the
+#   way v2's median window did. Once started, v3.0's logic decides when to stop.
+#
+#   Muted for jump_quiet_minutes after any fan-off: in the same replay the room
+#   rebounded 12-20pp within 2-36 minutes of the fan stopping after most
+#   showers, which would have restarted it every time. A genuine second shower
+#   in that window still reaches 90%+ and is caught by the gap test instead.
+#
 #
 # Version 3.0:
 #   Humidity DIFFERENTIAL control. All rate/spike/"shower detection" logic is gone.
@@ -131,6 +158,11 @@ class BathFan(hass.Hass):
     self.soaked_gap = float(self.args.get("soaked_gap_pp", 25))
     self.min_runtime_s = float(self.args.get("min_runtime_minutes", 10)) * 60
     self.presence = list(self.args.get("presence_sensors", []))
+    self.jump_pp = float(self.args.get("jump_pp", 12))
+    self.jump_s = float(self.args.get("jump_seconds", 180))
+    self.jump_quiet_s = float(self.args.get("jump_quiet_minutes", 45)) * 60
+    self.bath_history = []
+    self.fan_off_at = None
     self.start_confirm_s = float(self.args.get("start_confirm_seconds", 90))
     self.progress_check_s = float(self.args.get("progress_check_minutes", 45)) * 60
     self.progress_pp = float(self.args.get("progress_pp", 2))
@@ -176,10 +208,10 @@ class BathFan(hass.Hass):
       self.listen_state(self.timed_press, self.args["timed_button"])
     self.run_every(self.evaluate, "now+15", interval)
 
-    self.log("Bath fan v3.0: {} vs {}{} - on at +{}pp, off at +{}pp, "
-             "re-evaluated every {}s, cap {}min".format(
-        self.sensor, self.ref_mode, self.refs, self.start_gap, self.stop_gap,
-        int(interval), int(self.max_runtime_s / 60)))
+    self.log("Bath fan v3.1: {} vs {}{} - on at +{}pp or a +{}pp jump in {}s, "
+             "off at +{}pp, re-evaluated every {}s, cap {}min".format(
+        self.sensor, self.ref_mode, self.refs, self.start_gap, self.jump_pp,
+        int(self.jump_s), self.stop_gap, int(interval), int(self.max_runtime_s / 60)))
 
   # --- helpers --------------------------------------------------------------
 
@@ -354,7 +386,39 @@ class BathFan(hass.Hass):
   def sensor_change(self, entity, attribute, old, new, kwargs):
     if new not in (None, "unknown", "unavailable"):
       self.last_reading_at = time.time()
+    if self.shower_started():
+      return
     self.evaluate({})
+
+  def shower_started(self):
+    """Fast path: start the fan the moment the bath sensor jumps, so it and the
+    shower light are on before anyone is in the water. See v3.1 notes."""
+    now = time.time()
+    bath = self.humidity(self.sensor)
+    if bath is None:
+      return False
+    # Keep the newest reading OLDER than the window too: the sensor only sends
+    # on change, so in a quiet room that is the value in effect at its start.
+    before = [h for h in self.bath_history if now - h[0] > self.jump_s]
+    self.bath_history = before[-1:] + [h for h in self.bath_history
+                                       if now - h[0] <= self.jump_s]
+    self.bath_history.append((now, bath))
+    if self.jump_pp <= 0 or len(self.bath_history) < 2:
+      return False
+    low = min(v for _, v in self.bath_history[:-1])
+    if bath - low < self.jump_pp:
+      return False
+    if self.override_on() or self.get_state(self.fan) == "on" or self.timed_until:
+      return False
+    if self.fan_off_at is not None and now - self.fan_off_at < self.jump_quiet_s:
+      self.log("Jump {:.0f}% -> {:.0f}% ignored - fan stopped {:.0f}min ago, likely "
+               "the room rebounding".format(low, bath, (now - self.fan_off_at) / 60))
+      return False
+    self.blocked_until = None
+    self.above_since = None
+    self.set_fan(True, "shower started ({:.0f}% -> {:.0f}% within {:.0f}s)".format(
+        low, bath, self.jump_s))
+    return True
 
   def evaluate(self, kwargs):
     now = time.time()
@@ -468,6 +532,7 @@ class BathFan(hass.Hass):
       if 'notify' in self.args and self.override_on():
         self.notify_handle = self.run_in(self.override_reminder, self.notify_after_s)
     elif new == "off":
+      self.fan_off_at = time.time()
       # Someone turned it off by hand while the room is still humid: respect
       # that instead of immediately switching it back on.
       if self.running_since is not None and not self.override_on():
