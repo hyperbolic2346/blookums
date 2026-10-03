@@ -40,8 +40,10 @@ import time
 #                    lowest reading in effect over the last jump_seconds, start
 #                    at once - no gap test, no confirm, no cooldown (defaults
 #                    12 / 180). 0 disables.
-# jump_quiet_minutes: ignore jumps for this long after the fan stops (default 45) -
-#                    a wet room rebounds 12-20pp once the fan is off.
+# jump_quiet_minutes: after the fan stops, neither start path may restart it for
+#                    this long while the room stays empty (default 45) - a wet
+#                    room rebounds 12-20pp once the fan is off. Walking back in
+#                    lifts it.
 # start_confirm_seconds: the start gap must hold this long before the fan starts,
 #                    so a transient (HA restarting, MQTT entities repopulating
 #                    one by one) cannot trigger a run (default 90)
@@ -78,7 +80,14 @@ import time
 #   Muted for jump_quiet_minutes after any fan-off: in the same replay the room
 #   rebounded 12-20pp within 2-36 minutes of the fan stopping after most
 #   showers, which would have restarted it every time. A genuine second shower
-#   in that window still reaches 90%+ and is caught by the gap test instead.
+#   in that window means someone walked back in, which lifts the mute.
+#
+#   No stopping while occupied. v3.0's "gap closed" stop fired mid-shower: the
+#   fan holds the sensor near 60% while the water runs, so after the 10min
+#   minimum the gap read closed, the fan stopped, the sensor went back to 99%
+#   and the fan restarted - 4 cycles in an hour on 2026-09-28, 2 on 10-01.
+#   Every automatic stop now needs the room Empty for post_exit_minutes, and
+#   the same quiet window blocks the gap test from answering the rebound.
 #
 #
 # Version 3.0:
@@ -163,6 +172,7 @@ class BathFan(hass.Hass):
     self.jump_quiet_s = float(self.args.get("jump_quiet_minutes", 45)) * 60
     self.bath_history = []
     self.fan_off_at = None
+    self.rebound_hold_until = None
     self.start_confirm_s = float(self.args.get("start_confirm_seconds", 90))
     self.progress_check_s = float(self.args.get("progress_check_minutes", 45)) * 60
     self.progress_pp = float(self.args.get("progress_pp", 2))
@@ -351,6 +361,11 @@ class BathFan(hass.Hass):
         self.empty_since = time.time()
         self.entered_since_empty = False
     else:
+      if self.empty_since is not None and (self.fan_off_at or self.rebound_hold_until):
+        # Someone came back in after the fan stopped: a humidity jump now is a
+        # new shower, not the room rebounding.
+        self.fan_off_at = None
+        self.rebound_hold_until = None
       self.empty_since = None
       self.entered_since_empty = False
     self.evaluate({})
@@ -476,9 +491,20 @@ class BathFan(hass.Hass):
         self.say("running", "Running (minimum {:.0f}min): bath {:.0f}%, house "
                             "{:.0f}%, +{:.0f}pp".format(
             self.min_runtime_s / 60, bath, ref, gap))
+      elif empty_for is None or empty_for < self.post_exit_s:
+        # Never stop with someone in the room - the fan holds the sensor down
+        # while the shower runs, so a "closed" gap then is the fan, not a dry
+        # room (v3.1 notes). Only the cap below can end an occupied run.
+        if self.running_since and now - self.running_since >= self.max_runtime_s:
+          self.set_fan(False, "{:.0f}min cap reached".format(self.max_runtime_s / 60))
+          self.blocked_until = now + self.cooldown_s
+        else:
+          self.say("running", "Running (room in use): bath {:.0f}%, house {:.0f}%, "
+                              "+{:.0f}pp".format(bath, ref, gap))
       elif settled is not None and settled <= self.stop_gap:
         self.set_fan(False, "gap closed ({:.0f}% vs {:.0f}% house, +{:.0f}pp "
                             "sustained)".format(bath, ref, settled))
+        self.rebound_hold_until = now + self.jump_quiet_s
       elif (empty_for is not None and empty_for >= self.post_exit_s
             and settled is not None and settled <= self.soaked_gap):
         # The normal ending: you left, the fan ran on a while, the room is no
@@ -486,6 +512,7 @@ class BathFan(hass.Hass):
         # is the 2026-08-17 case where a fixed timer switched off at 99%.
         self.set_fan(False, "bathroom empty {:.0f}min and down to +{:.0f}pp".format(
             empty_for / 60, settled))
+        self.rebound_hold_until = now + self.jump_quiet_s
       elif self.stalled(now, settled):
         self.set_fan(False, "no progress in {:.0f}min (+{:.0f}pp -> +{:.0f}pp) - the "
                             "fan cannot win this one".format(
@@ -510,6 +537,12 @@ class BathFan(hass.Hass):
       if now - self.above_since < self.start_confirm_s:
         self.say("confirming", "Gap +{:.0f}pp - confirming for {:.0f}s before starting".format(
             gap, self.start_confirm_s))
+        return
+      if (self.rebound_hold_until and now < self.rebound_hold_until
+          and self.empty_since is not None):
+        self.say("rebound", "Wet (+{:.0f}pp) but the fan stopped {:.0f}min ago and "
+                            "nobody came back - treating it as rebound".format(
+            gap, (now - self.fan_off_at) / 60 if self.fan_off_at else 0))
         return
       if self.blocked_until and now < self.blocked_until:
         self.say("holding", "Wet (+{:.0f}pp) but holding off until {:.0f}min cooldown "
