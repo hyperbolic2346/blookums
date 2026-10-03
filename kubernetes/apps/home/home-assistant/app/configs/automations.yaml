@@ -802,3 +802,40 @@
       title: Bedtime Security Check
       message: "{{ issues | join(', ') }}"
   mode: single
+- id: hummer_refresh_ev_charging_metrics
+  alias: Hummer - Refresh EV charging metrics
+  description: >
+    Asks OnStar for live charging metrics (ETA, target %, pack kWh) hourly
+    while charging, and once whenever the plug/charge state flips, so the
+    Energy dashboard's ETA and estimated kW/amps stay current. OnStar
+    rate-limits (429s) below ~30 min and onstar2mqtt already polls
+    diagnostics every 30 min, so keep this at >= 60 min.
+  triggers:
+  - trigger: time_pattern
+    minutes: 15
+    id: hourly
+  - trigger: state
+    entity_id:
+    - binary_sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_plug_state
+    - binary_sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_charge_state
+    from:
+    - 'on'
+    - 'off'
+    to:
+    - 'on'
+    - 'off'
+    for: '00:02:00'
+    id: changed
+  conditions:
+  - or:
+    - condition: trigger
+      id: changed
+    - condition: state
+      entity_id: binary_sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_charge_state
+      state: 'on'
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: homeassistant/1GKB0SDCXRU111674/command
+      payload: '{"command": "refreshEVChargingMetrics"}'
+  mode: single

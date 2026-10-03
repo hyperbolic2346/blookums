@@ -184,7 +184,19 @@ prometheus:
 
 lovelace:
   mode: yaml
-  resources: []
+  # Custom cards. Files live on the PVC under www/community/<repo>/ (HACS
+  # layout, served at /hacsfiles/); YAML mode means HACS can't register them.
+  resources:
+    - url: /hacsfiles/vehicle-status-card/vehicle-status-card.js
+      type: module
+    - url: /hacsfiles/power-flow-card-plus/power-flow-card-plus.js
+      type: module
+    - url: /hacsfiles/apexcharts-card/apexcharts-card.js
+      type: module
+    - url: /hacsfiles/lovelace-mushroom/mushroom.js
+      type: module
+    - url: /hacsfiles/mini-graph-card/mini-graph-card-bundle.js
+      type: module
   dashboards:
     dashboard-simple:
       mode: yaml
@@ -210,3 +222,9 @@ lovelace:
       icon: mdi:tablet
       show_in_sidebar: true
       filename: dashboards/dashboard_ipad.yaml
+    dashboard-energy:
+      mode: yaml
+      title: Energy
+      icon: mdi:lightning-bolt
+      show_in_sidebar: true
+      filename: dashboards/dashboard_energy.yaml

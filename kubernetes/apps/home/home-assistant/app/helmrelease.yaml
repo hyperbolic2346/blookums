@@ -154,6 +154,9 @@ spec:
           - path: /config/sensors/dewpoint.yaml
             subPath: dewpoint.yaml
             readOnly: true
+          - path: /config/sensors/hummer.yaml
+            subPath: hummer.yaml
+            readOnly: true
       config-mqtt:
         type: configMap
         name: home-assistant-mqtt
@@ -182,6 +185,9 @@ spec:
             readOnly: true
           - path: /config/dashboards/map.yaml
             subPath: map.yaml
+            readOnly: true
+          - path: /config/dashboards/dashboard_energy.yaml
+            subPath: dashboard_energy.yaml
             readOnly: true
       secrets-yaml:
         type: secret

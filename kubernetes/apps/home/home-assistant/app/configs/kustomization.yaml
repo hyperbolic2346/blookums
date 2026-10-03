@@ -21,6 +21,7 @@ configMapGenerator:
       - sensors/front_door.yaml
       - sensors/office.yaml
       - sensors/dewpoint.yaml
+      - sensors/hummer.yaml
   - name: home-assistant-mqtt
     files:
       - mqtt/gate.yaml
@@ -32,3 +33,4 @@ configMapGenerator:
       - dashboards/dashboard_minimalist.yaml
       - dashboards/dashboard_ipad.yaml
       - dashboards/map.yaml
+      - dashboards/dashboard_energy.yaml

@@ -1,0 +1,129 @@
+# Derived Hummer EV stats for the Energy dashboard.
+#
+# onstar2mqtt never reports charge power or current (OnStar returns `cpwr` but
+# it isn't mapped), so those are estimated from OnStar's own charge ETA:
+#   energy still needed to reach the target / hours until the ETA.
+# The ETA, target, and pack-energy sensors only update when
+# refreshEVChargingMetrics runs (see the hummer_refresh_ev_charging_metrics
+# automation), so the estimate is anchored to that refresh's timestamp rather
+# than now() - otherwise it would drift upward between refreshes.
+- sensor:
+    - name: Hummer Pack Size
+      unique_id: hummer_pack_size_kwh
+      icon: mdi:car-battery
+      unit_of_measurement: kWh
+      state: >
+        {% set soc = states('sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_charging_battery_level') | float(0) %}
+        {% set kwh = states('sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_battery_capacity') | float(0) %}
+        {{ (kwh / soc * 100) | round(1) }}
+      availability: >
+        {{ states('sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_charging_battery_level') | float(0) > 5
+           and has_value('sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_battery_capacity') }}
+
+    - name: Hummer Energy To Target
+      unique_id: hummer_energy_to_target_kwh
+      icon: mdi:battery-arrow-up
+      unit_of_measurement: kWh
+      state: >
+        {% set soc = states('sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_charge_state') | float(0) %}
+        {% set tgt = states('sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_target_charge_level') | float(0) %}
+        {{ ([tgt - soc, 0] | max / 100 * states('sensor.hummer_pack_size') | float(0)) | round(1) }}
+      availability: >
+        {{ has_value('sensor.hummer_pack_size')
+           and has_value('sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_target_charge_level') }}
+
+    - name: Hummer Charge Power
+      unique_id: hummer_charge_power_w
+      icon: mdi:ev-station
+      unit_of_measurement: W
+      device_class: power
+      state_class: measurement
+      state: >
+        {% set charging = is_state('binary_sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_charge_state', 'on') %}
+        {% set eta = as_datetime(states('sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_charging_eta')) %}
+        {% set asof = as_datetime(states('sensor.2024_gmc_hummer_ev_suv_command_status_monitor_sensors_2024_gmc_hummer_ev_suv_command_status_monitor_sensors_command_refreshevchargingmetrics_status_monitor_timestamp')) %}
+        {% set soc = states('sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_charging_battery_level') | float(0) %}
+        {% set tgt = states('sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_target_charge_level') | float(0) %}
+        {% set pack = states('sensor.hummer_pack_size') | float(0) %}
+        {% if charging and eta and asof and eta > asof and tgt > soc %}
+          {% set hours = (eta - asof).total_seconds() / 3600 %}
+          {{ ((tgt - soc) / 100 * pack / hours * 1000) | round(0) }}
+        {% else %}
+          0
+        {% endif %}
+      attributes:
+        estimated: "true"
+
+    # 120V L1 vs 240V L2 guessed from the power level: OnStar's charge_voltage
+    # sensor is only refreshed by the car occasionally (last seen 2026-07).
+    - name: Hummer Charge Current
+      unique_id: hummer_charge_current_a
+      icon: mdi:current-ac
+      unit_of_measurement: A
+      device_class: current
+      state_class: measurement
+      state: >
+        {% set w = states('sensor.hummer_charge_power') | float(0) %}
+        {% set volts = 240 if w > 2400 else 120 %}
+        {{ (w / volts) | round(1) }}
+      attributes:
+        estimated: "true"
+        assumed_voltage: >
+          {{ 240 if states('sensor.hummer_charge_power') | float(0) > 2400 else 120 }}
+
+    # Wall energy, assuming ~88% charging efficiency, at the current tier rate.
+    - name: Hummer Cost To Target
+      unique_id: hummer_cost_to_target
+      icon: mdi:cash
+      unit_of_measurement: USD
+      state: >
+        {{ (states('sensor.hummer_energy_to_target') | float(0) / 0.88
+            * states('sensor.electric_rate') | float(0)) | round(2) }}
+      availability: "{{ has_value('sensor.hummer_energy_to_target') and has_value('sensor.electric_rate') }}"
+
+    - name: Hummer Efficiency
+      unique_id: hummer_efficiency_mi_kwh
+      icon: mdi:leaf
+      unit_of_measurement: mi/kWh
+      state: >
+        {% set mi = states('sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_odo_read_mi') | float(0) %}
+        {% set kwh = states('sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_lifetime_energy_used') | float(0) %}
+        {{ (mi / kwh) | round(2) }}
+      availability: "{{ states('sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_lifetime_energy_used') | float(0) > 0 }}"
+
+    - name: Hummer Cost Per Mile
+      unique_id: hummer_cost_per_mile
+      icon: mdi:road-variant
+      unit_of_measurement: USD/mi
+      state: >
+        {{ (states('sensor.electric_rate') | float(0) / 0.88
+            / states('sensor.hummer_efficiency') | float(1)) | round(3) }}
+      availability: "{{ has_value('sensor.hummer_efficiency') and has_value('sensor.electric_rate') }}"
+
+    # When the truck last actually reported in. onstar2mqtt re-publishes cached
+    # values every poll, so entity last_changed is misleading.
+    - name: Hummer Last Report
+      unique_id: hummer_last_report
+      icon: mdi:access-point-network
+      device_class: timestamp
+      state: >
+        {% set a = as_datetime(state_attr('sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_charge_state', 'last_updated')) %}
+        {% set b = as_datetime(states('sensor.2024_gmc_hummer_ev_suv_command_status_monitor_sensors_2024_gmc_hummer_ev_suv_command_status_monitor_sensors_command_refreshevchargingmetrics_status_monitor_timestamp')) %}
+        {% set ts = [a, b] | select | list %}
+        {{ (ts | max).isoformat() if ts else none }}
+
+    - name: Hummer Charge Status
+      unique_id: hummer_charge_status
+      state: >
+        {% set plugged = is_state('binary_sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_plug_state', 'on') %}
+        {% set charging = is_state('binary_sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_charge_state', 'on') %}
+        {% set soc = states('sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_charge_state') | float(0) %}
+        {% set tgt = states('sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_target_charge_level') | float(100) %}
+        {% if not plugged %}Unplugged
+        {% elif charging %}Charging
+        {% elif soc >= tgt - 0.5 %}Complete
+        {% else %}Plugged in{% endif %}
+      icon: >
+        {% if is_state('binary_sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_plug_state', 'off') %}mdi:power-plug-off
+        {% elif is_state('binary_sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_charge_state', 'on') %}mdi:battery-charging
+        {% else %}mdi:power-plug{% endif %}

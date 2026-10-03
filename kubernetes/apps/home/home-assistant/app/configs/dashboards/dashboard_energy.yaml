@@ -1,0 +1,490 @@
+# Energy dashboard - wide layout for PC/iPad.
+# Hero: Hummer EV (onstar2mqtt). Derived charge kW/A/cost live in
+# sensors/hummer.yaml; ETA/target refresh hourly while charging via the
+# hummer_refresh_ev_charging_metrics automation.
+#
+# Custom cards (lovelace.resources in configuration.yaml):
+#   vehicle-status-card, power-flow-card-plus, apexcharts-card, mushroom
+#
+# Palette: EV green #2fbf71, house amber #f5a524, left panel #4c9aff,
+# right panel #a78bfa, muted #8b8d98.
+title: Energy
+views:
+- type: sections
+  title: Energy
+  path: energy
+  icon: mdi:lightning-bolt
+  max_columns: 4
+  dense_section_placement: true
+  badges:
+  - type: entity
+    entity: sensor.house_power
+    name: House
+    show_name: true
+    color: amber
+  - type: entity
+    entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_charge_state
+    name: Hummer
+    show_name: true
+    icon: mdi:car-electric
+    color: green
+  - type: entity
+    entity: sensor.hummer_charge_status
+    show_name: false
+    color: green
+    visibility:
+    - condition: state
+      entity: sensor.hummer_charge_status
+      state: Charging
+  - type: entity
+    entity: sensor.electric_bill_estimate
+    name: Bill so far
+    show_name: true
+    icon: mdi:receipt-text-outline
+  sections:
+
+  # ── Hummer hero ─────────────────────────────────────────────────────
+  - type: grid
+    column_span: 2
+    cards:
+    - type: heading
+      heading: Hummer EV
+      heading_style: title
+      icon: mdi:car-electric
+      badges:
+      - type: entity
+        entity: sensor.hummer_last_report
+        show_state: true
+        show_icon: true
+        color: grey
+    - type: custom:vehicle-status-card
+      grid_options:
+        columns: full
+      name: 2024 GMC Hummer EV SUV
+      images:
+      - image_entity: image.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_vehicle_image
+      indicator_rows:
+      - alignment: justify
+        no_wrap: true
+        row_items:
+        - type: entity
+          entity: sensor.hummer_charge_status
+          name: Status
+          color_template: >
+            {% set s = states('sensor.hummer_charge_status') %}
+            {{ 'green' if s == 'Charging' else 'teal' if s == 'Complete' else 'amber' if s == 'Plugged in' else 'grey' }}
+        - type: entity
+          entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_range
+          name: Range
+          icon: mdi:map-marker-distance
+        - type: entity
+          entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_odo_read_mi
+          name: Odometer
+          icon: mdi:counter
+        - type: group
+          name: Tires
+          icon: mdi:car-tire-alert
+          items:
+          - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_left_front_tire_pressure_psi
+            name: Front left
+          - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_right_front_tire_pressure_psi
+            name: Front right
+          - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_left_rear_tire_pressure_psi
+            name: Rear left
+          - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_right_rear_tire_pressure_psi
+            name: Rear right
+          - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_front_placard_psi
+            name: Spec (front & rear)
+        - type: group
+          name: Health
+          icon: mdi:shield-car
+          items:
+          - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_high_voltage_battery_status
+            name: HV battery
+          - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_lv_battery_status
+            name: 12V battery
+          - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_lithium_ion_battery
+            name: Li-ion pack
+          - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_electric_drive_unit
+            name: Drive unit
+          - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_regenerative_braking_system
+            name: Regen braking
+          - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_brake_fluid_low_status
+            name: Brake fluid
+          - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_washer_fluid_low_status
+            name: Washer fluid
+          - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_vehicle_recalls
+            name: Open recalls
+      range_info:
+      - energy_level:
+          entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_charge_state
+          icon: mdi:battery-high
+          value_position: inside
+        range_level:
+          entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_range
+          value_position: inside
+        charging_entity: binary_sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_charge_state
+        charge_target_entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_target_charge_level
+        charge_target_tooltip: true
+        color_thresholds:
+        - value: 20
+          color: '#e5484d'
+        - value: 40
+          color: '#f5a524'
+        - value: 100
+          color: '#2fbf71'
+        bar_height: 20
+        bar_radius: 10
+      button_cards:
+      - name: Charging
+        entity: sensor.hummer_charge_power
+        icon: mdi:ev-station
+        color: green
+        card_type: default
+        sub_card:
+          default_card:
+          - title: Charging
+            items:
+            - entity: sensor.hummer_charge_status
+              name: Status
+            - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_charging_eta
+              name: Reaches target
+            - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_target_charge_level
+              name: Target
+            - entity: sensor.hummer_charge_power
+              name: Power (est.)
+            - entity: sensor.hummer_charge_current
+              name: Current (est.)
+            - entity: sensor.hummer_energy_to_target
+              name: Energy to target
+            - entity: sensor.hummer_cost_to_target
+              name: Cost to target
+            - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_charge_mode
+              name: Charge mode
+      - name: Tires
+        entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_tire_pressure_status
+        icon: mdi:car-tire-alert
+        card_type: tire
+        sub_card:
+          tire_card:
+            title: Tire pressure (spec 45 psi)
+            front_left:
+              entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_left_front_tire_pressure_psi
+              name: FL
+            front_right:
+              entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_right_front_tire_pressure_psi
+              name: FR
+            rear_left:
+              entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_left_rear_tire_pressure_psi
+              name: RL
+            rear_right:
+              entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_right_rear_tire_pressure_psi
+              name: RR
+      - name: Efficiency
+        entity: sensor.hummer_efficiency
+        icon: mdi:leaf
+        card_type: default
+        sub_card:
+          default_card:
+          - title: Efficiency
+            items:
+            - entity: sensor.hummer_efficiency
+              name: Lifetime
+            - entity: sensor.hummer_cost_per_mile
+              name: Home-charged cost per mile
+            - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_trip_consumption
+              name: Current trip
+            - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_lifetime_consumption
+              name: Lifetime consumption
+            - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_lifetime_energy_used
+              name: Lifetime energy
+            - entity: sensor.hummer_pack_size
+              name: Usable pack
+      - name: Trip
+        entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_trip_odometer
+        icon: mdi:map-marker-path
+        card_type: default
+        sub_card:
+          default_card:
+          - title: Odometer
+            items:
+            - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_odo_read_mi
+              name: Odometer
+            - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_trip_odometer
+              name: Trip
+            - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ambient_air_temperature_f
+              name: Outside temp (last report)
+      layout_config:
+        section_order:
+        - images
+        - indicators
+        - range_info
+        - buttons
+        images_swipe:
+          max_height: 240
+          autoplay: false
+          hide_pagination: true
+        button_grid:
+          rows: 1
+          columns: 4
+          swipe: false
+
+  # ── Charging detail ─────────────────────────────────────────────────
+  - type: grid
+    column_span: 2
+    cards:
+    - type: heading
+      heading: Charging
+      heading_style: title
+      icon: mdi:ev-station
+    - type: custom:mushroom-template-card
+      grid_options:
+        columns: full
+      entity: sensor.hummer_charge_status
+      icon: "{{ state_attr(entity, 'icon') }}"
+      color: >
+        {% set s = states(entity) %}
+        {{ 'green' if s == 'Charging' else 'teal' if s == 'Complete' else 'amber' if s == 'Plugged in' else 'disabled' }}
+      primary: >
+        {% set soc = states('sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_charge_state') | float(0) %}
+        {% set tgt = states('sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_target_charge_level') %}
+        {{ states(entity) }} · {{ soc | round(0) | int }}%{% if states(entity) == 'Charging' %} → {{ tgt }}%{% endif %}
+      secondary: >
+        {% set eta = as_datetime(states('sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_charging_eta')) %}
+        {% if states(entity) == 'Charging' and eta and eta > now() %}
+          Reaches target {{ as_local(eta).strftime('%a %-I:%M %p') }} — {{ time_until(eta) }} from now · ~{{ states('sensor.hummer_charge_power') | int }} W / {{ states('sensor.hummer_charge_current') }} A
+        {% elif states(entity) == 'Charging' %}
+          Charging · waiting for an OnStar ETA
+        {% else %}
+          {{ states('sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_range') | float(0) | round(0) | int }} mi of range
+        {% endif %}
+      multiline_secondary: true
+      tap_action:
+        action: more-info
+    - type: grid
+      grid_options:
+        columns: full
+      columns: 3
+      square: false
+      cards:
+      - type: tile
+        entity: sensor.hummer_charge_power
+        name: Power (est.)
+        color: green
+      - type: tile
+        entity: sensor.hummer_charge_current
+        name: Current (est.)
+        color: green
+      - type: tile
+        entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_target_charge_level
+        name: Target
+        icon: mdi:battery-arrow-up
+        color: green
+      - type: tile
+        entity: sensor.hummer_energy_to_target
+        name: To target
+        color: teal
+      - type: tile
+        entity: sensor.hummer_cost_to_target
+        name: Cost to target
+        color: teal
+      - type: tile
+        entity: sensor.hummer_cost_per_mile
+        name: Per mile
+        color: teal
+    - type: custom:apexcharts-card
+      grid_options:
+        columns: full
+      graph_span: 7d
+      header:
+        show: true
+        title: Charge level · 7 days
+        show_states: false
+      apex_config:
+        chart:
+          height: 200
+        legend:
+          show: false
+        grid:
+          borderColor: 'rgba(139,141,152,0.15)'
+      yaxis:
+      - min: 0
+        max: 100
+        decimals: 0
+        apex_config:
+          tickAmount: 4
+      series:
+      - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_charge_state
+        name: Charge
+        type: area
+        curve: stepline
+        color: '#2fbf71'
+        opacity: 0.25
+        stroke_width: 2
+        extend_to: now
+      - entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_ev_target_charge_level
+        name: Target
+        type: line
+        curve: stepline
+        color: '#8b8d98'
+        stroke_width: 1
+        stroke_dash: 4
+        extend_to: now
+
+  # ── House power ─────────────────────────────────────────────────────
+  - type: grid
+    column_span: 2
+    cards:
+    - type: heading
+      heading: House power
+      heading_style: title
+      icon: mdi:home-lightning-bolt
+    - type: custom:power-flow-card-plus
+      grid_options:
+        columns: full
+      kilo_threshold: 1000
+      base_decimals: 0
+      kilo_decimals: 1
+      max_expected_power: 12000
+      min_expected_power: 200
+      use_new_flow_rate_model: true
+      clickable_entities: true
+      entities:
+        grid:
+          entity: sensor.house_power
+          name: Utility
+        home:
+          name: House
+        individual:
+        - entity: sensor.left_panel_power
+          name: Left panel
+          icon: mdi:fuse
+          color: '#4c9aff'
+          display_zero: true
+        - entity: sensor.right_panel_power
+          name: Right panel
+          icon: mdi:fuse
+          color: '#a78bfa'
+          display_zero: true
+        - entity: sensor.hummer_charge_power
+          name: Hummer
+          icon: mdi:car-electric
+          color: '#2fbf71'
+          secondary_info:
+            entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_charge_state
+            unit_of_measurement: '%'
+            decimals: 0
+    - type: custom:apexcharts-card
+      grid_options:
+        columns: full
+      graph_span: 24h
+      stacked: true
+      header:
+        show: true
+        title: Last 24 hours
+        show_states: true
+        colorize_states: true
+      apex_config:
+        chart:
+          height: 220
+        legend:
+          show: false
+        grid:
+          borderColor: 'rgba(139,141,152,0.15)'
+      yaxis:
+      - min: 0
+        decimals: 0
+        apex_config:
+          tickAmount: 4
+      all_series_config:
+        type: area
+        curve: smooth
+        opacity: 0.35
+        stroke_width: 1.5
+        group_by:
+          func: avg
+          duration: 10min
+      series:
+      - entity: sensor.left_panel_power
+        name: Left panel
+        color: '#4c9aff'
+      - entity: sensor.right_panel_power
+        name: Right panel
+        color: '#a78bfa'
+
+  # ── Usage & cost ────────────────────────────────────────────────────
+  - type: grid
+    column_span: 2
+    cards:
+    - type: heading
+      heading: Usage & cost
+      heading_style: title
+      icon: mdi:cash-multiple
+    - type: grid
+      grid_options:
+        columns: full
+      columns: 3
+      square: false
+      cards:
+      - type: tile
+        entity: sensor.monthly_house_energy
+        name: This month
+        color: amber
+      - type: tile
+        entity: sensor.electric_bill_estimate
+        name: Bill estimate
+        icon: mdi:receipt-text-outline
+        color: amber
+      - type: tile
+        entity: sensor.electric_rate
+        name: Current rate
+        color: amber
+    - type: custom:apexcharts-card
+      grid_options:
+        columns: full
+      graph_span: 14d
+      span:
+        end: day
+      header:
+        show: true
+        title: Daily usage · 14 days
+        show_states: false
+      apex_config:
+        chart:
+          height: 220
+        legend:
+          show: true
+          position: top
+          horizontalAlign: right
+        grid:
+          borderColor: 'rgba(139,141,152,0.15)'
+        plotOptions:
+          bar:
+            borderRadius: 3
+      stacked: true
+      yaxis:
+      - min: 0
+        decimals: 0
+        apex_config:
+          tickAmount: 4
+          title:
+            text: kWh
+      series:
+      - entity: sensor.left_panel_energy
+        name: Left panel
+        type: column
+        color: '#4c9aff'
+        float_precision: 1
+        statistics:
+          type: change
+          period: day
+          align: start
+      - entity: sensor.right_panel_energy
+        name: Right panel
+        type: column
+        color: '#a78bfa'
+        float_precision: 1
+        statistics:
+          type: change
+          period: day
+          align: start
