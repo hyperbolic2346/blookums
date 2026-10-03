@@ -135,6 +135,9 @@ spec:
           - path: /config/groups.yaml
             subPath: groups.yaml
             readOnly: true
+          - path: /config/rest.yaml
+            subPath: rest.yaml
+            readOnly: true
       config-sensors:
         type: configMap
         name: home-assistant-sensors
@@ -156,6 +159,9 @@ spec:
             readOnly: true
           - path: /config/sensors/hummer.yaml
             subPath: hummer.yaml
+            readOnly: true
+          - path: /config/sensors/wildlife.yaml
+            subPath: wildlife.yaml
             readOnly: true
       config-mqtt:
         type: configMap
@@ -188,6 +194,9 @@ spec:
             readOnly: true
           - path: /config/dashboards/dashboard_energy.yaml
             subPath: dashboard_energy.yaml
+            readOnly: true
+          - path: /config/dashboards/dashboard_wildlife.yaml
+            subPath: dashboard_wildlife.yaml
             readOnly: true
       secrets-yaml:
         type: secret

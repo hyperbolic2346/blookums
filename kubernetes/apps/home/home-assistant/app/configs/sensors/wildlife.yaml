@@ -1,0 +1,27 @@
+# Snapshot images for the Wildlife dashboard. Event ids come from the rest
+# sensors in rest.yaml; HA fetches the JPEG from Frigate server-side.
+- image:
+  - name: Wildlife Latest Snapshot
+    unique_id: wildlife_latest_snapshot
+    url: "http://frigate.home.svc.cluster.local:5000/api/events/{{ state_attr('sensor.wildlife_latest', 'id') }}/snapshot.jpg?bbox=1"
+  - name: Last Package Snapshot
+    unique_id: frigate_last_package_snapshot
+    url: "http://frigate.home.svc.cluster.local:5000/api/events/{{ state_attr('sensor.last_package', 'id') }}/snapshot.jpg?bbox=1"
+  - name: Bear Snapshot
+    unique_id: wildlife_bear_snapshot
+    url: "http://frigate.home.svc.cluster.local:5000/api/events/{{ state_attr('sensor.bear_last_seen', 'id') }}/snapshot.jpg?crop=1&height=480"
+  - name: Deer Snapshot
+    unique_id: wildlife_deer_snapshot
+    url: "http://frigate.home.svc.cluster.local:5000/api/events/{{ state_attr('sensor.deer_last_seen', 'id') }}/snapshot.jpg?crop=1&height=480"
+  - name: Fox Snapshot
+    unique_id: wildlife_fox_snapshot
+    url: "http://frigate.home.svc.cluster.local:5000/api/events/{{ state_attr('sensor.fox_last_seen', 'id') }}/snapshot.jpg?crop=1&height=480"
+  - name: Raccoon Snapshot
+    unique_id: wildlife_raccoon_snapshot
+    url: "http://frigate.home.svc.cluster.local:5000/api/events/{{ state_attr('sensor.raccoon_last_seen', 'id') }}/snapshot.jpg?crop=1&height=480"
+  - name: Rabbit Snapshot
+    unique_id: wildlife_rabbit_snapshot
+    url: "http://frigate.home.svc.cluster.local:5000/api/events/{{ state_attr('sensor.rabbit_last_seen', 'id') }}/snapshot.jpg?crop=1&height=480"
+  - name: Squirrel Snapshot
+    unique_id: wildlife_squirrel_snapshot
+    url: "http://frigate.home.svc.cluster.local:5000/api/events/{{ state_attr('sensor.squirrel_last_seen', 'id') }}/snapshot.jpg?crop=1&height=480"

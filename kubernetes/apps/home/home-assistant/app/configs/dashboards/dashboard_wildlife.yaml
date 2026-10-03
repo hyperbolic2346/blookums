@@ -1,0 +1,360 @@
+# Wildlife & Activity dashboard - Frigate event history (rest.yaml) and
+# snapshots (sensors/wildlife.yaml). Wide layout for PC/iPad.
+title: Wildlife
+views:
+- type: sections
+  title: Wildlife
+  path: wildlife
+  icon: mdi:paw
+  max_columns: 4
+  dense_section_placement: true
+  badges:
+  - type: entity
+    entity: sensor.bear_sightings_30d
+    name: Bears · 30d
+    show_name: true
+    icon: mdi:paw
+    color: brown
+  - type: entity
+    entity: sensor.deer_sightings_30d
+    name: Deer · 30d
+    show_name: true
+    icon: mdi:paw
+    color: amber
+  - type: entity
+    entity: sun.sun
+    name: Sun
+    show_name: true
+  sections:
+
+  # ── Latest visitor ───────────────────────────────────────────────────
+  - type: grid
+    column_span: 2
+    cards:
+    - type: heading
+      heading: Latest visitor
+      heading_style: title
+      icon: mdi:paw
+    - type: picture-entity
+      grid_options:
+        columns: full
+      entity: image.wildlife_latest_snapshot
+      show_name: false
+      show_state: false
+      tap_action:
+        action: more-info
+    - type: custom:mushroom-template-card
+      grid_options:
+        columns: full
+      entity: sensor.wildlife_latest
+      icon: mdi:paw
+      color: brown
+      primary: >
+        {% set icons = {'bear': '🐻', 'deer': '🦌', 'fox': '🦊', 'raccoon': '🦝', 'rabbit': '🐇', 'squirrel': '🐿️'} %}
+        {% set label = state_attr(entity, 'label') or '' %}
+        {{ icons.get(label, '') }} {{ label | title }} at the {{ (state_attr(entity, 'camera') or '') | replace('-', ' ') }}
+      secondary: >
+        {% set t = as_datetime(states(entity)) %}
+        {% if t %}{{ as_local(t).strftime('%a %b %-d, %-I:%M %p') }} · {{ relative_time(t) }} ago{% endif %}
+      tap_action:
+        action: more-info
+
+  # ── The regulars ─────────────────────────────────────────────────────
+  - type: grid
+    column_span: 2
+    cards:
+    - type: heading
+      heading: The regulars
+      heading_style: title
+      icon: mdi:image-multiple
+    - type: grid
+      grid_options:
+        columns: full
+      columns: 3
+      square: false
+      cards:
+      - type: vertical-stack
+        cards:
+        - type: picture-entity
+          entity: image.bear_snapshot
+          show_name: false
+          show_state: false
+          aspect_ratio: 4x3
+          tap_action:
+            action: more-info
+        - type: custom:mushroom-template-card
+          entity: sensor.bear_last_seen
+          icon: mdi:paw
+          color: brown
+          primary: "🐻 Bear"
+          secondary: >
+            {% set t = as_datetime(states(entity)) %}
+            {% if t %}{{ relative_time(t) }} ago · {{ states('sensor.bear_sightings_30d') }} this month · {{ states('sensor.bear_sightings_12mo') }}/yr{% else %}Not seen yet{% endif %}
+          multiline_secondary: true
+          tap_action:
+            action: more-info
+      - type: vertical-stack
+        cards:
+        - type: picture-entity
+          entity: image.deer_snapshot
+          show_name: false
+          show_state: false
+          aspect_ratio: 4x3
+          tap_action:
+            action: more-info
+        - type: custom:mushroom-template-card
+          entity: sensor.deer_last_seen
+          icon: mdi:paw
+          color: amber
+          primary: "🦌 Deer"
+          secondary: >
+            {% set t = as_datetime(states(entity)) %}
+            {% if t %}{{ relative_time(t) }} ago · {{ states('sensor.deer_sightings_30d') }} this month · {{ states('sensor.deer_sightings_12mo') }}/yr{% else %}Not seen yet{% endif %}
+          multiline_secondary: true
+          tap_action:
+            action: more-info
+      - type: vertical-stack
+        cards:
+        - type: picture-entity
+          entity: image.fox_snapshot
+          show_name: false
+          show_state: false
+          aspect_ratio: 4x3
+          tap_action:
+            action: more-info
+        - type: custom:mushroom-template-card
+          entity: sensor.fox_last_seen
+          icon: mdi:paw
+          color: deep-orange
+          primary: "🦊 Fox"
+          secondary: >
+            {% set t = as_datetime(states(entity)) %}
+            {% if t %}{{ relative_time(t) }} ago · {{ states('sensor.fox_sightings_30d') }} this month · {{ states('sensor.fox_sightings_12mo') }}/yr{% else %}Not seen yet{% endif %}
+          multiline_secondary: true
+          tap_action:
+            action: more-info
+      - type: vertical-stack
+        cards:
+        - type: picture-entity
+          entity: image.raccoon_snapshot
+          show_name: false
+          show_state: false
+          aspect_ratio: 4x3
+          tap_action:
+            action: more-info
+        - type: custom:mushroom-template-card
+          entity: sensor.raccoon_last_seen
+          icon: mdi:paw
+          color: blue-grey
+          primary: "🦝 Raccoon"
+          secondary: >
+            {% set t = as_datetime(states(entity)) %}
+            {% if t %}{{ relative_time(t) }} ago · {{ states('sensor.raccoon_sightings_30d') }} this month · {{ states('sensor.raccoon_sightings_12mo') }}/yr{% else %}Not seen yet{% endif %}
+          multiline_secondary: true
+          tap_action:
+            action: more-info
+      - type: vertical-stack
+        cards:
+        - type: picture-entity
+          entity: image.rabbit_snapshot
+          show_name: false
+          show_state: false
+          aspect_ratio: 4x3
+          tap_action:
+            action: more-info
+        - type: custom:mushroom-template-card
+          entity: sensor.rabbit_last_seen
+          icon: mdi:paw
+          color: grey
+          primary: "🐇 Rabbit"
+          secondary: >
+            {% set t = as_datetime(states(entity)) %}
+            {% if t %}{{ relative_time(t) }} ago · {{ states('sensor.rabbit_sightings_30d') }} this month · {{ states('sensor.rabbit_sightings_12mo') }}/yr{% else %}Not seen yet{% endif %}
+          multiline_secondary: true
+          tap_action:
+            action: more-info
+      - type: vertical-stack
+        cards:
+        - type: picture-entity
+          entity: image.squirrel_snapshot
+          show_name: false
+          show_state: false
+          aspect_ratio: 4x3
+          tap_action:
+            action: more-info
+        - type: custom:mushroom-template-card
+          entity: sensor.squirrel_last_seen
+          icon: mdi:paw
+          color: orange
+          primary: "🐿️ Squirrel"
+          secondary: >
+            {% set t = as_datetime(states(entity)) %}
+            {% if t %}{{ relative_time(t) }} ago · {{ states('sensor.squirrel_sightings_30d') }} this month · {{ states('sensor.squirrel_sightings_12mo') }}/yr{% else %}Not seen yet{% endif %}
+          multiline_secondary: true
+          tap_action:
+            action: more-info
+
+  # ── Patterns ─────────────────────────────────────────────────────────
+  - type: grid
+    column_span: 2
+    cards:
+    - type: heading
+      heading: Patterns
+      heading_style: title
+      icon: mdi:chart-bar
+    - type: custom:apexcharts-card
+      grid_options:
+        columns: full
+      graph_span: 24h
+      span:
+        start: day
+      header:
+        show: true
+        title: When they visit · all wildlife by hour, past year
+      apex_config:
+        chart:
+          height: 220
+        legend:
+          show: false
+        grid:
+          borderColor: 'rgba(139,141,152,0.15)'
+        plotOptions:
+          bar:
+            borderRadius: 3
+        xaxis:
+          labels:
+            format: htt
+        tooltip:
+          x:
+            format: htt
+      yaxis:
+      - min: 0
+        decimals: 0
+        apex_config:
+          tickAmount: 4
+      series:
+      - entity: sensor.wildlife_by_hour
+        name: Sightings
+        type: column
+        color: '#d97706'
+        show:
+          in_header: false
+        data_generator: |
+          const start = new Date(); start.setHours(0, 0, 0, 0);
+          return entity.state.split(',').map((v, i) => [start.getTime() + i * 3600000 + 1800000, Number(v)]);
+    - type: custom:apexcharts-card
+      grid_options:
+        columns: full
+      graph_span: 365d
+      span:
+        end: month
+      stacked: true
+      header:
+        show: true
+        title: Sightings by month
+      apex_config:
+        chart:
+          height: 240
+        legend:
+          show: true
+          position: top
+          horizontalAlign: right
+        grid:
+          borderColor: 'rgba(139,141,152,0.15)'
+        plotOptions:
+          bar:
+            borderRadius: 3
+        xaxis:
+          labels:
+            format: MMM
+        tooltip:
+          x:
+            format: MMMM yyyy
+      yaxis:
+      - min: 0
+        decimals: 0
+        apex_config:
+          tickAmount: 4
+      all_series_config:
+        type: column
+        show:
+          in_header: false
+        data_generator: |
+          const now = new Date();
+          return entity.state.split(',').map((v, i) =>
+            [new Date(now.getFullYear(), now.getMonth() - 11 + i, 15).getTime(), Number(v)]);
+      series:
+      - entity: sensor.bear_by_month
+        name: Bear
+        color: '#7c4a1e'
+      - entity: sensor.deer_by_month
+        name: Deer
+        color: '#d97706'
+      - entity: sensor.other_wildlife_by_month
+        name: Fox, raccoon, rabbit, squirrel
+        color: '#a8a29e'
+
+  # ── Today ────────────────────────────────────────────────────────────
+  - type: grid
+    column_span: 2
+    cards:
+    - type: heading
+      heading: Today
+      heading_style: title
+      icon: mdi:calendar-today
+    - type: grid
+      grid_options:
+        columns: full
+      columns: 3
+      square: false
+      cards:
+      - type: tile
+        entity: sensor.people_today
+        name: People
+        color: blue
+      - type: tile
+        entity: sensor.cars_today
+        name: Cars
+        color: indigo
+      - type: tile
+        entity: sensor.packages_today
+        name: Packages
+        color: amber
+    - type: horizontal-stack
+      grid_options:
+        columns: full
+      cards:
+      - type: picture-entity
+        entity: image.last_package_snapshot
+        name: Last delivery
+        show_state: false
+        tap_action:
+          action: more-info
+      - type: custom:mushroom-template-card
+        entity: sensor.last_package
+        icon: mdi:package-variant-closed
+        color: amber
+        primary: Last delivery
+        secondary: >
+          {% set t = as_datetime(states(entity)) %}
+          {% if t %}{{ as_local(t).strftime('%a %-I:%M %p') }} · {{ relative_time(t) }} ago · {{ (state_attr(entity, 'camera') or '') | replace('-', ' ') }}{% endif %}
+        multiline_secondary: true
+        vertical: true
+    - type: picture-entity
+      grid_options:
+        columns: full
+      entity: camera.gate
+      name: Gate
+      camera_view: auto
+    - type: horizontal-stack
+      grid_options:
+        columns: full
+      cards:
+      - type: picture-entity
+        entity: camera.back_drive
+        name: Back drive
+        camera_view: auto
+      - type: picture-entity
+        entity: camera.front_door
+        name: Front door
+        camera_view: auto

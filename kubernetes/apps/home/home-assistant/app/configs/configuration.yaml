@@ -84,6 +84,7 @@ http:
     - 10.0.0.0/8
 
 template: !include_dir_merge_list sensors
+rest: !include rest.yaml
 mqtt: !include_dir_merge_named mqtt
 
 alarm_control_panel:
@@ -228,3 +229,9 @@ lovelace:
       icon: mdi:lightning-bolt
       show_in_sidebar: true
       filename: dashboards/dashboard_energy.yaml
+    dashboard-wildlife:
+      mode: yaml
+      title: Wildlife
+      icon: mdi:paw
+      show_in_sidebar: true
+      filename: dashboards/dashboard_wildlife.yaml

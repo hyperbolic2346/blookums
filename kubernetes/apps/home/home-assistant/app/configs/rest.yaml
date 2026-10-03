@@ -1,0 +1,224 @@
+# Frigate event history -> sensors for the Wildlife dashboard.
+# Frigate's own event DB has ~a year of history with snapshots; HA's
+# recorder only keeps 30 days and its frigate image entities reset on
+# restart, so query the API directly. Snapshots are served by the template
+# image entities in sensors/wildlife.yaml.
+- resource: http://frigate.home.svc.cluster.local:5000/api/events?labels=bear,deer,fox,raccoon,rabbit,squirrel&has_snapshot=1&limit=3000
+  scan_interval: 600
+  timeout: 30
+  sensor:
+  - name: Wildlife Latest
+    unique_id: wildlife_latest
+    icon: mdi:paw
+    device_class: timestamp
+    value_template: "{{ as_datetime(value_json[0].start_time).isoformat() if value_json else none }}"
+    json_attributes_path: "$[0]"
+    json_attributes: [id, label, camera]
+  # Comma-separated sighting counts per local hour 0-23, for the
+  # "when they visit" chart (apexcharts data_generator parses it).
+  - name: Wildlife By Hour
+    unique_id: wildlife_by_hour
+    icon: mdi:clock-outline
+    value_template: >-
+      {% set hours = value_json | map(attribute='start_time') | map('timestamp_custom', '%H') | map('int') | list %}
+      {% set ns = namespace(out=[]) %}
+      {% for i in range(24) %}{% set ns.out = ns.out + [hours | select('eq', i) | list | count] %}{% endfor %}
+      {{ ns.out | join(',') }}
+  # Last 12 months, oldest first.
+  - name: Bear By Month
+    unique_id: bear_by_month
+    icon: mdi:calendar-month
+    value_template: >-
+      {% set months = value_json | selectattr('label', 'eq', 'bear') | map(attribute='start_time') | map('timestamp_custom', '%Y-%m') | list %}
+      {% set ns = namespace(out=[]) %}
+      {% for i in range(11, -1, -1) %}{% set m = (now().replace(day=15) - timedelta(days=30 * i)).strftime('%Y-%m') %}{% set ns.out = ns.out + [months | select('eq', m) | list | count] %}{% endfor %}
+      {{ ns.out | join(',') }}
+  # Last 12 months, oldest first.
+  - name: Deer By Month
+    unique_id: deer_by_month
+    icon: mdi:calendar-month
+    value_template: >-
+      {% set months = value_json | selectattr('label', 'eq', 'deer') | map(attribute='start_time') | map('timestamp_custom', '%Y-%m') | list %}
+      {% set ns = namespace(out=[]) %}
+      {% for i in range(11, -1, -1) %}{% set m = (now().replace(day=15) - timedelta(days=30 * i)).strftime('%Y-%m') %}{% set ns.out = ns.out + [months | select('eq', m) | list | count] %}{% endfor %}
+      {{ ns.out | join(',') }}
+  # Last 12 months, oldest first.
+  - name: Other Wildlife By Month
+    unique_id: other_wildlife_by_month
+    icon: mdi:calendar-month
+    value_template: >-
+      {% set months = value_json | rejectattr('label', 'in', ['bear', 'deer']) | map(attribute='start_time') | map('timestamp_custom', '%Y-%m') | list %}
+      {% set ns = namespace(out=[]) %}
+      {% for i in range(11, -1, -1) %}{% set m = (now().replace(day=15) - timedelta(days=30 * i)).strftime('%Y-%m') %}{% set ns.out = ns.out + [months | select('eq', m) | list | count] %}{% endfor %}
+      {{ ns.out | join(',') }}
+  - name: Bear Last Seen
+    unique_id: wildlife_bear_last_seen
+    icon: mdi:paw
+    device_class: timestamp
+    value_template: >-
+      {% set e = value_json | selectattr('label', 'eq', 'bear') | first %}
+      {{ as_datetime(e.start_time).isoformat() if e else none }}
+    json_attributes_path: "$[?(@.label=='bear')]"
+    json_attributes: [id, camera]
+  - name: Bear Sightings 30d
+    unique_id: wildlife_bear_sightings_30d
+    icon: mdi:counter
+    unit_of_measurement: visits
+    value_template: >-
+      {{ value_json | selectattr('label', 'eq', 'bear')
+         | selectattr('start_time', 'gt', (now() - timedelta(days=30)).timestamp()) | list | count }}
+  - name: Bear Sightings 12mo
+    unique_id: wildlife_bear_sightings_12mo
+    icon: mdi:counter
+    unit_of_measurement: visits
+    value_template: >-
+      {{ value_json | selectattr('label', 'eq', 'bear')
+         | selectattr('start_time', 'gt', (now() - timedelta(days=365)).timestamp()) | list | count }}
+  - name: Deer Last Seen
+    unique_id: wildlife_deer_last_seen
+    icon: mdi:paw
+    device_class: timestamp
+    value_template: >-
+      {% set e = value_json | selectattr('label', 'eq', 'deer') | first %}
+      {{ as_datetime(e.start_time).isoformat() if e else none }}
+    json_attributes_path: "$[?(@.label=='deer')]"
+    json_attributes: [id, camera]
+  - name: Deer Sightings 30d
+    unique_id: wildlife_deer_sightings_30d
+    icon: mdi:counter
+    unit_of_measurement: visits
+    value_template: >-
+      {{ value_json | selectattr('label', 'eq', 'deer')
+         | selectattr('start_time', 'gt', (now() - timedelta(days=30)).timestamp()) | list | count }}
+  - name: Deer Sightings 12mo
+    unique_id: wildlife_deer_sightings_12mo
+    icon: mdi:counter
+    unit_of_measurement: visits
+    value_template: >-
+      {{ value_json | selectattr('label', 'eq', 'deer')
+         | selectattr('start_time', 'gt', (now() - timedelta(days=365)).timestamp()) | list | count }}
+  - name: Fox Last Seen
+    unique_id: wildlife_fox_last_seen
+    icon: mdi:paw
+    device_class: timestamp
+    value_template: >-
+      {% set e = value_json | selectattr('label', 'eq', 'fox') | first %}
+      {{ as_datetime(e.start_time).isoformat() if e else none }}
+    json_attributes_path: "$[?(@.label=='fox')]"
+    json_attributes: [id, camera]
+  - name: Fox Sightings 30d
+    unique_id: wildlife_fox_sightings_30d
+    icon: mdi:counter
+    unit_of_measurement: visits
+    value_template: >-
+      {{ value_json | selectattr('label', 'eq', 'fox')
+         | selectattr('start_time', 'gt', (now() - timedelta(days=30)).timestamp()) | list | count }}
+  - name: Fox Sightings 12mo
+    unique_id: wildlife_fox_sightings_12mo
+    icon: mdi:counter
+    unit_of_measurement: visits
+    value_template: >-
+      {{ value_json | selectattr('label', 'eq', 'fox')
+         | selectattr('start_time', 'gt', (now() - timedelta(days=365)).timestamp()) | list | count }}
+  - name: Raccoon Last Seen
+    unique_id: wildlife_raccoon_last_seen
+    icon: mdi:paw
+    device_class: timestamp
+    value_template: >-
+      {% set e = value_json | selectattr('label', 'eq', 'raccoon') | first %}
+      {{ as_datetime(e.start_time).isoformat() if e else none }}
+    json_attributes_path: "$[?(@.label=='raccoon')]"
+    json_attributes: [id, camera]
+  - name: Raccoon Sightings 30d
+    unique_id: wildlife_raccoon_sightings_30d
+    icon: mdi:counter
+    unit_of_measurement: visits
+    value_template: >-
+      {{ value_json | selectattr('label', 'eq', 'raccoon')
+         | selectattr('start_time', 'gt', (now() - timedelta(days=30)).timestamp()) | list | count }}
+  - name: Raccoon Sightings 12mo
+    unique_id: wildlife_raccoon_sightings_12mo
+    icon: mdi:counter
+    unit_of_measurement: visits
+    value_template: >-
+      {{ value_json | selectattr('label', 'eq', 'raccoon')
+         | selectattr('start_time', 'gt', (now() - timedelta(days=365)).timestamp()) | list | count }}
+  - name: Rabbit Last Seen
+    unique_id: wildlife_rabbit_last_seen
+    icon: mdi:paw
+    device_class: timestamp
+    value_template: >-
+      {% set e = value_json | selectattr('label', 'eq', 'rabbit') | first %}
+      {{ as_datetime(e.start_time).isoformat() if e else none }}
+    json_attributes_path: "$[?(@.label=='rabbit')]"
+    json_attributes: [id, camera]
+  - name: Rabbit Sightings 30d
+    unique_id: wildlife_rabbit_sightings_30d
+    icon: mdi:counter
+    unit_of_measurement: visits
+    value_template: >-
+      {{ value_json | selectattr('label', 'eq', 'rabbit')
+         | selectattr('start_time', 'gt', (now() - timedelta(days=30)).timestamp()) | list | count }}
+  - name: Rabbit Sightings 12mo
+    unique_id: wildlife_rabbit_sightings_12mo
+    icon: mdi:counter
+    unit_of_measurement: visits
+    value_template: >-
+      {{ value_json | selectattr('label', 'eq', 'rabbit')
+         | selectattr('start_time', 'gt', (now() - timedelta(days=365)).timestamp()) | list | count }}
+  - name: Squirrel Last Seen
+    unique_id: wildlife_squirrel_last_seen
+    icon: mdi:paw
+    device_class: timestamp
+    value_template: >-
+      {% set e = value_json | selectattr('label', 'eq', 'squirrel') | first %}
+      {{ as_datetime(e.start_time).isoformat() if e else none }}
+    json_attributes_path: "$[?(@.label=='squirrel')]"
+    json_attributes: [id, camera]
+  - name: Squirrel Sightings 30d
+    unique_id: wildlife_squirrel_sightings_30d
+    icon: mdi:counter
+    unit_of_measurement: visits
+    value_template: >-
+      {{ value_json | selectattr('label', 'eq', 'squirrel')
+         | selectattr('start_time', 'gt', (now() - timedelta(days=30)).timestamp()) | list | count }}
+  - name: Squirrel Sightings 12mo
+    unique_id: wildlife_squirrel_sightings_12mo
+    icon: mdi:counter
+    unit_of_measurement: visits
+    value_template: >-
+      {{ value_json | selectattr('label', 'eq', 'squirrel')
+         | selectattr('start_time', 'gt', (now() - timedelta(days=365)).timestamp()) | list | count }}
+
+# Today's comings and goings (all cameras).
+- resource_template: "http://frigate.home.svc.cluster.local:5000/api/events?labels=person,car,package&limit=3000&after={{ today_at().timestamp() | int }}"
+  scan_interval: 300
+  timeout: 30
+  sensor:
+  - name: People Today
+    unique_id: frigate_person_today
+    icon: mdi:walk
+    unit_of_measurement: events
+    value_template: "{{ value_json | selectattr('label', 'eq', 'person') | list | count }}"
+  - name: Cars Today
+    unique_id: frigate_car_today
+    icon: mdi:car
+    unit_of_measurement: events
+    value_template: "{{ value_json | selectattr('label', 'eq', 'car') | list | count }}"
+  - name: Packages Today
+    unique_id: frigate_package_today
+    icon: mdi:package-variant-closed
+    unit_of_measurement: events
+    value_template: "{{ value_json | selectattr('label', 'eq', 'package') | list | count }}"
+
+- resource: http://frigate.home.svc.cluster.local:5000/api/events?label=package&has_snapshot=1&limit=1
+  scan_interval: 300
+  timeout: 30
+  sensor:
+  - name: Last Package
+    unique_id: frigate_last_package
+    icon: mdi:package-variant-closed
+    device_class: timestamp
+    value_template: "{{ as_datetime(value_json[0].start_time).isoformat() if value_json else none }}"
+    json_attributes_path: "$[0]"
+    json_attributes: [id, camera]

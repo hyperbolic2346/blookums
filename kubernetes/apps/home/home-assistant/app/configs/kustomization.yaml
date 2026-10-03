@@ -14,6 +14,7 @@ configMapGenerator:
       - scripts.yaml
       - scenes.yaml
       - groups.yaml
+      - rest.yaml
   - name: home-assistant-sensors
     files:
       - sensors/basement.yaml
@@ -22,6 +23,7 @@ configMapGenerator:
       - sensors/office.yaml
       - sensors/dewpoint.yaml
       - sensors/hummer.yaml
+      - sensors/wildlife.yaml
   - name: home-assistant-mqtt
     files:
       - mqtt/gate.yaml
@@ -34,3 +36,4 @@ configMapGenerator:
       - dashboards/dashboard_ipad.yaml
       - dashboards/map.yaml
       - dashboards/dashboard_energy.yaml
+      - dashboards/dashboard_wildlife.yaml
