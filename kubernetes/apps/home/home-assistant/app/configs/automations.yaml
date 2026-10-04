@@ -440,23 +440,6 @@
     entity_id: b4c7121ac025ef2f7e92af3e94b199fa
     domain: switch
   mode: single
-- id: '1741153754587'
-  alias: Bath Fan Off With Switch
-  description: Turns on the bath exhaust fan when shower cans are turned on
-  trigger:
-  - platform: device
-    type: turned_off
-    device_id: 10baba9758cdcb8d397225b952378f60
-    entity_id: 2890b5284d867ea17978a591528c78e3
-    domain: light
-  condition: []
-  action:
-  - service: switch.turn_off
-    target:
-      entity_id:
-      - switch.master_bath_fan
-    data: {}
-  mode: single
 - id: '1747680000001'
   alias: Clear Master Fan Override When Fan Off
   description: Keeps input_boolean.master_fan_override in sync when the fan is turned
