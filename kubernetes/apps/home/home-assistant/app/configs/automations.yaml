@@ -734,7 +734,17 @@
       entity_id: media_player.master_bathroom
     data:
       repeat: one
+  # Stop our own sound rather than relying only on "Stop Sound on Empty": that
+  # automation sat disabled from April until 2026-10-04, and the sound played
+  # all night. 1h timeout as a backstop if occupancy never reads Empty.
+  - wait_template: "{{ is_state('input_select.master_bathroom_occupancy', 'Empty') }}"
+    timeout: 01:00:00
+    continue_on_timeout: true
+  - action: media_player.media_stop
+    target:
+      entity_id: media_player.master_bathroom
   mode: single
+  max_exceeded: silent
 - id: '1774414307172'
   alias: Bathroom - Stop Sound on Empty
   description: When occupancy becomes Empty (set by AppDaemon), stop privacy sound
