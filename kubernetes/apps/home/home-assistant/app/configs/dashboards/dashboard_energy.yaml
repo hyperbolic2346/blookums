@@ -6,8 +6,12 @@
 # Custom cards (lovelace.resources in configuration.yaml):
 #   vehicle-status-card, power-flow-card-plus, apexcharts-card, mushroom
 #
+# Power model: the service splits at the meter. emoncms meters the house feed
+# only; the garage feed (cluster + Hummer) is estimated in sensors/garage.yaml.
+# Total = house + garage.
+#
 # Palette: EV green #2fbf71, house amber #f5a524, left panel #4c9aff,
-# right panel #a78bfa, muted #8b8d98.
+# right panel #a78bfa, cluster cyan #22b8cf, muted #8b8d98.
 title: Energy
 views:
 - type: sections
@@ -18,10 +22,16 @@ views:
   dense_section_placement: true
   badges:
   - type: entity
-    entity: sensor.house_power
-    name: House
+    entity: sensor.total_power
+    name: Total
     show_name: true
     color: amber
+  - type: entity
+    entity: sensor.cluster_power
+    name: Cluster
+    show_name: true
+    icon: mdi:server
+    color: cyan
   - type: entity
     entity: sensor.2024_gmc_hummer_ev_suv_2024_gmc_hummer_ev_suv_charge_state
     name: Hummer
@@ -331,14 +341,14 @@ views:
         stroke_dash: 4
         extend_to: now
 
-  # ── House power ─────────────────────────────────────────────────────
+  # ── Power ────────────────────────────────────────────────────────────
   - type: grid
     column_span: 2
     cards:
     - type: heading
-      heading: House power
+      heading: Power
       heading_style: title
-      icon: mdi:home-lightning-bolt
+      icon: mdi:transmission-tower
     - type: custom:power-flow-card-plus
       grid_options:
         columns: full
@@ -351,22 +361,18 @@ views:
       clickable_entities: true
       entities:
         grid:
-          entity: sensor.house_power
+          entity: sensor.total_power
           name: Utility
         home:
+          entity: sensor.house_power
           name: House
         individual:
-        - entity: sensor.left_panel_power
-          name: Left panel
-          icon: mdi:fuse
-          color: '#4c9aff'
+        - entity: sensor.cluster_power
+          name: Cluster
+          icon: mdi:server
+          color: '#22b8cf'
           display_zero: true
-        - entity: sensor.right_panel_power
-          name: Right panel
-          icon: mdi:fuse
-          color: '#a78bfa'
-          display_zero: true
-        - entity: sensor.hummer_charge_power
+        - entity: sensor.hummer_wall_power
           name: Hummer
           icon: mdi:car-electric
           color: '#2fbf71'
@@ -386,7 +392,7 @@ views:
         colorize_states: true
       apex_config:
         chart:
-          height: 220
+          height: 240
         legend:
           show: false
         grid:
@@ -406,11 +412,57 @@ views:
           duration: 10min
       series:
       - entity: sensor.left_panel_power
-        name: Left panel
+        name: House left
         color: '#4c9aff'
       - entity: sensor.right_panel_power
-        name: Right panel
+        name: House right
         color: '#a78bfa'
+      - entity: sensor.cluster_power
+        name: Cluster
+        color: '#22b8cf'
+      - entity: sensor.hummer_wall_power
+        name: Hummer
+        color: '#2fbf71'
+
+  # ── Garage / cluster ─────────────────────────────────────────────────
+  - type: grid
+    column_span: 2
+    cards:
+    - type: heading
+      heading: Garage feed
+      heading_style: title
+      icon: mdi:garage-variant
+      badges:
+      - type: entity
+        entity: sensor.garage_power
+        show_state: true
+        show_icon: true
+        color: cyan
+    - type: grid
+      grid_options:
+        columns: full
+      columns: 3
+      square: false
+      cards:
+      - type: tile
+        entity: sensor.cluster_pdu_power
+        name: UniFi PDU
+        color: cyan
+      - type: tile
+        entity: sensor.ups_3000_power
+        name: UPS 3000
+        color: cyan
+      - type: tile
+        entity: sensor.ups_1500_power
+        name: UPS 1500
+        color: cyan
+    - type: markdown
+      grid_options:
+        columns: full
+      content: >
+        Not metered: the garage feed is the UniFi PDU + both APC UPSes
+        (the servers' two PSUs) plus the Hummer's estimated wall draw.
+        Garage lights/openers aren't counted.
 
   # ── Usage & cost ────────────────────────────────────────────────────
   - type: grid
@@ -427,7 +479,7 @@ views:
       square: false
       cards:
       - type: tile
-        entity: sensor.monthly_house_energy
+        entity: sensor.monthly_total_energy
         name: This month
         color: amber
       - type: tile
@@ -483,6 +535,15 @@ views:
         name: Right panel
         type: column
         color: '#a78bfa'
+        float_precision: 1
+        statistics:
+          type: change
+          period: day
+          align: start
+      - entity: sensor.garage_energy
+        name: Garage (est.)
+        type: column
+        color: '#22b8cf'
         float_precision: 1
         statistics:
           type: change

@@ -24,6 +24,7 @@ configMapGenerator:
       - sensors/dewpoint.yaml
       - sensors/hummer.yaml
       - sensors/wildlife.yaml
+      - sensors/garage.yaml
   - name: home-assistant-mqtt
     files:
       - mqtt/gate.yaml

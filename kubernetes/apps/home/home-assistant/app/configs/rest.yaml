@@ -222,3 +222,46 @@
     value_template: "{{ as_datetime(value_json[0].start_time).isoformat() if value_json else none }}"
     json_attributes_path: "$[0]"
     json_attributes: [id, camera]
+
+# ── Garage feed (not metered by emoncms) ─────────────────────────────────
+# The service splits at the meter: emoncms only sees the house feed. The
+# garage feed (k8s cluster + Hummer charger) is estimated from what's already
+# in Prometheus: the UniFi PDU (unpoller) carries one PSU of each node and
+# the two APC UPSes (NUT snmp-ups) carry the other. UPS watts = output
+# current x voltage (their SNMP cards report realpower as 0).
+- resource: http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090/api/v1/query
+  params:
+    query: sum(unpoller_device_outlet_ac_power_consumption{name="USP PDU HD"})
+  scan_interval: 60
+  sensor:
+  - name: Cluster PDU Power
+    unique_id: cluster_pdu_power_w
+    icon: mdi:power-socket-us
+    unit_of_measurement: W
+    device_class: power
+    state_class: measurement
+    value_template: "{{ value_json.data.result[0].value[1] | float | round(0) if value_json.data.result else none }}"
+- resource: http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090/api/v1/query
+  params:
+    query: network_ups_tools_output_current{ups="apc-3000"} * network_ups_tools_output_voltage{ups="apc-3000"}
+  scan_interval: 60
+  sensor:
+  - name: UPS 3000 Power
+    unique_id: ups_apc_3000_power_w
+    icon: mdi:battery-charging-high
+    unit_of_measurement: W
+    device_class: power
+    state_class: measurement
+    value_template: "{{ value_json.data.result[0].value[1] | float | round(0) if value_json.data.result else none }}"
+- resource: http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090/api/v1/query
+  params:
+    query: network_ups_tools_output_current{ups="apc-1500"} * network_ups_tools_output_voltage{ups="apc-1500"}
+  scan_interval: 60
+  sensor:
+  - name: UPS 1500 Power
+    unique_id: ups_apc_1500_power_w
+    icon: mdi:battery-charging-high
+    unit_of_measurement: W
+    device_class: power
+    state_class: measurement
+    value_template: "{{ value_json.data.result[0].value[1] | float | round(0) if value_json.data.result else none }}"

@@ -163,6 +163,9 @@ spec:
           - path: /config/sensors/wildlife.yaml
             subPath: wildlife.yaml
             readOnly: true
+          - path: /config/sensors/garage.yaml
+            subPath: garage.yaml
+            readOnly: true
       config-mqtt:
         type: configMap
         name: home-assistant-mqtt

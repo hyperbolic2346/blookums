@@ -73,6 +73,10 @@ utility_meter:
     source: sensor.right_panel_energy
     name: Monthly Right Panel Energy
     cycle: monthly
+  monthly_garage_energy:
+    source: sensor.garage_energy
+    name: Monthly Garage Energy
+    cycle: monthly
 
 group: !include groups.yaml
 automation: !include automations.yaml
@@ -108,6 +112,16 @@ notify:
     - service: mobile_app_joanna_s_iphone_new
 
 sensor:
+ # Garage feed isn't metered; integrate the estimate (sensors/garage.yaml).
+ - platform: integration
+   source: sensor.garage_power
+   name: Garage Energy
+   unique_id: garage_energy_kwh
+   unit_prefix: k
+   round: 2
+   method: left
+   max_sub_interval:
+     minutes: 5
  - platform: emoncms
    api_key: !secret emoncms_api_key
    url: http://10.0.1.210/emoncms

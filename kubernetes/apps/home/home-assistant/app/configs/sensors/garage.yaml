@@ -1,0 +1,58 @@
+# Whole-service power = house feed (emoncms) + garage feed (estimated).
+# sensor.garage_power is the single swap point: when the garage gets its own
+# meter (CT clamp on the garage feed), point it at that sensor and drop the
+# cluster/Hummer estimate.
+- sensor:
+    - name: Cluster Power
+      unique_id: cluster_power_w
+      icon: mdi:server
+      unit_of_measurement: W
+      device_class: power
+      state_class: measurement
+      state: >
+        {{ (states('sensor.cluster_pdu_power') | float(0)
+            + states('sensor.ups_3000_power') | float(0)
+            + states('sensor.ups_1500_power') | float(0)) | round(0) }}
+      availability: "{{ has_value('sensor.cluster_pdu_power') }}"
+
+    # Wall draw for the Hummer: the OnStar-derived charge power is energy into
+    # the pack, so add ~12% charging loss.
+    - name: Hummer Wall Power
+      unique_id: hummer_wall_power_w
+      icon: mdi:ev-station
+      unit_of_measurement: W
+      device_class: power
+      state_class: measurement
+      state: "{{ (states('sensor.hummer_charge_power') | float(0) / 0.88) | round(0) }}"
+
+    - name: Garage Power
+      unique_id: garage_power_w
+      icon: mdi:garage-variant
+      unit_of_measurement: W
+      device_class: power
+      state_class: measurement
+      state: >
+        {{ (states('sensor.cluster_power') | float(0)
+            + states('sensor.hummer_wall_power') | float(0)) | round(0) }}
+      availability: "{{ has_value('sensor.cluster_power') }}"
+
+    - name: Total Power
+      unique_id: total_power_w
+      icon: mdi:transmission-tower
+      unit_of_measurement: W
+      device_class: power
+      state_class: measurement
+      state: >
+        {{ (states('sensor.house_power') | float(0)
+            + states('sensor.garage_power') | float(0)) | round(0) }}
+      availability: "{{ has_value('sensor.house_power') and has_value('sensor.garage_power') }}"
+
+    - name: Monthly Total Energy
+      unique_id: monthly_total_energy_kwh
+      icon: mdi:transmission-tower
+      unit_of_measurement: kWh
+      device_class: energy
+      state_class: total_increasing
+      state: >
+        {{ (states('sensor.monthly_house_energy') | float(0)
+            + states('sensor.monthly_garage_energy') | float(0)) | round(2) }}
