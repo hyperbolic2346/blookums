@@ -29,7 +29,9 @@ detectors:
     device: usb
 
 model:
-  path: plus://1d3b4649fb522c5d9cde3c6650f7b06d
+  # Frigate+ custom: base 2026.2, 192 verified images (2026-10-04 wildlife
+  # review). Previous: plus://1d3b4649fb522c5d9cde3c6650f7b06d (2026-03-02).
+  path: plus://cee61a70380e824644addff622636d61
 
 objects:
   track:
