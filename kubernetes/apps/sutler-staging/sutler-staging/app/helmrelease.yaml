@@ -89,6 +89,9 @@ spec:
               # staging box has fresh data is a bad trade. It takes a catalog copy instead.
               SYNC_SCHEDULE_ENABLED: "false"
               AUTH_CALLBACK_URL: "https://sutler-staging.${SECRET_DOMAIN_SUTLER}/api/auth/google/callback"
+              # AUTH_JWT_SECRET (1Password field AUTH_SESSION_SECRET) shorter than
+              # 32 characters is a startup error instead of a warning.
+              AUTH_REQUIRE_STRONG_SECRET: "true"
               # Temporary application flag; removed in a later change.
               SECRETS_MIGRATION_ALLOW_PLAINTEXT: "true"
             envFrom: *envFrom

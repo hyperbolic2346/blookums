@@ -74,6 +74,9 @@ spec:
               API_PORT: "8000"
               REDIS_URL: "redis://sutler-redis.batcave.svc.cluster.local:6379"
               AUTH_CALLBACK_URL: "https://sutler.${SECRET_DOMAIN_SUTLER}/api/auth/google/callback"
+              # AUTH_JWT_SECRET (1Password field AUTH_SESSION_SECRET) shorter than
+              # 32 characters is a startup error instead of a warning.
+              AUTH_REQUIRE_STRONG_SECRET: "true"
               # eBay marketplace account deletion/closure notifications. This
               # URL is HASHED into the challenge answer, so it has to match
               # what is registered on developer.ebay.com character for
