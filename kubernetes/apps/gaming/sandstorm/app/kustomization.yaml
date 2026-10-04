@@ -23,6 +23,10 @@ configMapGenerator:
     namespace: gaming
     files:
       - ./config/Mods.txt
+  - name: insurgency-sandstorm-heal-script
+    namespace: gaming
+    files:
+      - heal-steam.sh=./config/heal-steam.sh
 generatorOptions:
   disableNameSuffixHash: true
   annotations:

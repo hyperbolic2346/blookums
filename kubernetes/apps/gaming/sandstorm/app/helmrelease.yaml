@@ -30,6 +30,13 @@ spec:
 
     controllers:
       main:
+        initContainers:
+          heal-steam:
+            image:
+              repository: "docker.io/andrewmhub/insurgency-sandstorm"
+              tag: lite
+            command:
+              - /opt/heal/heal-steam.sh
         containers:
           main:
             image:
@@ -71,7 +78,19 @@ spec:
           main:
             main:
               - path: /home/steam/steamcmd/sandstorm
+            heal-steam:
+              - path: /home/steam/steamcmd/sandstorm
         existingClaim: sandstorm-data
+      healscript:
+        enabled: true
+        type: configMap
+        name: insurgency-sandstorm-heal-script
+        defaultMode: 0755
+        advancedMounts:
+          main:
+            heal-steam:
+              - subPath: heal-steam.sh
+                path: /opt/heal/heal-steam.sh
       gameini:
         enabled: true
         type: configMap
