@@ -212,6 +212,8 @@ lovelace:
       type: module
     - url: /hacsfiles/mini-graph-card/mini-graph-card-bundle.js
       type: module
+    - url: /hacsfiles/custom-sonos-card/custom-sonos-card.js
+      type: module
   dashboards:
     dashboard-simple:
       mode: yaml
@@ -249,3 +251,9 @@ lovelace:
       icon: mdi:paw
       show_in_sidebar: true
       filename: dashboards/dashboard_wildlife.yaml
+    dashboard-music:
+      mode: yaml
+      title: Music
+      icon: mdi:speaker-multiple
+      show_in_sidebar: true
+      filename: dashboards/dashboard_music.yaml

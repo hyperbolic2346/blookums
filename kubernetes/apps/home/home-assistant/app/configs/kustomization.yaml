@@ -38,3 +38,4 @@ configMapGenerator:
       - dashboards/map.yaml
       - dashboards/dashboard_energy.yaml
       - dashboards/dashboard_wildlife.yaml
+      - dashboards/dashboard_music.yaml

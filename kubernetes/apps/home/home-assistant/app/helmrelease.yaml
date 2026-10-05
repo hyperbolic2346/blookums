@@ -201,6 +201,9 @@ spec:
           - path: /config/dashboards/dashboard_wildlife.yaml
             subPath: dashboard_wildlife.yaml
             readOnly: true
+          - path: /config/dashboards/dashboard_music.yaml
+            subPath: dashboard_music.yaml
+            readOnly: true
       secrets-yaml:
         type: secret
         name: home-assistant-secret
