@@ -66,7 +66,7 @@ spec:
           02-migrate:
             image: &apiImage
               repository: ghcr.io/hyperbolic2346/sutler-api
-              tag: main-1bdc51b-b415 # {"$imagepolicy": "flux-system:sutler-api-staging:tag"}
+              tag: main-c96e906-b420 # {"$imagepolicy": "flux-system:sutler-api-staging:tag"}
             command: ["npx", "prisma", "migrate", "deploy"]
             envFrom: &envFrom
               - secretRef:
