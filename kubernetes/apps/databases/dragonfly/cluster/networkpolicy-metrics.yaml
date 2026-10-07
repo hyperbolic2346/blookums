@@ -1,7 +1,6 @@
 ---
 # Allow Prometheus in the observability namespace to scrape the Dragonfly
-# admin metrics port (9999). This is additive to the operator-managed policy
-# which already restricts 9999 to peers/operator by default.
+# admin metrics port (9999), in addition to dragonfly-allow-admin.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
