@@ -1,0 +1,31 @@
+---
+# Admit the operator and Dragonfly peers to the admin port (9999).
+# dragonfly-operator 1.7.0 no longer creates or manages a NetworkPolicy, and
+# the one earlier versions created ("dragonfly") is left behind owned by the
+# Dragonfly CR. This carries its 9999 rule in git so that leftover can be
+# deleted without cutting the operator off from replication management.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dragonfly-allow-admin
+spec:
+  podSelector:
+    matchLabels:
+      app: dragonfly
+      app.kubernetes.io/name: dragonfly
+      app.kubernetes.io/part-of: dragonfly
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: dragonfly-operator
+        - podSelector:
+            matchLabels:
+              app: dragonfly
+              app.kubernetes.io/name: dragonfly
+              app.kubernetes.io/part-of: dragonfly
+      ports:
+        - port: 9999
+          protocol: TCP
