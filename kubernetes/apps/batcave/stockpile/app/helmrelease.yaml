@@ -76,6 +76,8 @@ spec:
               REDIS_URL: "redis://stockpile-redis.batcave.svc.cluster.local:6379"
               AUTH_CALLBACK_URL: "https://stockpile.${SECRET_DOMAIN}/api/auth/google/callback"
               AUTH_SECURE_COOKIES: "true"
+              # The session secret was rotated to 44 chars (2026-10-08); a short one is now a boot error.
+              AUTH_REQUIRE_STRONG_SECRET: "true"
               AUTH_POST_LOGIN_REDIRECT: "/"
               DEFAULT_TENANT: "demo"
               SUPER_ADMIN_EMAILS: "mike@batcaveballistics.com"
