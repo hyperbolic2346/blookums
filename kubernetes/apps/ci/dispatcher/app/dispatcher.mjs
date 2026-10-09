@@ -349,6 +349,41 @@ function versionAndTags(b) {
   return { version: "pr-" + b.pr, tags: [] };
 }
 
+// Build args for one build, from the repository's config.json "buildArgs"
+// map of NAME to value kind. The kinds mirror what the GitHub Actions builds
+// passed, so the apps show the same build identity:
+//   sha7     first 7 characters of the commit
+//   number   main: the build number (the N of main-<sha>-b<N>); tag and pull
+//            request builds have none and get the same value as ref
+//   date     when the build was queued, UTC to the second (also the created label)
+//   ref      "main", the tag name (v1.2.3), or pr-<n>
+//   version  the image version from versionAndTags (Sutler's VERSION)
+// The result is word-split and glob-expanded by the build script, so every
+// name and value must match a strict pattern; anything else throws, which
+// fails the build at queue time instead of passing it through.
+const BUILD_ARG_NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const BUILD_ARG_VALUE_RE = /^[A-Za-z0-9._:+-]+$/;
+
+function buildArgsFor(b, conf, version, created) {
+  // The single-arg setting this map replaced; refuse it rather than drop it.
+  if (conf.versionBuildArg) throw new Error("versionBuildArg is no longer read; use buildArgs");
+  const ref = b.kind === "main" ? "main" : b.kind === "tag" ? b.tag : "pr-" + b.pr;
+  const kinds = {
+    sha7: () => sha7(b.sha),
+    number: () => (b.number != null ? String(b.number) : ref),
+    date: () => created,
+    ref: () => ref,
+    version: () => version,
+  };
+  return Object.entries(conf.buildArgs || {}).map(([name, kind]) => {
+    if (!BUILD_ARG_NAME_RE.test(name)) throw new Error("build arg name not allowed: " + JSON.stringify(name));
+    if (!Object.hasOwn(kinds, kind)) throw new Error("build arg " + name + " has unknown kind " + JSON.stringify(kind));
+    const value = kinds[kind]();
+    if (typeof value !== "string" || !BUILD_ARG_VALUE_RE.test(value)) throw new Error("build arg " + name + " value not allowed: " + JSON.stringify(value));
+    return name + "=" + value;
+  }).join(" ");
+}
+
 function containersOf(spec) {
   return [...(spec.initContainers || []), ...(spec.containers || [])];
 }
@@ -385,10 +420,10 @@ async function jobFor(b) {
   assertCredentialScope(spec, lane);
 
   const { version, tags } = versionAndTags(b);
-  const created = new Date().toISOString();
+  const created = new Date().toISOString().replace(/\.\d+Z$/, "Z");
   const images = conf.images.map((i) => i.name + "=" + i.dockerfile).join(" ");
   const push = lane === "trusted" ? conf.images.map((i) => i.name + "=" + i.repository).join(" ") : "";
-  const buildArgs = conf.versionBuildArg ? conf.versionBuildArg + "=" + version : "";
+  const buildArgs = buildArgsFor(b, conf, version, created);
   const source = "https://github.com/" + OWNER + "/" + b.repo;
   const labels = [
     "org.opencontainers.image.source=" + source,
@@ -864,7 +899,7 @@ async function main() {
   process.on("SIGINT", stop);
 }
 
-export { verifySignature, versionAndTags, jobName, assertCredentialScope };
+export { verifySignature, versionAndTags, buildArgsFor, jobName, assertCredentialScope };
 
 if (!env.DISPATCHER_NO_MAIN) {
   main().catch((err) => {
