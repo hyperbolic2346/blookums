@@ -1170,16 +1170,27 @@ async function takeRehearsalRequests() {
 
 // ---------------------------------------------------------------- registry
 
-// Rehearse the images production deploys when something else builds them
-// (today GitHub Actions; blookums flux-system/image-automation picks them by
-// the same pattern). Every pollSeconds, apart from repository discovery (a
-// slow registry never holds up builds): list the tags of the repository's
-// rehearsal image, take the newest tags matching rehearsal.registryTags
-// (first group the commit's short sha, resolved in the git mirror; second
-// the build number), look up each one's digest and queue each tag@digest
-// not seen before. On first sight only the newest is rehearsed. State:
-// s.rehearsalSeen = { "<tag>@<digest>": "queued" | "skipped" | <tries> },
-// kept to the tags examined.
+// Rehearse the images in the registry, so that whatever production deploys
+// has been rehearsed: this dispatcher's own main builds (production's images
+// since tagMode "release") and images pushed by anything else (GitHub
+// Actions still pushes main-<sha7>-b<run> to the same repository). Every
+// pollSeconds, apart from repository discovery (a slow registry never holds
+// up builds): list the tags matching rehearsal.registryTags (first group
+// the commit's short sha, second the build number), keep those of the
+// newest registryLookback commits on main (by the git mirror, not by build
+// number: the two numberings overlap), look up each one's digest and queue
+// each tag@digest not seen before.
+//   - One rehearsal per commit: an image another builder pushed is
+//     rehearsed only when this dispatcher has no build of that commit. While
+//     its build is queued or running the image waits; once it succeeded the
+//     image is skipped (the build's own image is rehearsed); if it failed,
+//     the other image is rehearsed.
+//   - Own builds are also queued when they finish (report()); the digest
+//     makes the two paths one rehearsal.
+//   - On first sight only the newest image is rehearsed, the dispatcher's
+//     own when a commit has both, even if production runs it.
+// State: s.rehearsalSeen = { "<tag>@<digest>": "queued" | "skipped" |
+// <tries> }, kept to the tags examined.
 
 // The pull credential (ci-registry-pull, docker config JSON), if mounted.
 function registryAuth(host) {
@@ -1263,6 +1274,25 @@ async function resolveCommit(repo, short) {
   }
 }
 
+// This dispatcher's main build of `short` (7 hex) as `name` (with -b<N>),
+// or any of that commit: "building" (queued or running), "built",
+// "failed", or null. From the Jobs and the kept logs.
+async function ownBuild(repo, jobs, logs, prefix) {
+  let st = null;
+  for (const j of jobs) {
+    if (!j.metadata.name.startsWith(prefix)) continue;
+    const r = finished(j);
+    if (!r) return "building";
+    st = r === "success" ? "built" : st || "failed";
+  }
+  for (const f of logs) {
+    if (!f.startsWith(prefix) || !f.endsWith(".log")) continue;
+    const head = (await fsp.readFile(path.join(LOG_DIR, f), "utf8").catch(() => "")).slice(0, 600);
+    st = /^result:\s+success/m.test(head) ? "built" : st || "failed";
+  }
+  return st;
+}
+
 async function pollRegistry(repo) {
   const conf = REPOS[repo].rehearsal;
   if (!conf || !conf.registryTags || !fs.existsSync(deployKey(repo))) return;
@@ -1271,16 +1301,28 @@ async function pollRegistry(repo) {
   const look = Number(conf.registryLookback || 10);
   let found;
   try {
+    const recent = (await git(repo, ["rev-list", "--first-parent", "-n", String(look), "refs/heads/main"]))
+      .split("\n").map((x) => x.trim()).filter(Boolean).reverse(); // oldest first
+    const age = new Map(recent.map((sha, i) => [sha.slice(0, 7), i]));
     const bearer = await registryToken(repository);
     const re = new RegExp(conf.registryTags);
-    const newest = (await registryTags(repository, bearer)).map((t) => ({ tag: t, m: re.exec(t) })).filter((x) => x.m)
-      .map((x) => ({ tag: x.tag, short: x.m[1], build: Number(x.m[2]) }))
-      .sort((a, b) => a.build - b.build).slice(-look);
+    const sel = encodeURIComponent("app.kubernetes.io/managed-by=" + MANAGED_BY + "," + LABEL + "kind=main," + LABEL + "repo=" + repo);
+    const jobs = (await k8s("GET", nsPath("jobs") + "?labelSelector=" + sel)).items;
+    const logs = await fsp.readdir(LOG_DIR).catch(() => []);
+    const tagged = (await registryTags(repository, bearer)).map((t) => ({ tag: t, m: re.exec(t) })).filter((x) => x.m)
+      .map((x) => ({ tag: x.tag, short: x.m[1].slice(0, 7), build: Number(x.m[2]) }))
+      .filter((x) => age.has(x.short));
     found = [];
-    for (const x of newest) {
+    for (const x of tagged) {
+      const name = repo + "-main-" + x.short + "-b" + x.build;
+      const own = jobs.some((j) => j.metadata.name === name) || logs.includes(name + ".log");
       const digest = await registryDigest(repository + ":" + x.tag, bearer).catch(() => null);
-      if (digest) found.push({ ...x, digest, key: x.tag + "@" + digest });
+      if (!digest) continue;
+      found.push({ ...x, own, digest, key: x.tag + "@" + digest, age: age.get(x.short),
+        build_: own ? null : await ownBuild(repo, jobs, logs, repo + "-main-" + x.short + "-b") });
     }
+    // Oldest commit first; within a commit, the dispatcher's own build last.
+    found.sort((a, b) => a.age - b.age || Number(a.own) - Number(b.own) || a.build - b.build);
   } catch (err) {
     log("warn", "registry tags not listed; rehearsals of registry images wait", { repo, err: err.message });
     return;
@@ -1295,6 +1337,12 @@ async function pollRegistry(repo) {
     const take = first ? fresh.slice(-1) : fresh.slice(-Number(conf.maxRegistryBacklog || 5));
     for (const x of fresh) if (!take.includes(x)) seen[x.key] = "skipped";
     for (const x of take) {
+      if (!x.own && x.build_ === "building") continue; // wait for this dispatcher's build of that commit
+      if (!x.own && x.build_ === "built") {
+        seen[x.key] = "skipped";
+        log("info", "registry image not rehearsed: this dispatcher built that commit", { repo, tag: x.tag });
+        continue;
+      }
       const sha = await resolveCommit(repo, x.short);
       // The first image seen is rehearsed even if production runs it: that
       // proves the pipeline against production as it is.

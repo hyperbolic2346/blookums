@@ -182,9 +182,10 @@ api() {
   node dist/main.js 2>&1 | redact_lines
 }
 
-# WORKER_JOBS=off asks the worker to start no queue processors and register
-# no schedules (proposed for stockpile; ignored until it exists, when the
-# readonly outbound mode and the network policy are what keep jobs inert).
+# WORKER_JOBS=off (stockpile#344): the worker passes its schema gate and
+# boots, but processes no queue and registers no schedule; /readyz checks
+# the database and Redis. Images from before it ignore the variable; the
+# readonly outbound mode and the network policy keep their jobs inert.
 worker() {
   app_env
   export WORKER_HEALTH_PORT="$1"
