@@ -1,7 +1,10 @@
 ---
-# The dispatcher manages build Jobs and its own state ConfigMap in this
-# namespace, reads build pods and their logs, and reads the build
-# PodTemplates. Nothing outside the namespace.
+# The dispatcher manages build and rehearsal Jobs and its own state
+# ConfigMap in this namespace, reads their pods and logs, reads the
+# PodTemplates, and keeps rehearsal requests and its rehearsal queue as
+# ConfigMaps it lists and deletes. Outside the namespace it may only read
+# the stockpile-api Deployment, for the image a rehearsal boots as the
+# deployed release (batcave/stockpile/app/rbac-ci.yaml).
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -20,15 +23,21 @@ rules:
     verbs: ["get", "list"]
   - apiGroups: [""]
     resources: ["podtemplates"]
-    resourceNames: ["build-trusted", "build-untrusted"]
+    resourceNames: ["build-trusted", "build-untrusted", "rehearsal-stockpile"]
     verbs: ["get"]
   - apiGroups: [""]
     resources: ["configmaps"]
-    verbs: ["create"]
+    verbs: ["create", "list", "delete"]
   - apiGroups: [""]
     resources: ["configmaps"]
     resourceNames: ["dispatcher-state"]
     verbs: ["get", "update"]
+  # Whether the rehearsal's credentials have synced, before starting one
+  # (the Secrets themselves are not readable).
+  - apiGroups: ["external-secrets.io"]
+    resources: ["externalsecrets"]
+    resourceNames: ["ci-rehearsal-db", "ci-registry-pull"]
+    verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -42,8 +51,8 @@ subjects:
   - kind: ServiceAccount
     name: dispatcher
 ---
-# Build pods run under this account. It has no role bindings, and its
-# token is not mounted.
+# Build and rehearsal pods run under this account. It has no role
+# bindings, and its token is not mounted.
 apiVersion: v1
 kind: ServiceAccount
 metadata:

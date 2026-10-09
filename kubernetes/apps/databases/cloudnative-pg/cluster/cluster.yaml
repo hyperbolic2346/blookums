@@ -43,6 +43,30 @@ spec:
     parameters:
       max_connections: "600"
       shared_buffers: 512MB
+    # stockpile_rehearsal (managed.roles below) may connect to the stockpile
+    # database only, and only from a pod address (the cluster's pod CIDR;
+    # the ci namespace's network policy further limits it to the replicas).
+    # CNPG places these before its closing `host all all all scram-sha-256`,
+    # so the second line refuses that role everything else.
+    pg_hba:
+      - host stockpile stockpile_rehearsal 10.42.0.0/16 scram-sha-256
+      - host all stockpile_rehearsal all reject
+  managed:
+    roles:
+      # Login for Stockpile's migration rehearsal (ci namespace, PodTemplate
+      # rehearsal-stockpile): pg_dump of the stockpile database from a
+      # replica. No role memberships: it may read only what the stockpile
+      # database's owner grants it there (SELECT on its tables and
+      # sequences; CronJob batcave/stockpile-rehearsal-grants). It cannot
+      # read the shared catalogs' secrets (pg_authid) or any other database.
+      - name: stockpile_rehearsal
+        ensure: present
+        comment: Stockpile migration rehearsal, read-only (ci namespace)
+        login: true
+        inherit: false
+        connectionLimit: 2
+        passwordSecret:
+          name: stockpile-rehearsal-db
   backup:
     retentionPolicy: 14d
     barmanObjectStore:

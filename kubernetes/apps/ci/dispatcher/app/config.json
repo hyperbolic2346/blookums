@@ -2,6 +2,7 @@
   "owner": "hyperbolic2346",
   "statusContext": "cluster/build",
   "releaseStatusContext": "cluster/release",
+  "rehearsalStatusContext": "cluster/rehearsal",
   "tagMode": "release",
   "testTagPrefix": "cluster-",
   "buildNumberFloor": 1000,
@@ -17,7 +18,21 @@
       "images": [
         { "name": "api", "dockerfile": "apps/api/Dockerfile", "repository": "ghcr.io/hyperbolic2346/stockpile-api" },
         { "name": "web", "dockerfile": "apps/web/Dockerfile", "repository": "ghcr.io/hyperbolic2346/stockpile-web" }
-      ]
+      ],
+      "rehearsal": {
+        "template": "rehearsal-stockpile",
+        "image": "api",
+        "registryTags": "^main-([0-9a-f]{7,40})-b([0-9]+)$",
+        "registryLookback": 10,
+        "maxRegistryBacklog": 5,
+        "previous": {
+          "namespace": "batcave",
+          "deployment": "stockpile-api",
+          "container": "main"
+        },
+        "activeDeadlineSeconds": 1800,
+        "ttlSecondsAfterFinished": 3600
+      }
     },
     "sutler": {
       "buildArgs": { "VERSION": "version" },

@@ -1,0 +1,128 @@
+---
+# Grants for the migration rehearsal's read-only role (rehearsal-grants.sql),
+# made by the stockpile database's owner, hourly. Declarative and idempotent;
+# not a Stockpile migration, because the role exists only here. Uses the
+# owner's login from stockpile-db-init, never the superuser's. Nothing about
+# the app's Deployment or init chain changes.
+#
+# Run it at once (e.g. right after the role is created):
+#   kubectl -n batcave create job --from=cronjob/stockpile-rehearsal-grants grants-now
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: stockpile-rehearsal-grants
+  annotations:
+    kustomize.toolkit.fluxcd.io/substitute: disabled
+spec:
+  schedule: "17 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 300
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: stockpile-rehearsal-grants
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 70
+            runAsGroup: 70
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: grants
+              image: docker.io/library/postgres:16.15-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+              command: ["sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  conn="host=$PGHOST dbname=$PGDATABASE sslmode=require connect_timeout=15 application_name=stockpile-rehearsal-grants"
+                  role=$(psql "$conn" -XAtqc "select count(*) from pg_roles where rolname = 'stockpile_rehearsal'")
+                  if [ "$role" != 1 ]; then
+                    echo "The role stockpile_rehearsal does not exist yet (CNPG creates it once rehearsal_db_password is in the 1Password item ci); nothing granted." >&2
+                    exit 1
+                  fi
+                  psql "$conn" -XAtq -f /grants/rehearsal-grants.sql
+              env:
+                - name: PGHOST
+                  valueFrom:
+                    secretKeyRef:
+                      name: stockpile-db-init
+                      key: INIT_POSTGRES_HOST
+                - name: PGDATABASE
+                  valueFrom:
+                    secretKeyRef:
+                      name: stockpile-db-init
+                      key: INIT_POSTGRES_DBNAME
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: stockpile-db-init
+                      key: INIT_POSTGRES_USER
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: stockpile-db-init
+                      key: INIT_POSTGRES_PASS
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi
+              volumeMounts:
+                - name: grants
+                  mountPath: /grants
+                  readOnly: true
+          volumes:
+            - name: grants
+              configMap:
+                name: stockpile-rehearsal-grants
+---
+# The grants pod reaches DNS and the database primary (postgres-rw) on 5432,
+# nothing else, and accepts nothing but the node.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: stockpile-rehearsal-grants
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: stockpile-rehearsal-grants
+  ingress:
+    - fromEntities:
+        - host
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: databases
+            cnpg.io/cluster: postgres
+            cnpg.io/instanceRole: primary
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP

@@ -1,7 +1,7 @@
 ---
 # Traffic rules for the ci namespace. Every pod here is selected by the
-# first policy; the other two add what the build pods and the dispatcher
-# need. Anything not listed is denied.
+# first policy; the others add what the build pods, the rehearsal pods and
+# the dispatcher need. Anything not listed is denied.
 #
 # All pods:
 #   ingress  host (kubelet probes) only
@@ -58,12 +58,40 @@ spec:
             - 224.0.0.0/4
             - 240.0.0.0/4
 ---
+# Migration rehearsal pods (podtemplate-rehearsal.yaml): they hold a copy of
+# the production database.
+#   ingress  none beyond the host (first policy)
+#   egress   the read replicas of the CNPG cluster `postgres` on 5432, for
+#            the copy step; nothing else, so neither the candidate nor the
+#            deployed release can call any outside system, and the primary
+#            is not reachable at all
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: ci-rehearsal
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/component: rehearsal
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: databases
+            cnpg.io/cluster: postgres
+            cnpg.io/instanceRole: replica
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+---
 # Dispatcher.
 #   ingress  the Cilium Gateway API proxy (`ingress` entity): webhooks on
 #            8080 from the external gateway, log pages on 8081 from the
 #            internal gateway
 #   egress   the Kubernetes API (build Jobs); GitHub over ssh (22, fetch)
-#            and https (443, commit statuses) on public addresses only
+#            and https (443: commit statuses, and the ghcr.io registry API
+#            for the tags to rehearse) on public addresses only
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
