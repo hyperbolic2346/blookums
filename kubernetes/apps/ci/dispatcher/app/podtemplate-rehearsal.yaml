@@ -1,0 +1,358 @@
+---
+# Migration rehearsal for Stockpile (stockpile#330): a candidate api image
+# deployed onto a fresh copy of the production database, exactly as the
+# HelmRelease's init chain deploys it (kubernetes/apps/batcave/stockpile).
+# The dispatcher copies this spec into one Job per candidate, after the
+# commit's main build pushed its images, and reports cluster/rehearsal.
+#
+# The dispatcher sets each container's CI_* environment and replaces two
+# placeholder images: `candidate` (the image the build just pushed) and
+# `previous` (the image the stockpile-api Deployment runs right now).
+#
+# Steps, in order (rehearsal.sh, ConfigMap ci-rehearsal):
+#   postgres        the pod's own Postgres on 127.0.0.1, data in memory
+#   redis           the pod's own Redis on 127.0.0.1 (queues go nowhere)
+#   copy            pg_dump of production from a replica, read-only role,
+#                   streamed into postgres; prints sizes only
+#   migrate         candidate: npx prisma migrate deploy   (02-migrate)
+#   seed            candidate: node dist/seed/main.js      (03-seed)
+#   api             candidate api on :8000 (service)
+#   api-ready       /api/health/ready must answer 200, and /api/health
+#                   must report outbound mode readonly (stockpile#329)
+#   worker          candidate worker, health on :8091 (service)
+#   worker-ready    past worker/schema-gate.ts: /readyz 200, and still 200
+#                   after two rounds of its self-checks
+#   reads           candidate's Prisma client reads every table
+#   previous        the deployed api on :8001 (service): the rolling
+#                   deploy window, where it serves on the new schema
+#   previous-ready  /api/health/ready must answer 200
+#   previous-reads  the deployed release's Prisma client reads every table
+#                   and knows every enum value now in the copy
+#   passed          the pod finishes; the services are stopped
+#
+# Production data stays in this pod: in the memory-backed emptyDir
+# `pgdata`, which goes when the pod stops, and in no log (rehearsal.sh).
+# The pod has no Service, no route and no egress except DNS and the
+# database replicas (CiliumNetworkPolicy ci-rehearsal); only `copy` has
+# the read-only database credential.
+#
+# Scripts here use $VAR, never the braced form, so that they pass through
+# Flux substitution untouched (it is disabled for this object as well).
+apiVersion: v1
+kind: PodTemplate
+metadata:
+  name: rehearsal-stockpile
+  annotations:
+    kustomize.toolkit.fluxcd.io/substitute: disabled
+template:
+  metadata:
+    labels:
+      app.kubernetes.io/name: ci-rehearsal
+      app.kubernetes.io/component: rehearsal
+  spec:
+    serviceAccountName: ci-build
+    automountServiceAccountToken: false
+    enableServiceLinks: false
+    priorityClassName: ci-build
+    restartPolicy: Never
+    terminationGracePeriodSeconds: 5
+    imagePullSecrets:
+      - name: ci-registry-pull
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+      fsGroupChangePolicy: OnRootMismatch
+      seccompProfile:
+        type: RuntimeDefault
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: node-role.kubernetes.io/control-plane
+                  operator: DoesNotExist
+                # limited image storage
+                - key: kubernetes.io/hostname
+                  operator: NotIn
+                  values: ["wally"]
+    initContainers:
+      - name: postgres
+        # The major version production runs (CNPG cluster `postgres`).
+        image: docker.io/library/postgres:16.15-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+        restartPolicy: Always
+        args:
+          - -c
+          - hba_file=/etc/rehearsal/pg_hba.conf
+          - -c
+          - listen_addresses=127.0.0.1
+          - -c
+          - fsync=off
+          - -c
+          - synchronous_commit=off
+          - -c
+          - full_page_writes=off
+          # Little WAL: it lives in the same memory as the data.
+          - -c
+          - wal_level=minimal
+          - -c
+          - max_wal_senders=0
+          - -c
+          - max_wal_size=256MB
+          # The server's own log would quote row values in error details
+          # and failing statements; keep it to fatal errors, without them.
+          - -c
+          - log_min_messages=fatal
+          - -c
+          - log_min_error_statement=panic
+          - -c
+          - log_error_verbosity=terse
+        env:
+          # The generated pg_hba.conf is replaced by hba_file above.
+          - name: POSTGRES_HOST_AUTH_METHOD
+            value: trust
+          - name: PGDATA
+            value: /var/lib/postgresql/data/pgdata
+        securityContext:
+          runAsUser: 70
+          runAsGroup: 70
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        startupProbe:
+          exec:
+            command: ["pg_isready", "-h", "127.0.0.1", "-U", "stockpile", "-d", "postgres"]
+          periodSeconds: 1
+          failureThreshold: 120
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            # includes the memory-backed data directory
+            memory: 3Gi
+        volumeMounts:
+          - name: pgdata
+            mountPath: /var/lib/postgresql/data
+          - name: pgsocket
+            mountPath: /var/run/postgresql
+          - name: rehearsal
+            mountPath: /etc/rehearsal
+            readOnly: true
+          - name: rehearsal
+            mountPath: /docker-entrypoint-initdb.d/init.sql
+            subPath: init.sql
+            readOnly: true
+      - name: redis
+        image: docker.io/library/redis:7.4.11-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+        restartPolicy: Always
+        args: ["redis-server", "--bind", "127.0.0.1", "--save", "", "--appendonly", "no"]
+        securityContext:
+          runAsUser: 999
+          runAsGroup: 1000
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        startupProbe:
+          exec:
+            command: ["redis-cli", "-h", "127.0.0.1", "ping"]
+          periodSeconds: 1
+          failureThreshold: 60
+        resources:
+          requests:
+            cpu: 20m
+            memory: 32Mi
+          limits:
+            memory: 256Mi
+      - name: copy
+        image: docker.io/library/postgres:16.15-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+        command: ["sh", "/rehearsal/rehearsal.sh", "copy"]
+        terminationMessagePolicy: File
+        env:
+          # Read replicas only (the -ro Service); the copy step also refuses
+          # a primary. The network policy admits replicas only.
+          - name: SOURCE_HOST
+            value: postgres-ro.databases.svc.cluster.local
+          - name: SOURCE_DB
+            value: stockpile
+          # Read-only role (CNPG managed role stockpile_rehearsal).
+          - name: PGUSER
+            valueFrom:
+              secretKeyRef:
+                name: ci-rehearsal-db
+                key: username
+          - name: PGPASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: ci-rehearsal-db
+                key: password
+        securityContext:
+          runAsUser: 70
+          runAsGroup: 70
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
+        resources:
+          requests:
+            cpu: 250m
+            memory: 128Mi
+          limits:
+            memory: 1Gi
+        volumeMounts:
+          - name: pgsocket
+            mountPath: /var/run/postgresql
+          - name: work
+            mountPath: /work
+          - name: tmp
+            mountPath: /tmp
+          - name: rehearsal
+            mountPath: /rehearsal
+            readOnly: true
+      - name: migrate
+        image: candidate
+        command: ["sh", "/rehearsal/rehearsal.sh", "migrate"]
+        terminationMessagePolicy: File
+        securityContext: &app
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        resources: &oneShot
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            memory: 1Gi
+        volumeMounts: &appMounts
+          - name: work
+            mountPath: /work
+          - name: tmp
+            mountPath: /tmp
+          - name: rehearsal
+            mountPath: /rehearsal
+            readOnly: true
+      - name: seed
+        image: candidate
+        command: ["sh", "/rehearsal/rehearsal.sh", "seed"]
+        terminationMessagePolicy: File
+        env:
+          - name: SUPER_ADMIN_EMAILS
+            value: mike@batcaveballistics.com
+        securityContext: *app
+        resources: *oneShot
+        volumeMounts: *appMounts
+      - name: api
+        image: candidate
+        restartPolicy: Always
+        command: ["sh", "/rehearsal/rehearsal.sh", "api", "8000"]
+        env:
+          - name: SUPER_ADMIN_EMAILS
+            value: mike@batcaveballistics.com
+        securityContext: *app
+        resources: &server
+          requests:
+            cpu: 50m
+            memory: 192Mi
+          limits:
+            memory: 768Mi
+        volumeMounts: *appMounts
+      - name: api-ready
+        image: candidate
+        command: ["sh", "/rehearsal/rehearsal.sh", "ready", "new api", "http://127.0.0.1:8000/api/health/ready", "180", "0", "http://127.0.0.1:8000/api/health"]
+        terminationMessagePolicy: File
+        securityContext: *app
+        resources: &probe
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            memory: 128Mi
+        volumeMounts: *appMounts
+      - name: worker
+        image: candidate
+        restartPolicy: Always
+        command: ["sh", "/rehearsal/rehearsal.sh", "worker", "8091"]
+        securityContext: *app
+        resources: *server
+        volumeMounts: *appMounts
+      - name: worker-ready
+        image: candidate
+        command: ["sh", "/rehearsal/rehearsal.sh", "ready", "new worker", "http://127.0.0.1:8091/readyz", "180", "35"]
+        terminationMessagePolicy: File
+        securityContext: *app
+        resources: *probe
+        volumeMounts: *appMounts
+      - name: reads
+        image: candidate
+        command: ["sh", "/rehearsal/rehearsal.sh", "reads", "candidate"]
+        terminationMessagePolicy: File
+        securityContext: *app
+        resources: *oneShot
+        volumeMounts: *appMounts
+      - name: previous
+        image: previous
+        restartPolicy: Always
+        command: ["sh", "/rehearsal/rehearsal.sh", "api", "8001"]
+        env:
+          - name: SUPER_ADMIN_EMAILS
+            value: mike@batcaveballistics.com
+        securityContext: *app
+        resources: *server
+        volumeMounts: *appMounts
+      - name: previous-ready
+        image: previous
+        command: ["sh", "/rehearsal/rehearsal.sh", "ready", "deployed release's api", "http://127.0.0.1:8001/api/health/ready", "180", "0", "http://127.0.0.1:8001/api/health"]
+        terminationMessagePolicy: File
+        securityContext: *app
+        resources: *probe
+        volumeMounts: *appMounts
+      - name: previous-reads
+        image: previous
+        command: ["sh", "/rehearsal/rehearsal.sh", "reads", "previous"]
+        terminationMessagePolicy: File
+        securityContext: *app
+        resources: *oneShot
+        volumeMounts: *appMounts
+    containers:
+      - name: passed
+        image: docker.io/library/redis:7.4.11-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+        command: ["sh", "/rehearsal/rehearsal.sh", "passed"]
+        terminationMessagePolicy: File
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi
+          limits:
+            memory: 64Mi
+        volumeMounts:
+          - name: rehearsal
+            mountPath: /rehearsal
+            readOnly: true
+    volumes:
+      # The copy of production. Memory-backed: never on a disk, gone when
+      # the pod stops.
+      - name: pgdata
+        emptyDir:
+          medium: Memory
+          sizeLimit: 2Gi
+      - name: pgsocket
+        emptyDir:
+          medium: Memory
+          sizeLimit: 1Mi
+      # Step scratch (tool output before redaction). Memory-backed as well.
+      - name: work
+        emptyDir:
+          medium: Memory
+          sizeLimit: 64Mi
+      - name: tmp
+        emptyDir:
+          sizeLimit: 512Mi
+      - name: rehearsal
+        configMap:
+          name: ci-rehearsal

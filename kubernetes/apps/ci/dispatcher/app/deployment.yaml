@@ -102,6 +102,11 @@ spec:
             - name: github-status
               mountPath: /secrets/github
               readOnly: true
+            # Pull-only registry credential: lists the tags of the images
+            # to rehearse (config.json, rehearsal.registryTags).
+            - name: registry-pull
+              mountPath: /secrets/registry-pull
+              readOnly: true
       volumes:
         - name: app
           configMap:
@@ -128,6 +133,11 @@ spec:
         - name: github-status
           secret:
             secretName: ci-github-status
+            optional: true
+            defaultMode: 0440
+        - name: registry-pull
+          secret:
+            secretName: ci-registry-pull
             optional: true
             defaultMode: 0440
 ---

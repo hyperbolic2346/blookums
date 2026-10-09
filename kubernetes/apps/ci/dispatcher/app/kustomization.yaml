@@ -8,6 +8,7 @@ resources:
   - ./httproute.yaml
   - ./networkpolicy.yaml
   - ./podtemplates.yaml
+  - ./podtemplate-rehearsal.yaml
   - ./priorityclass.yaml
   - ./pvc.yaml
   - ./rbac.yaml
@@ -34,3 +35,16 @@ configMapGenerator:
       - ./init.sql
     options:
       disableNameSuffixHash: true
+  # Steps and settings of the migration rehearsal (podtemplate-rehearsal.yaml),
+  # which refers to it by this fixed name.
+  - name: ci-rehearsal
+    files:
+      - ./rehearsal/rehearsal.sh
+      - ./rehearsal/probe.js
+      - ./rehearsal/schema-reads.js
+      - ./rehearsal/pg_hba.conf
+      - ./rehearsal/init.sql
+    options:
+      disableNameSuffixHash: true
+      annotations:
+        kustomize.toolkit.fluxcd.io/substitute: disabled

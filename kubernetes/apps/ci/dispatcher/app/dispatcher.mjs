@@ -16,6 +16,15 @@
 //     build number from a counter in the ConfigMap dispatcher-state.
 //   - Feedback: a commit status (config.statusContext) on every build, with
 //     a link to the build log served on the log port.
+//   - Rehearsal: for a repository with a `rehearsal` setting, every new api
+//     image of a main commit gets a migration rehearsal (PodTemplate named
+//     there): the image deployed onto a copy of production, reported as
+//     config.rehearsalStatusContext on its commit. Images come from this
+//     dispatcher's own main builds and from the registry, whose tags are
+//     listed on every poll (rehearsal.registryTags: the images production
+//     deploys, built elsewhere). Each image is rehearsed once. A ConfigMap
+//     labelled dispatcher.ci/request=rehearsal asks for one by hand (see
+//     takeRehearsalRequests).
 //
 // No dependencies beyond Node and the git/ssh binaries in the image.
 //
@@ -35,6 +44,7 @@ import { execFile } from "node:child_process";
 const env = process.env;
 const CONFIG_PATH = env.CONFIG_PATH || "/config/config.json";
 const SECRETS_DIR = env.SECRETS_DIR || "/secrets";
+const REGISTRY_URL = (env.REGISTRY_URL || "").replace(/\/+$/, ""); // tests only
 const WORK_DIR = env.WORK_DIR || "/work";
 const LOG_DIR = env.LOG_DIR || "/data/logs";
 const HOOK_PORT = Number(env.HOOK_PORT || 8080);
@@ -138,6 +148,9 @@ const nsPath = (kind) => {
   const core = ["configmaps", "pods", "podtemplates"].includes(kind);
   return (core ? "/api/v1" : "/apis/batch/v1") + "/namespaces/" + NS + "/" + kind;
 };
+
+const deploymentPath = (ns, name) =>
+  "/apis/apps/v1/namespaces/" + encodeURIComponent(ns) + "/deployments/" + encodeURIComponent(name);
 
 // ---------------------------------------------------------------- state
 
@@ -323,10 +336,12 @@ function sha7(sha) {
 }
 
 function laneOf(b) {
+  if (b.kind === "rehearsal") return "rehearsal";
   return b.kind === "pr" ? "untrusted" : "trusted";
 }
 
 function jobName(b) {
+  if (b.kind === "rehearsal") return b.repo + "-rehearsal-" + sha7(b.sha) + "-" + b.suffix;
   if (b.kind === "main") return b.repo + "-main-" + sha7(b.sha) + "-b" + b.number;
   if (b.kind === "tag") return b.repo + "-tag-" + b.tag.replace(/[^a-z0-9]+/gi, "-").toLowerCase() + "-" + sha7(b.sha);
   return b.repo + "-pr-" + b.pr + "-" + sha7(b.sha);
@@ -550,12 +565,14 @@ function kick() {
 
 // Release the next queued Job of each repository/lane and report finished ones.
 async function schedule() {
+  await takeRehearsalRequests();
   const sel = encodeURIComponent("app.kubernetes.io/managed-by=" + MANAGED_BY);
   const jobs = (await k8s("GET", nsPath("jobs") + "?labelSelector=" + sel)).items;
   const lanes = new Map();
   for (const j of jobs) {
     const result = finished(j);
     if (result && j.metadata.annotations[LABEL + "reported"] !== "true") await report(j, result);
+    if (await sweepRehearsal(j, result)) continue;
     const key = j.metadata.labels[LABEL + "repo"] + "/" + j.metadata.labels[LABEL + "lane"];
     if (!lanes.has(key)) lanes.set(key, { running: 0, queued: [] });
     const lane = lanes.get(key);
@@ -572,6 +589,7 @@ async function schedule() {
     log("info", "started", { job: j.metadata.name, lane: key });
     await postStatus(j.metadata.labels[LABEL + "repo"], j.metadata.annotations[LABEL + "sha"], "pending", "Running", j.metadata.name, j.metadata.labels[LABEL + "kind"]);
   }
+  await startRehearsals(jobs);
 }
 
 async function podOf(jobName_) {
@@ -597,6 +615,9 @@ function steps(pod) {
       sidecar: sidecars.has(s.name),
       exitCode: t ? t.exitCode : null,
       reason: t ? t.reason : s.state && s.state.waiting ? s.state.waiting.reason : s.state && s.state.running ? "Running" : "",
+      // What the step wrote to its termination log (rehearsal steps: one
+      // plain line); never its log output.
+      message: t && t.message ? String(t.message).trim() : "",
       ms: ended - started,
     });
   }
@@ -625,8 +646,13 @@ function summary(job, result, pod) {
     "ref:      " + a[LABEL + "ref"],
     "commit:   " + a[LABEL + "sha"],
     "version:  " + a[LABEL + "version"],
-    "tags:     " + (!a[LABEL + "tags"] ? "(none, not pushed)"
-      : result === "success" ? a[LABEL + "tags"] : "(not pushed) " + a[LABEL + "tags"]),
+    ...(a[LABEL + "candidate"] ? [
+      "image:    " + a[LABEL + "candidate"],
+      "deployed: " + a[LABEL + "previous"],
+    ] : [
+      "tags:     " + (!a[LABEL + "tags"] ? "(none, not pushed)"
+        : result === "success" ? a[LABEL + "tags"] : "(not pushed) " + a[LABEL + "tags"]),
+    ]),
     "started:  " + (job.status.startTime || "?"),
     "duration: " + fmtDuration(end - start),
     "",
@@ -634,7 +660,8 @@ function summary(job, result, pod) {
     ...st.map((s) => "  " + s.name.padEnd(10) + (s.sidecar ? " (service)" : "") +
       "  " + (s.exitCode != null ? "exit " + s.exitCode
         : result === "success" || result === "failure" ? "not run" : String(s.reason || "waiting")) +
-      (s.ms >= 0 ? "  " + fmtDuration(s.ms) : "")),
+      (s.ms >= 0 ? "  " + fmtDuration(s.ms) : "") +
+      (s.message ? "\n" + " ".repeat(14) + s.message.split("\n")[0] : "")),
   ];
   return { text: lines.join("\n") + "\n", steps: st, ms: end - start };
 }
@@ -649,11 +676,14 @@ async function report(job, result) {
   } catch {}
   const sum = summary(job, result, pod);
   const logs = pod ? await podLogs(pod).catch((err) => "\n(logs unavailable: " + err.message + ")\n") : "\n(pod not found)\n";
-  await fsp.mkdir(LOG_DIR, { recursive: true });
-  await fsp.writeFile(path.join(LOG_DIR, name + ".log"), sum.text + logs);
-
+  const kind = job.metadata.labels[LABEL + "kind"];
   let desc;
-  if (result === "success") {
+  let outcome = result;
+  if (kind === "rehearsal") {
+    const o = rehearsalOutcome(job, result, sum);
+    desc = o.description;
+    outcome = o.state;
+  } else if (result === "success") {
     desc = (job.metadata.annotations[LABEL + "tags"] ? "Pushed " + job.metadata.annotations[LABEL + "tags"].split(" ")[0] : "Tests and image builds passed") +
       " in " + fmtDuration(sum.ms);
   } else {
@@ -662,10 +692,679 @@ async function report(job, result) {
     desc = failed ? "Failed in step " + failed.name + " after " + fmtDuration(sum.ms)
       : "Failed: " + ((reason && (reason.reason || reason.message)) || "unknown");
   }
-  await postStatus(repo, sha, result === "success" ? "success" : "failure", desc, name, job.metadata.labels[LABEL + "kind"]);
+  await fsp.mkdir(LOG_DIR, { recursive: true });
+  await fsp.writeFile(path.join(LOG_DIR, name + ".log"),
+    sum.text.replace(/^result: .*$/m, "result:   " + outcome).replace("\nsteps:", "\nstatus:   " + desc + "\n\nsteps:") + logs);
+  if (kind === "rehearsal") {
+    const ref = job.metadata.annotations[LABEL + "ref"] || "";
+    await postRehearsalStatus(repo, sha, outcome, desc, name,
+      ref.startsWith("requested by hand: ") ? ref.slice("requested by hand: ".length) : null);
+  }
+  else await postStatus(repo, sha, result === "success" ? "success" : "failure", desc, name, kind);
   await k8s("PATCH", nsPath("jobs") + "/" + name,
     { metadata: { annotations: { [LABEL + "reported"]: "true" } } }, "application/merge-patch+json");
   log("info", "finished", { job: name, result, duration: fmtDuration(sum.ms), description: desc });
+
+  if (kind === "rehearsal") {
+    // The log is saved; the pod held a copy of production in memory. Remove
+    // it now rather than at the Job's TTL.
+    await deleteJob(name);
+  } else if (kind === "main" && result === "success" && REPOS[repo] && REPOS[repo].rehearsal) {
+    const tag = (job.metadata.annotations[LABEL + "tags"] || "").split(" ").filter(Boolean)[0];
+    if (tag) {
+      await enqueueRehearsal({
+        repo, sha, tag, source: name,
+      });
+    }
+  }
+}
+
+// ---------------------------------------------------------------- rehearsal
+
+// A migration rehearsal (stockpile#330) deploys a new api image onto a copy
+// of the production database, from the PodTemplate named in the repository's
+// `rehearsal` setting, and boots the image production runs beside it.
+//
+//   - Queue: a waiting rehearsal is a ConfigMap labelled
+//     dispatcher.ci/rehearsal-queue=<repo>, named like its Job. The Job is
+//     only built when it starts (startRehearsals), so the deployed image it
+//     boots, and the production data it copies, are those of that moment.
+//     One rehearsal runs per repository at a time.
+//   - Once per image: an automatic rehearsal is named after its image's
+//     digest (or reference, when the registry can't say), and is not run
+//     again once its log is kept. A re-pushed tag is a new digest, so it is
+//     rehearsed again. A request by hand always runs.
+//   - Already deployed: when production already runs the candidate's commit
+//     or a later one, nothing is run. The status is success only if a
+//     rehearsal of that commit passed before; otherwise error "Not
+//     rehearsed: deployed before its rehearsal ran" (unproven, not a pass).
+//     Requests by hand, and the first registry image seen, run regardless.
+//   - What sticks: a failure the change caused (migrate, seed, the ready and
+//     read checks) posts "failure", and no later pending, error or success
+//     replaces it on that commit (postRehearsalStatus) until a rehearsal
+//     requested by hand passes on it, which clears it and logs why. Trouble
+//     of the rehearsal's own (copy, image pull, eviction, timeout, the
+//     services) posts "error", which a later result replaces.
+//   - The copy lives only in the pod's memory: the dispatcher deletes the Job
+//     once it has saved the log, and sweeps any finished one it finds.
+
+const REHEARSAL_DB_SECRET = "ci-rehearsal-db";
+const REHEARSAL_PULL_SECRET = "ci-registry-pull";
+const SHA_RE = /^[0-9a-f]{40}$/;
+const DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
+const QUEUE = LABEL + "rehearsal-queue";
+
+function rehearsalRepository(repo) {
+  const conf = REPOS[repo];
+  const image = conf.images.find((i) => i.name === conf.rehearsal.image);
+  if (!image) throw new Error("rehearsal image " + conf.rehearsal.image + " is not one of " + repo + "'s images");
+  return image.repository;
+}
+
+// An image of `repository`: by tag, digest, or tag pinned to a digest.
+function inRepository(image, repository) {
+  return typeof image === "string" && image.startsWith(repository) &&
+    /^(:[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}(@sha256:[0-9a-f]{64})?|@sha256:[0-9a-f]{64})$/.test(image.slice(repository.length));
+}
+
+// The tag of an image reference ("" when it has none).
+function tagOf(image) {
+  const noDigest = image.split("@")[0];
+  const colon = noDigest.lastIndexOf(":");
+  return colon > noDigest.lastIndexOf("/") ? noDigest.slice(colon + 1) : "";
+}
+
+// The image the repository's production api runs right now.
+async function previousImage(repo) {
+  const p = REPOS[repo].rehearsal.previous;
+  const dep = await k8s("GET", deploymentPath(p.namespace, p.deployment));
+  const c = (dep.spec.template.spec.containers || []).find((x) => x.name === (p.container || "main"));
+  if (!c || !c.image) throw new Error("no container " + (p.container || "main") + " in " + p.namespace + "/" + p.deployment);
+  return c.image;
+}
+
+// Only `copy` may see the read-only production credential, and nothing may
+// see the registry push credential.
+function assertRehearsalScope(spec) {
+  if (JSON.stringify(spec).includes(PUSH_SECRET)) throw new Error("rehearsal template references the push credential");
+  if (spec.shareProcessNamespace || spec.hostNetwork || spec.hostPID || spec.hostIPC) {
+    throw new Error("rehearsal template shares host or process namespaces");
+  }
+  if (spec.automountServiceAccountToken !== false) throw new Error("rehearsal template mounts a service account token");
+  const dbVolumes = (spec.volumes || [])
+    .filter((v) => JSON.stringify(v).includes('"' + REHEARSAL_DB_SECRET + '"'))
+    .map((v) => v.name);
+  for (const c of containersOf(spec)) {
+    const sees = JSON.stringify([c.env || [], c.envFrom || []]).includes('"' + REHEARSAL_DB_SECRET + '"') ||
+      (c.volumeMounts || []).some((m) => dbVolumes.includes(m.name));
+    if (sees && c.name !== "copy") throw new Error("container " + c.name + " would receive the production database credential");
+  }
+}
+
+// The Job for rehearsal `r` ({repo, sha, suffix, image, source}) from
+// PodTemplate `tmpl`, with `previous` as the deployed image. Created running:
+// it is built only when its turn comes. Pure, for tests.
+function rehearsalJob(r, tmpl, previous) {
+  const conf = REPOS[r.repo];
+  const repository = rehearsalRepository(r.repo);
+  if (!SHA_RE.test(r.sha)) throw new Error("not a commit sha: " + String(r.sha).slice(0, 60));
+  if (!inRepository(r.image, repository)) throw new Error("candidate image is not in " + repository);
+  if (!inRepository(previous, repository)) throw new Error("deployed image " + String(previous).slice(0, 120) + " is not in " + repository);
+
+  const b = { ...r, kind: "rehearsal" };
+  const lane = laneOf(b);
+  const podMeta = tmpl.template.metadata || {};
+  const spec = structuredClone(tmpl.template.spec);
+  assertRehearsalScope(spec);
+
+  const db = (r.repo + "_rehearsal_" + sha7(r.sha)).replace(/[^a-z0-9_]/g, "_");
+  const vars = {
+    CI_REPO: r.repo,
+    CI_SHA: r.sha,
+    CI_KIND: "rehearsal",
+    CI_CANDIDATE_IMAGE: r.image,
+    CI_PREVIOUS_IMAGE: previous,
+    CI_REHEARSAL_DB: db,
+  };
+  const envList = Object.entries(vars).map(([name, value]) => ({ name, value }));
+  for (const c of containersOf(spec)) {
+    if (c.image === "candidate") c.image = r.image;
+    else if (c.image === "previous") c.image = previous;
+    else if (!/@sha256:[0-9a-f]{64}$/.test(c.image || "")) {
+      throw new Error("rehearsal container " + c.name + " has an unpinned image");
+    }
+    c.env = [...(c.env || []), ...envList];
+  }
+  spec.restartPolicy = "Never";
+
+  const labelsOut = {
+    ...(podMeta.labels || {}),
+    "app.kubernetes.io/managed-by": MANAGED_BY,
+    [LABEL + "repo"]: r.repo,
+    [LABEL + "lane"]: lane,
+    [LABEL + "kind"]: "rehearsal",
+  };
+  const annotations = {
+    [LABEL + "sha"]: r.sha,
+    [LABEL + "ref"]: r.hand ? "requested by hand: " + r.hand : r.source ? "after " + r.source : "requested",
+    [LABEL + "seq"]: String(Date.now()).padStart(15, "0") + "-" + String(seqCounter++).padStart(6, "0"),
+    [LABEL + "tags"]: "",
+    [LABEL + "version"]: tagOf(r.image) || r.image.slice(repository.length + 1),
+    [LABEL + "candidate"]: r.image,
+    [LABEL + "previous"]: previous,
+  };
+  return {
+    apiVersion: "batch/v1",
+    kind: "Job",
+    metadata: { name: jobName(b), labels: labelsOut, annotations },
+    spec: {
+      suspend: false,
+      backoffLimit: 0,
+      activeDeadlineSeconds: Number(conf.rehearsal.activeDeadlineSeconds || 1800),
+      // Backstop only: the dispatcher deletes the Job once it is reported.
+      ttlSecondsAfterFinished: Number(conf.rehearsal.ttlSecondsAfterFinished || 3600),
+      template: { metadata: { labels: labelsOut, annotations: podMeta.annotations || {} }, spec },
+    },
+  };
+}
+
+// Name suffix of an automatic rehearsal: the image's digest when known.
+function imageSuffix(key) {
+  return "i" + crypto.createHash("sha256").update(key).digest("hex").slice(0, 8);
+}
+
+// The kept logs of rehearsals of `sha` (header fields), except `except`.
+async function rehearsalLogs(repo, sha, except) {
+  const prefix = repo + "-rehearsal-" + sha7(sha) + "-";
+  const out = [];
+  for (const f of await fsp.readdir(LOG_DIR).catch(() => [])) {
+    if (!f.startsWith(prefix) || !f.endsWith(".log") || f === except + ".log") continue;
+    const file = path.join(LOG_DIR, f);
+    const head = (await fsp.readFile(file, "utf8").catch(() => "")).slice(0, 2000);
+    const field = (k) => ((new RegExp("^" + k + ":\\s+(.*)$", "m").exec(head) || [])[1] || "").trim();
+    if (field("commit") !== sha) continue;
+    const st = await fsp.stat(file).catch(() => null);
+    out.push({ job: f.slice(0, -4), result: field("result"), status: field("status"),
+      hand: field("ref").startsWith("requested by hand"), t: st ? st.mtimeMs : 0 });
+  }
+  return out.sort((a, b) => a.t - b.t);
+}
+
+// The failure that sticks on `sha`, if any: the latest one not followed by
+// a pass requested by hand.
+async function stuckFailure(repo, sha, except) {
+  let stuck = null;
+  for (const l of await rehearsalLogs(repo, sha, except)) {
+    if (l.result === "failure") stuck = l;
+    else if (l.result === "success" && l.hand) stuck = null;
+  }
+  return stuck;
+}
+
+// Commit status for a rehearsal. A failure the change caused sticks: on a
+// commit that has one, nothing but another failure is posted, except for a
+// rehearsal requested by hand (`hand`: its reason), whose results are
+// always posted and whose pass clears the failure.
+async function postRehearsalStatus(repo, sha, st, description, job, hand) {
+  if (st !== "failure") {
+    const failed = await stuckFailure(repo, sha, job);
+    if (failed && !hand) {
+      log("info", "rehearsal status kept at failure", { sha, failed: failed.job, not_posted: st, description });
+      return;
+    }
+    if (failed && st === "success") {
+      log("info", "rehearsal failure cleared by a request by hand", { sha, failed: failed.job, job, reason: hand });
+    }
+  }
+  await postStatus(repo, sha, st, description, job, "rehearsal");
+}
+
+async function writeRehearsalLog(name, lines) {
+  await fsp.mkdir(LOG_DIR, { recursive: true });
+  await fsp.writeFile(path.join(LOG_DIR, name + ".log"), lines.join("\n") + "\n");
+}
+
+// Queue rehearsal `r` ({repo, sha, image, digest?, source, suffix?}). True
+// when it is queued, already queued, or already rehearsed.
+async function enqueueRehearsal(r) {
+  let name = r.repo + "-rehearsal";
+  try {
+    const repository = rehearsalRepository(r.repo);
+    if (!r.image) r = { ...r, image: repository + ":" + r.tag };
+    if (!SHA_RE.test(r.sha)) throw new Error("not a commit sha");
+    if (!inRepository(r.image, repository)) throw new Error("candidate image is not in " + repository);
+    if (!r.digest && !r.suffix && !r.image.includes("@")) {
+      r = { ...r, digest: await registryDigest(r.image).catch(() => null) };
+    }
+    // Pin the tag to what was found, so the rehearsal runs that exact image.
+    if (r.digest && !r.image.includes("@")) r = { ...r, image: r.image + "@" + r.digest };
+    if (!r.suffix) r = { ...r, suffix: imageSuffix(r.digest || r.image) };
+    name = jobName({ ...r, kind: "rehearsal" });
+    if (!NAME_RE.test(name)) throw new Error("job name not valid: " + name);
+    if (fs.existsSync(path.join(LOG_DIR, name + ".log"))) {
+      log("info", "image already rehearsed", { job: name, image: r.image });
+      return true;
+    }
+    await k8s("POST", nsPath("configmaps"), {
+      apiVersion: "v1",
+      kind: "ConfigMap",
+      metadata: { name, labels: { "app.kubernetes.io/managed-by": MANAGED_BY, [QUEUE]: r.repo } },
+      data: {
+        repo: r.repo, sha: r.sha, image: r.image, suffix: r.suffix, source: r.source || "",
+        hand: r.hand || "", force: r.force ? "true" : "",
+        seq: String(Date.now()).padStart(15, "0") + "-" + String(seqCounter++).padStart(6, "0"),
+      },
+    });
+  } catch (err) {
+    if (err.status === 409) return true; // already queued
+    log("error", "rehearsal not queued", { job: name, err: err.message });
+    if (SHA_RE.test(String(r.sha))) {
+      await postRehearsalStatus(r.repo, r.sha, "error", "Rehearsal could not be queued: " + err.message.split("\n")[0], null, r.hand);
+    }
+    return false;
+  }
+  log("info", "rehearsal queued", { job: name, repo: r.repo, sha: r.sha, image: r.image });
+  await postRehearsalStatus(r.repo, r.sha, "pending", "Queued: rehearse " + (tagOf(r.image) || "image") + " on a copy of production", name, r.hand);
+  kick();
+  return true;
+}
+
+// Is the ExternalSecret `name` (in this namespace) synced?
+async function secretReady(name) {
+  try {
+    const es = await k8s("GET", "/apis/external-secrets.io/v1/namespaces/" + NS + "/externalsecrets/" + name);
+    return ((es.status && es.status.conditions) || []).some((c) => c.type === "Ready" && c.status === "True");
+  } catch {
+    return false;
+  }
+}
+
+// Production runs `previous`. Is the candidate commit that one or older?
+async function deployedCommit(repo, previous) {
+  const m = /main-([0-9a-f]{7,40})-b[0-9]+$/.exec(tagOf(previous));
+  return m ? resolveCommit(repo, m[1]) : null;
+}
+
+async function isAncestor(repo, a, b) {
+  try {
+    await git(repo, ["merge-base", "--is-ancestor", a, b]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Start the oldest queued rehearsal of each repository with none running.
+async function startRehearsals(jobs) {
+  for (const repo of Object.keys(REPOS).filter((x) => REPOS[x].rehearsal)) {
+    if (jobs.some((j) => j.metadata.labels[LABEL + "kind"] === "rehearsal" &&
+      j.metadata.labels[LABEL + "repo"] === repo && !finished(j) && !j.metadata.deletionTimestamp)) continue;
+    const sel = encodeURIComponent(QUEUE + "=" + repo);
+    const queued = (await k8s("GET", nsPath("configmaps") + "?labelSelector=" + sel)).items
+      .sort((a, b) => String(a.data.seq).localeCompare(String(b.data.seq)));
+    for (const cm of queued) {
+      // The Job first, then the queue entry: a crash in between leaves the
+      // entry, and taking it again finds the Job (409) or its kept log.
+      const started = await startRehearsal(cm.metadata.name, cm.data);
+      await k8s("DELETE", nsPath("configmaps") + "/" + cm.metadata.name).catch(() => {});
+      if (started) break;
+    }
+  }
+}
+
+// True when a Job was created (or exists already).
+async function startRehearsal(name, d) {
+  const r = { repo: d.repo, sha: d.sha, image: d.image, suffix: d.suffix, source: d.source || null,
+    hand: d.hand || null, force: d.force === "true" };
+  const conf = REPOS[r.repo].rehearsal;
+  const post = (st, desc, job) => postRehearsalStatus(r.repo, r.sha, st, desc, job, r.hand);
+  try {
+    if (!r.hand && fs.existsSync(path.join(LOG_DIR, name + ".log"))) {
+      log("info", "image already rehearsed", { job: name });
+      return false;
+    }
+    if (!(await secretReady(REHEARSAL_DB_SECRET))) {
+      await post("error", "Rehearsal not configured: database credential missing (" + REHEARSAL_DB_SECRET + " not synced); skipped", null);
+      log("warn", "rehearsal skipped: database credential missing", { job: name });
+      return false;
+    }
+    if (!(await secretReady(REHEARSAL_PULL_SECRET))) {
+      await post("error", "Rehearsal not configured: registry pull credential missing (" + REHEARSAL_PULL_SECRET + " not synced); skipped", null);
+      log("warn", "rehearsal skipped: pull credential missing", { job: name });
+      return false;
+    }
+    // What production runs now, not when this was queued.
+    const previous = await previousImage(r.repo);
+    const deployed = r.force ? null : await deployedCommit(r.repo, previous);
+    if (deployed && (deployed === r.sha || await isAncestor(r.repo, r.sha, deployed))) {
+      // Nothing to run: production has moved this far already. Proven only
+      // if a rehearsal of this commit passed before.
+      const passed = (await rehearsalLogs(r.repo, r.sha, name)).some((l) => l.result === "success");
+      const where = "production runs " + (tagOf(previous) || "this commit") + (deployed === r.sha ? "" : ", a later commit");
+      const st = passed ? "success" : "error";
+      const desc = passed ? "Already deployed (" + where + "); its rehearsal passed earlier"
+        : "Not rehearsed: deployed before its rehearsal ran (" + where + ")";
+      await writeRehearsalLog(name, [
+        "build:    " + name, "result:   " + (passed ? "deployed" : "not-rehearsed"), "repo:     " + OWNER + "/" + r.repo,
+        "commit:   " + r.sha, "image:    " + r.image, "deployed: " + previous, "status:   " + desc,
+      ]);
+      await post(st, desc, name);
+      log("info", "rehearsal not run: already deployed", { job: name, deployed: previous, proven: passed });
+      return false;
+    }
+    const tmpl = await k8s("GET", nsPath("podtemplates") + "/" + conf.template);
+    const job = rehearsalJob(r, tmpl, previous);
+    await k8s("POST", nsPath("jobs"), job);
+    log("info", "started", { job: name, lane: r.repo + "/rehearsal", image: r.image, previous, hand: r.hand || undefined });
+    await post("pending", "Running: rehearse " + (tagOf(r.image) || "image") + " on a copy of production", name);
+    return true;
+  } catch (err) {
+    if (err.status === 409) return true; // that Job exists already
+    log("error", "rehearsal not started", { job: name, err: err.message });
+    await post("error", "Rehearsal could not start: " + err.message.split("\n")[0], null);
+    return false;
+  }
+}
+
+// Commit status text: the failing step's own line, else the step in plain
+// words; on success what the copy, migrate and checks steps reported.
+const REHEARSAL_STEPS = {
+  postgres: "starting the rehearsal database",
+  redis: "starting the rehearsal Redis",
+  copy: "copying production",
+  migrate: "migrating the copy",
+  seed: "seeding the migrated copy",
+  "api-ready": "waiting for the new api",
+  "worker-ready": "waiting for the new worker",
+  reads: "reading the copy with the new build",
+  "previous-ready": "waiting for the deployed release's api",
+  "previous-reads": "reading the copy with the deployed release",
+};
+
+// The steps whose failure the change caused: they post "failure", which
+// sticks. Any other way a rehearsal ends badly is the rehearsal's own
+// trouble (copy, services, image pull, eviction, timeout): "error".
+const CHANGE_STEPS = ["migrate", "seed", "api-ready", "worker-ready", "reads", "previous-ready", "previous-reads"];
+
+// { state: success | failure | error, description }
+function rehearsalOutcome(job, result, sum) {
+  const took = " (" + fmtDuration(sum.ms) + ")";
+  if (result === "success") {
+    const migrate = (sum.steps.find((s) => s.name === "migrate") || {}).message || "";
+    const m = /^Applied (\d+) new migration/.exec(migrate);
+    const what = m ? m[1] + " new migration" + (m[1] === "1" ? "" : "s") + " applied" : "no new migrations";
+    return { state: "success", description: "Passed on a copy of production: " + what + "; new api, worker and the deployed release ready" + took };
+  }
+  const failed = sum.steps.find((s) => !s.sidecar && s.exitCode != null && s.exitCode !== 0);
+  if (failed && CHANGE_STEPS.includes(failed.name)) {
+    return { state: "failure", description: failed.message || "Failed " + (REHEARSAL_STEPS[failed.name] || "in step " + failed.name) + took };
+  }
+  const reason = (job.status.conditions || []).find((c) => c.type === "Failed");
+  const running = sum.steps.find((s) => !s.sidecar && s.exitCode == null) || {};
+  let why;
+  if (failed) why = failed.message || "failed " + (REHEARSAL_STEPS[failed.name] || "in step " + failed.name);
+  else if (reason && reason.reason === "DeadlineExceeded") why = "timed out" + (REHEARSAL_STEPS[running.name] ? " " + REHEARSAL_STEPS[running.name] : "") + took;
+  else why = "the rehearsal pod did not finish (" + ((reason && (reason.reason || reason.message)) || "unknown") + ")";
+  return { state: "error", description: "Rehearsal itself failed, not the change: " + why };
+}
+
+function rehearsalDescription(job, result, sum) {
+  return rehearsalOutcome(job, result, sum).description;
+}
+
+async function deleteJob(name) {
+  try {
+    await k8s("DELETE", nsPath("jobs") + "/" + name + "?propagationPolicy=Background");
+    log("info", "deleted", { job: name });
+  } catch (err) {
+    if (err.status !== 404) log("warn", "job not deleted; the sweep will retry", { job: name, err: err.message });
+  }
+}
+
+// Finished rehearsals are deleted once reported (report() does it; this
+// catches one whose delete failed). True when the Job is done with.
+async function sweepRehearsal(job, result) {
+  if (job.metadata.labels[LABEL + "kind"] !== "rehearsal") return false;
+  if (result && !job.metadata.deletionTimestamp) await deleteJob(job.metadata.name);
+  return true;
+}
+
+// A rehearsal by hand: a ConfigMap in this namespace labelled
+// dispatcher.ci/request=rehearsal, with data
+//   repo:  stockpile
+//   sha:   <full commit sha>        (the commit status goes on it)
+//   image: <tag or full reference in the repository's rehearsal image repo>
+//   reason: <why, logged; e.g. "post-merge check", "retry after a flake">
+// It runs even when production already has that commit, and its results
+// are always posted; its pass clears an earlier failure on the commit.
+// Whoever may create ConfigMaps in this namespace may ask. The request is
+// deleted once taken; a bad one is logged and dropped.
+async function takeRehearsalRequests() {
+  const sel = encodeURIComponent(LABEL + "request=rehearsal");
+  let list;
+  try {
+    list = await k8s("GET", nsPath("configmaps") + "?labelSelector=" + sel);
+  } catch (err) {
+    if (err.status !== 403) log("warn", "rehearsal requests not read", { err: err.message });
+    return;
+  }
+  for (const cm of list.items) {
+    const d = cm.data || {};
+    await k8s("DELETE", nsPath("configmaps") + "/" + cm.metadata.name).catch(() => {});
+    const repo = String(d.repo || "");
+    if (!Object.hasOwn(REPOS, repo) || !REPOS[repo].rehearsal) {
+      log("warn", "rehearsal request dropped: no rehearsal for repository", { request: cm.metadata.name, repo: repo.slice(0, 40) });
+      continue;
+    }
+    const repository = rehearsalRepository(repo);
+    const image = String(d.image || "").includes("/") ? String(d.image) : repository + ":" + String(d.image || "");
+    if (!SHA_RE.test(String(d.sha || "")) || !inRepository(image, repository)) {
+      log("warn", "rehearsal request dropped: needs a full sha and an image in " + repository, { request: cm.metadata.name });
+      continue;
+    }
+    const reason = String(d.reason || "no reason given").replace(/[^\x20-\x7e]/g, " ").slice(0, 120);
+    log("info", "rehearsal requested", { request: cm.metadata.name, repo, sha: d.sha, image, reason });
+    await enqueueRehearsal({ repo, sha: d.sha, suffix: "r" + Date.now().toString(36), image, source: null, hand: reason, force: true });
+  }
+}
+
+// ---------------------------------------------------------------- registry
+
+// Rehearse the images in the registry, so that whatever production deploys
+// has been rehearsed: this dispatcher's own main builds (production's images
+// since tagMode "release") and images pushed by anything else (GitHub
+// Actions still pushes main-<sha7>-b<run> to the same repository). Every
+// pollSeconds, apart from repository discovery (a slow registry never holds
+// up builds): list the tags matching rehearsal.registryTags (first group
+// the commit's short sha, second the build number), keep those of the
+// newest registryLookback commits on main (by the git mirror, not by build
+// number: the two numberings overlap), look up each one's digest and queue
+// each tag@digest not seen before.
+//   - One rehearsal per commit: an image another builder pushed is
+//     rehearsed only when this dispatcher has no build of that commit. While
+//     its build is queued or running the image waits; once it succeeded the
+//     image is skipped (the build's own image is rehearsed); if it failed,
+//     the other image is rehearsed.
+//   - Own builds are also queued when they finish (report()); the digest
+//     makes the two paths one rehearsal.
+//   - On first sight only the newest image is rehearsed, the dispatcher's
+//     own when a commit has both, even if production runs it.
+// State: s.rehearsalSeen = { "<tag>@<digest>": "queued" | "skipped" |
+// <tries> }, kept to the tags examined.
+
+// The pull credential (ci-registry-pull, docker config JSON), if mounted.
+function registryAuth(host) {
+  const text = readText(path.join(SECRETS_DIR, "registry-pull", ".dockerconfigjson"));
+  if (!text) return null;
+  try {
+    const a = JSON.parse(text).auths || {};
+    return (a[host] && a[host].auth) || null;
+  } catch {
+    return null;
+  }
+}
+
+function splitRepository(repository) {
+  const slash = repository.indexOf("/");
+  return { host: repository.slice(0, slash), name: repository.slice(slash + 1) };
+}
+
+async function registryToken(repository) {
+  const { host, name } = splitRepository(repository);
+  const basic = registryAuth(host);
+  if (!basic) throw new Error("no pull credential for " + host);
+  const res = await fetch((REGISTRY_URL || "https://" + host) + "/token?service=" + encodeURIComponent(host) +
+    "&scope=" + encodeURIComponent("repository:" + name + ":pull"), {
+    headers: { Authorization: "Basic " + basic, "User-Agent": "ci-dispatcher" },
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!res.ok) throw new Error("registry token: HTTP " + res.status);
+  const tok = await res.json();
+  return tok.token || tok.access_token;
+}
+
+// All tags of `repository` ("host/owner/name"), via the registry API.
+async function registryTags(repository, bearer) {
+  const { host, name } = splitRepository(repository);
+  const base = REGISTRY_URL || "https://" + host;
+  const tags = [];
+  let next = "/v2/" + name + "/tags/list?n=1000";
+  for (let page = 0; next && page < 50; page++) {
+    const res = await fetch(base + next, {
+      headers: { Authorization: "Bearer " + bearer, Accept: "application/json", "User-Agent": "ci-dispatcher" },
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) throw new Error("registry tags: HTTP " + res.status);
+    tags.push(...(((await res.json()) || {}).tags || []));
+    const link = /<([^>]+)>;\s*rel="next"/.exec(res.headers.get("link") || "");
+    next = link ? (link[1].startsWith("http") ? new URL(link[1]).pathname + new URL(link[1]).search : link[1]) : null;
+  }
+  return tags;
+}
+
+const MANIFEST_TYPES = [
+  "application/vnd.oci.image.index.v1+json",
+  "application/vnd.docker.distribution.manifest.list.v2+json",
+  "application/vnd.oci.image.manifest.v1+json",
+  "application/vnd.docker.distribution.manifest.v2+json",
+].join(", ");
+
+// The digest a tag points at now.
+async function registryDigest(image, bearer) {
+  const repository = image.slice(0, image.lastIndexOf(":"));
+  const { host, name } = splitRepository(repository);
+  const tag = tagOf(image);
+  const res = await fetch((REGISTRY_URL || "https://" + host) + "/v2/" + name + "/manifests/" + encodeURIComponent(tag), {
+    method: "HEAD",
+    headers: { Authorization: "Bearer " + (bearer || await registryToken(repository)), Accept: MANIFEST_TYPES, "User-Agent": "ci-dispatcher" },
+    signal: AbortSignal.timeout(20_000),
+  });
+  const digest = res.headers.get("docker-content-digest") || "";
+  if (!res.ok || !DIGEST_RE.test(digest)) throw new Error("registry digest of " + tag + ": HTTP " + res.status);
+  return digest;
+}
+
+async function resolveCommit(repo, short) {
+  try {
+    const out = await git(repo, ["rev-parse", "--verify", "--quiet", short + "^{commit}"]);
+    const sha = out.trim();
+    return SHA_RE.test(sha) ? sha : null;
+  } catch {
+    return null;
+  }
+}
+
+// This dispatcher's main build of `short` (7 hex) as `name` (with -b<N>),
+// or any of that commit: "building" (queued or running), "built",
+// "failed", or null. From the Jobs and the kept logs.
+async function ownBuild(repo, jobs, logs, prefix) {
+  let st = null;
+  for (const j of jobs) {
+    if (!j.metadata.name.startsWith(prefix)) continue;
+    const r = finished(j);
+    if (!r) return "building";
+    st = r === "success" ? "built" : st || "failed";
+  }
+  for (const f of logs) {
+    if (!f.startsWith(prefix) || !f.endsWith(".log")) continue;
+    const head = (await fsp.readFile(path.join(LOG_DIR, f), "utf8").catch(() => "")).slice(0, 600);
+    st = /^result:\s+success/m.test(head) ? "built" : st || "failed";
+  }
+  return st;
+}
+
+async function pollRegistry(repo) {
+  const conf = REPOS[repo].rehearsal;
+  if (!conf || !conf.registryTags || !fs.existsSync(deployKey(repo))) return;
+  // The slow part, outside the state lock.
+  const repository = rehearsalRepository(repo);
+  const look = Number(conf.registryLookback || 10);
+  let found;
+  try {
+    const recent = (await git(repo, ["rev-list", "--first-parent", "-n", String(look), "refs/heads/main"]))
+      .split("\n").map((x) => x.trim()).filter(Boolean).reverse(); // oldest first
+    const age = new Map(recent.map((sha, i) => [sha.slice(0, 7), i]));
+    const bearer = await registryToken(repository);
+    const re = new RegExp(conf.registryTags);
+    const sel = encodeURIComponent("app.kubernetes.io/managed-by=" + MANAGED_BY + "," + LABEL + "kind=main," + LABEL + "repo=" + repo);
+    const jobs = (await k8s("GET", nsPath("jobs") + "?labelSelector=" + sel)).items;
+    const logs = await fsp.readdir(LOG_DIR).catch(() => []);
+    const tagged = (await registryTags(repository, bearer)).map((t) => ({ tag: t, m: re.exec(t) })).filter((x) => x.m)
+      .map((x) => ({ tag: x.tag, short: x.m[1].slice(0, 7), build: Number(x.m[2]) }))
+      .filter((x) => age.has(x.short));
+    found = [];
+    for (const x of tagged) {
+      const name = repo + "-main-" + x.short + "-b" + x.build;
+      const own = jobs.some((j) => j.metadata.name === name) || logs.includes(name + ".log");
+      const digest = await registryDigest(repository + ":" + x.tag, bearer).catch(() => null);
+      if (!digest) continue;
+      found.push({ ...x, own, digest, key: x.tag + "@" + digest, age: age.get(x.short),
+        build_: own ? null : await ownBuild(repo, jobs, logs, repo + "-main-" + x.short + "-b") });
+    }
+    // Oldest commit first; within a commit, the dispatcher's own build last.
+    found.sort((a, b) => a.age - b.age || Number(a.own) - Number(b.own) || a.build - b.build);
+  } catch (err) {
+    log("warn", "registry tags not listed; rehearsals of registry images wait", { repo, err: err.message });
+    return;
+  }
+  // The bookkeeping, in order with discovery.
+  await serialize("state", async () => {
+    await loadState();
+    const s = repoState(repo);
+    const first = !s.rehearsalSeen;
+    const seen = s.rehearsalSeen || {};
+    const fresh = found.filter((x) => typeof seen[x.key] !== "string");
+    const take = first ? fresh.slice(-1) : fresh.slice(-Number(conf.maxRegistryBacklog || 5));
+    for (const x of fresh) if (!take.includes(x)) seen[x.key] = "skipped";
+    for (const x of take) {
+      if (!x.own && x.build_ === "building") continue; // wait for this dispatcher's build of that commit
+      if (!x.own && x.build_ === "built") {
+        seen[x.key] = "skipped";
+        log("info", "registry image not rehearsed: this dispatcher built that commit", { repo, tag: x.tag });
+        continue;
+      }
+      const sha = await resolveCommit(repo, x.short);
+      // The first image seen is rehearsed even if production runs it: that
+      // proves the pipeline against production as it is.
+      const ok = sha && await enqueueRehearsal({ repo, sha, image: repository + ":" + x.tag, digest: x.digest, source: "registry tag " + x.tag, force: first });
+      if (ok) {
+        seen[x.key] = "queued";
+        continue;
+      }
+      // Commit not in the mirror yet, or not queued (an error status is
+      // posted then); a few more polls, then leave it.
+      seen[x.key] = (Number(seen[x.key]) || 0) + 1;
+      if (seen[x.key] >= 6) {
+        seen[x.key] = "skipped";
+        log("warn", "registry image not rehearsed", { repo, tag: x.tag, why: sha ? "could not queue" : "no such commit on main" });
+      }
+    }
+    const kept = new Set(found.map((x) => x.key));
+    s.rehearsalSeen = Object.fromEntries(Object.entries(seen).filter(([k]) => kept.has(k)));
+    delete s.rehearsalTags; // earlier format
+    await saveState();
+    if (first) log("info", "registry tags recorded", { repo, tags: found.length, rehearsing: take.map((x) => x.tag) });
+  });
 }
 
 // ---------------------------------------------------------------- github
@@ -678,7 +1377,9 @@ async function postStatus(repo, sha, st, description, job, kind) {
   const api = (cfg.githubApi || "https://api.github.com").replace(/\/+$/, "");
   const body = {
     state: st,
-    context: kind === "tag" ? cfg.releaseStatusContext || "cluster/release" : cfg.statusContext || "cluster/build",
+    context: kind === "tag" ? cfg.releaseStatusContext || "cluster/release"
+      : kind === "rehearsal" ? cfg.rehearsalStatusContext || "cluster/rehearsal"
+      : cfg.statusContext || "cluster/build",
     description: description.slice(0, 140),
     ...(job && LOG_BASE_URL ? { target_url: LOG_BASE_URL + "/builds/" + job } : {}),
   };
@@ -799,9 +1500,17 @@ async function logHandler(req, res) {
       res.writeHead(404);
       return res.end("not found\n");
     }
+    // A rehearsal ran on production data: its pages show the summary and
+    // each step's one line, never the containers' output, which stays in
+    // the store (kubectl -n ci exec deploy/dispatcher -- cat /data/logs/...).
+    const rehearsal = m[1].includes("-rehearsal-");
     const file = path.join(LOG_DIR, m[1] + ".log");
     if (fs.existsSync(file)) {
       res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+      if (rehearsal) {
+        const text = await fsp.readFile(file, "utf8");
+        return res.end(text.split("\n=====")[0].trimEnd() + "\n\n(step output is kept in the dispatcher's log store only)\n");
+      }
       return fs.createReadStream(file).pipe(res);
     }
     let job;
@@ -812,7 +1521,7 @@ async function logHandler(req, res) {
       return res.end("not found (logs are kept " + (cfg.logRetentionDays || 30) + " days)\n");
     }
     const pod = await podOf(m[1]);
-    const text = summary(job, job.spec.suspend ? "queued" : "running", pod).text + (pod ? await podLogs(pod) : "");
+    const text = summary(job, job.spec.suspend ? "queued" : "running", pod).text + (pod && !rehearsal ? await podLogs(pod) : "");
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     res.end("<!doctype html><meta http-equiv=refresh content=10><title>" + escapeHtml(m[1]) +
       "</title><pre>" + escapeHtml(text) + "</pre>");
@@ -885,6 +1594,13 @@ async function main() {
   setInterval(() => {
     for (const repo of Object.keys(REPOS)) requestSync(repo, "poll");
   }, Number(cfg.pollSeconds || 300) * 1000);
+  const registry = () => {
+    for (const repo of Object.keys(REPOS)) {
+      void pollRegistry(repo).catch((err) => log("error", "registry poll failed", { repo, err: err.message }));
+    }
+  };
+  setTimeout(registry, 15_000);
+  setInterval(registry, Number(cfg.pollSeconds || 300) * 1000);
   setInterval(kick, 10_000);
   setInterval(() => void pruneLogs(), 3600_000);
   kick();
@@ -899,7 +1615,7 @@ async function main() {
   process.on("SIGINT", stop);
 }
 
-export { verifySignature, versionAndTags, buildArgsFor, jobName, assertCredentialScope };
+export { verifySignature, versionAndTags, buildArgsFor, jobName, assertCredentialScope, rehearsalJob, assertRehearsalScope, rehearsalDescription, rehearsalOutcome, inRepository, imageSuffix, tagOf };
 
 if (!env.DISPATCHER_NO_MAIN) {
   main().catch((err) => {

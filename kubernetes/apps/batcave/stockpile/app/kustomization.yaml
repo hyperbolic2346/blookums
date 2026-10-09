@@ -7,3 +7,12 @@ resources:
   - ./helmrelease.yaml
   - ./networkpolicy.yaml
   - ./ocirepository.yaml
+  - ./rbac-ci.yaml
+  - ./rehearsal-grants.yaml
+configMapGenerator:
+  - name: stockpile-rehearsal-grants
+    files:
+      - ./rehearsal-grants.sql
+    options:
+      annotations:
+        kustomize.toolkit.fluxcd.io/substitute: disabled
