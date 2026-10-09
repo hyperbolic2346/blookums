@@ -13,13 +13,14 @@
   "logMaxBytes": 2147483648,
   "repos": {
     "stockpile": {
+      "buildArgs": { "BUILD_SHA": "sha7", "BUILD_NUMBER": "number", "BUILD_DATE": "date", "BUILD_REF": "ref" },
       "images": [
         { "name": "api", "dockerfile": "apps/api/Dockerfile", "repository": "ghcr.io/hyperbolic2346/stockpile-api" },
         { "name": "web", "dockerfile": "apps/web/Dockerfile", "repository": "ghcr.io/hyperbolic2346/stockpile-web" }
       ]
     },
     "sutler": {
-      "versionBuildArg": "VERSION",
+      "buildArgs": { "VERSION": "version" },
       "images": [
         { "name": "api", "dockerfile": "apps/api/Dockerfile", "repository": "ghcr.io/hyperbolic2346/sutler-api" },
         { "name": "web", "dockerfile": "apps/web/Dockerfile", "repository": "ghcr.io/hyperbolic2346/sutler-web" }
