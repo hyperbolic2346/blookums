@@ -174,7 +174,7 @@ spec:
           main:
             image:
               repository: ghcr.io/hyperbolic2346/stockpile-web
-              tag: main-8d4a54d-b1016 # {"$imagepolicy": "flux-system:stockpile-web:tag"}
+              tag: main-eda4dc6-b1018 # {"$imagepolicy": "flux-system:stockpile-web:tag"}
             env:
               PUBLIC_API_URL: "https://stockpile.${SECRET_DOMAIN}"
               PORT: "3000"
