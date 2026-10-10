@@ -145,7 +145,7 @@ template:
             subPath: init.sql
             readOnly: true
       - name: redis
-        image: docker.io/library/redis:7.4.11-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+        image: docker.io/library/redis:8.10.2-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0
         restartPolicy: Always
         args: ["redis-server", "--bind", "127.0.0.1", "--save", "", "--appendonly", "no"]
         securityContext:
@@ -316,7 +316,7 @@ template:
         volumeMounts: *appMounts
     containers:
       - name: passed
-        image: docker.io/library/redis:7.4.11-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+        image: docker.io/library/redis:8.10.2-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0
         command: ["sh", "/rehearsal/rehearsal.sh", "passed"]
         terminationMessagePolicy: File
         securityContext:
