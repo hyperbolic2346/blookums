@@ -216,7 +216,7 @@ template:
             mountPath: /cache/npm
             subPath: npm
       - name: build
-        image: docker.io/moby/buildkit:v0.33.0-rootless@sha256:80b15f0735e87bab7bf59ec4d695dfb4a7cfb25521cf56dc75d6f256285b63ef
+        image: docker.io/moby/buildkit:v0.34.0-rootless@sha256:65eca3c01cd1180c8f64565c4e3c5983af5145818b0e6fa863385d099eb73855
         command: ["sh", "-c"]
         args:
           - |
@@ -575,7 +575,7 @@ template:
             subPath: npm
     containers:
       - name: build
-        image: docker.io/moby/buildkit:v0.33.0-rootless@sha256:80b15f0735e87bab7bf59ec4d695dfb4a7cfb25521cf56dc75d6f256285b63ef
+        image: docker.io/moby/buildkit:v0.34.0-rootless@sha256:65eca3c01cd1180c8f64565c4e3c5983af5145818b0e6fa863385d099eb73855
         command: ["sh", "-c"]
         args:
           - |
