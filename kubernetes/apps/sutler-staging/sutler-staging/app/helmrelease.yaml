@@ -66,7 +66,7 @@ spec:
           02-migrate:
             image: &apiImage
               repository: ghcr.io/hyperbolic2346/sutler-api
-              tag: main-5b0b3c2-b1003 # {"$imagepolicy": "flux-system:sutler-api-staging:tag"}
+              tag: main-7ac3c25-b1004 # {"$imagepolicy": "flux-system:sutler-api-staging:tag"}
             command: ["npx", "prisma", "migrate", "deploy"]
             envFrom: &envFrom
               - secretRef:
@@ -189,7 +189,7 @@ spec:
           main:
             image:
               repository: ghcr.io/hyperbolic2346/sutler-web
-              tag: main-5b0b3c2-b1003 # {"$imagepolicy": "flux-system:sutler-web-staging:tag"}
+              tag: main-7ac3c25-b1004 # {"$imagepolicy": "flux-system:sutler-web-staging:tag"}
             env:
               PUBLIC_API_URL: "https://sutler-staging.${SECRET_DOMAIN_SUTLER}"
               # No Umami here on purpose — the web app only emits analytics when
