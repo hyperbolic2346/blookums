@@ -96,6 +96,7 @@ spec:
     defaultRules:
       disabled:
         NodeMemoryHighUtilization: true
+        etcdDatabaseHighFragmentationRatio: true
     additionalPrometheusRulesMap:
       dockerhub-rules:
         groups:
@@ -127,6 +128,18 @@ spec:
                   summary: Host {{ $labels.instance }} is under high memory pressure.
                 expr: 100 - (node_memory_MemAvailable_bytes{job="node-exporter", instance!~"${SECRET_FILESERV_IP}:.*"} / node_memory_MemTotal_bytes{job="node-exporter", instance!~"${SECRET_FILESERV_IP}:.*"} * 100) > 90
                 for: 15m
+                labels:
+                  severity: warning
+      etcd-rules:
+        groups:
+          - name: etcd-custom
+            rules:
+              - alert: EtcdDatabaseHighFragmentation
+                annotations:
+                  summary: etcd database on {{ $labels.pod }} has high fragmentation; defragment with talosctl etcd defrag (one member at a time, leader last).
+                  description: Fragmentation ratio below 50% with DB file size > 500 MiB sustained for 1h. Run talosctl etcd defrag sequentially, leaving the leader for last.
+                expr: ((max_over_time(etcd_mvcc_db_total_size_in_use_in_bytes[15m]) / etcd_mvcc_db_total_size_in_bytes) < 0.5) and (etcd_mvcc_db_total_size_in_bytes > 524288000)
+                for: 1h
                 labels:
                   severity: warning
       zfs-rules:
