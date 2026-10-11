@@ -27,10 +27,8 @@ spec:
         - alert: CiBuildUnschedulable
           expr: |
             max by (namespace, pod) (
-              kube_pod_status_unschedulable{namespace="ci"}
-            )
-            * on (namespace, pod) group_left(label_app_kubernetes_io_name)
-              kube_pod_labels{namespace="ci",label_app_kubernetes_io_name="ci-build"} > 0
+              kube_pod_status_unschedulable{namespace="ci",pod!~"dispatcher-.*"}
+            ) == 1
           for: 15m
           labels:
             severity: critical
@@ -39,10 +37,8 @@ spec:
         - alert: CiBuildImagePullError
           expr: |
             max by (namespace, pod, container) (
-              kube_pod_container_status_waiting_reason{namespace="ci",reason=~"ImagePullBackOff|ErrImagePull"}
-            )
-            * on (namespace, pod) group_left(label_app_kubernetes_io_name)
-              kube_pod_labels{namespace="ci",label_app_kubernetes_io_name="ci-build"} > 0
+              kube_pod_container_status_waiting_reason{namespace="ci",reason=~"ImagePullBackOff|ErrImagePull",pod!~"dispatcher-.*"}
+            ) == 1
           for: 10m
           labels:
             severity: critical
@@ -51,10 +47,8 @@ spec:
         - alert: CiBuildOOMKilled
           expr: |
             max by (namespace, pod, container) (
-              kube_pod_container_status_terminated_reason{namespace="ci",reason="OOMKilled"}
-            )
-            * on (namespace, pod) group_left(label_app_kubernetes_io_name)
-              kube_pod_labels{namespace="ci",label_app_kubernetes_io_name="ci-build"} > 0
+              kube_pod_container_status_last_terminated_reason{namespace="ci",reason="OOMKilled",pod!~"dispatcher-.*"}
+            ) == 1
           for: 10m
           labels:
             severity: warning
@@ -63,10 +57,8 @@ spec:
         - alert: CiBuildEvicted
           expr: |
             max by (namespace, pod) (
-              kube_pod_status_reason{namespace="ci",reason="Evicted"}
-            )
-            * on (namespace, pod) group_left(label_app_kubernetes_io_name)
-              kube_pod_labels{namespace="ci",label_app_kubernetes_io_name="ci-build"} > 0
+              kube_pod_status_reason{namespace="ci",reason="Evicted",pod!~"dispatcher-.*"}
+            ) == 1
           for: 10m
           labels:
             severity: warning
@@ -75,10 +67,8 @@ spec:
         - alert: CiPushFailed
           expr: |
             max by (namespace, pod) (
-              kube_pod_container_status_terminated_reason{namespace="ci",container="push",reason="Error"}
-            )
-            * on (namespace, pod) group_left(label_app_kubernetes_io_name)
-              kube_pod_labels{namespace="ci",label_app_kubernetes_io_name="ci-build"} > 0
+              kube_pod_container_status_last_terminated_reason{namespace="ci",container="push",reason="Error",pod!~"dispatcher-.*"}
+            ) == 1
           for: 5m
           labels:
             severity: critical
