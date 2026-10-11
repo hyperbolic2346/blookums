@@ -136,7 +136,7 @@ spec:
             rules:
               - alert: EtcdDatabaseHighFragmentation
                 annotations:
-                  summary: etcd database on {{ $labels.pod }} has high fragmentation; defragment with talosctl etcd defrag (one member at a time, leader last).
+                  summary: etcd database on {{ $labels.instance }} has high fragmentation; defragment with talosctl etcd defrag (one member at a time, leader last).
                   description: Fragmentation ratio below 50% with DB file size > 500 MiB sustained for 1h. Run talosctl etcd defrag sequentially, leaving the leader for last.
                 expr: ((max_over_time(etcd_mvcc_db_total_size_in_use_in_bytes[15m]) / etcd_mvcc_db_total_size_in_bytes) < 0.5) and (etcd_mvcc_db_total_size_in_bytes > 524288000)
                 for: 1h
