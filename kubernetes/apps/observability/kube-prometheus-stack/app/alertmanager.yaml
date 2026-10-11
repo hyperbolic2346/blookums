@@ -14,6 +14,28 @@ spec:
           - name: alertname
             value: InfoInhibitor
             matchType: =
+      # Do not page for CI build/test failures:
+      # - KubeJobFailed in namespace ci (code/test failures are expected noise)
+      - receiver: blackhole
+        matchers:
+          - name: namespace
+            value: ci
+            matchType: =
+          - name: alertname
+            value: KubeJobFailed
+            matchType: =
+      # - KubeContainerWaiting while build/push are stuck in PodInitializing (init test failed)
+      - receiver: blackhole
+        matchers:
+          - name: namespace
+            value: ci
+            matchType: =
+          - name: alertname
+            value: KubeContainerWaiting
+            matchType: =
+          - name: reason
+            value: PodInitializing
+            matchType: =
       - receiver: discord
         continue: true
         matchers:
