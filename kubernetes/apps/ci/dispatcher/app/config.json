@@ -9,7 +9,7 @@
   "maxMainBacklog": 20,
   "pollSeconds": 300,
   "activeDeadlineSeconds": 3600,
-  "jobTtlSeconds": 259200,
+  "jobTtlSeconds": 86400,
   "logRetentionDays": 30,
   "logMaxBytes": 2147483648,
   "repos": {
