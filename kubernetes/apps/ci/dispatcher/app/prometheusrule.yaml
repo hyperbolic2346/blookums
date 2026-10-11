@@ -47,7 +47,7 @@ spec:
         - alert: CiBuildOOMKilled
           expr: |
             max by (namespace, pod, container) (
-              kube_pod_container_status_last_terminated_reason{namespace="ci",reason="OOMKilled",pod!~"dispatcher-.*"}
+              kube_pod_container_status_terminated_reason{namespace="ci",reason="OOMKilled",pod!~"dispatcher-.*"}
             ) == 1
           for: 10m
           labels:
@@ -67,7 +67,7 @@ spec:
         - alert: CiPushFailed
           expr: |
             max by (namespace, pod) (
-              kube_pod_container_status_last_terminated_reason{namespace="ci",container="push",reason="Error",pod!~"dispatcher-.*"}
+              kube_pod_container_status_terminated_reason{namespace="ci",container="push",reason="Error",pod!~"dispatcher-.*"}
             ) == 1
           for: 5m
           labels:
