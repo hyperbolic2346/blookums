@@ -1,0 +1,89 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/prometheusrule_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ci-dispatcher
+spec:
+  groups:
+    - name: ci.dispatcher
+      rules:
+        - alert: CiDispatcherDeploymentUnavailable
+          expr: kube_deployment_status_replicas_unavailable{namespace="ci",deployment="dispatcher"} > 0
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: Dispatcher deployment has unavailable replicas in namespace ci for {{ $value | humanizeDuration }}.
+        - alert: CiDispatcherPodCrashLooping
+          expr: rate(kube_pod_container_status_restarts_total{namespace="ci",pod=~"dispatcher-.*"}[5m]) > 0.1
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: Dispatcher pod is crashlooping in namespace ci ({{ $labels.pod }} restarting).
+    - name: ci.build
+      rules:
+        - alert: CiBuildUnschedulable
+          expr: |
+            max by (namespace, pod) (
+              kube_pod_status_unschedulable{namespace="ci",pod!~"dispatcher-.*"}
+            ) == 1
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: CI build pod {{ $labels.namespace }}/{{ $labels.pod }} is unschedulable.
+        - alert: CiBuildImagePullError
+          expr: |
+            max by (namespace, pod, container) (
+              kube_pod_container_status_waiting_reason{namespace="ci",reason=~"ImagePullBackOff|ErrImagePull",pod!~"dispatcher-.*"}
+            ) == 1
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: CI build pod {{ $labels.namespace }}/{{ $labels.pod }} container {{ $labels.container }} has image pull errors.
+        - alert: CiBuildOOMKilled
+          expr: |
+            max by (namespace, pod, container) (
+              kube_pod_container_status_terminated_reason{namespace="ci",reason="OOMKilled",pod!~"dispatcher-.*"}
+            ) == 1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: CI build pod {{ $labels.namespace }}/{{ $labels.pod }} container {{ $labels.container }} was OOMKilled.
+        - alert: CiBuildEvicted
+          expr: |
+            max by (namespace, pod) (
+              kube_pod_status_reason{namespace="ci",reason="Evicted",pod!~"dispatcher-.*"}
+            ) == 1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: CI build pod {{ $labels.namespace }}/{{ $labels.pod }} was evicted.
+        - alert: CiPushFailed
+          expr: |
+            max by (namespace, pod) (
+              kube_pod_container_status_terminated_reason{namespace="ci",container="push",reason="Error",pod!~"dispatcher-.*"}
+            ) == 1
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: CI push step failed in {{ $labels.namespace }}/{{ $labels.pod }} (registry push or copy error).
+        # Optional: queue backlog — a queued Job older than 30m
+        - alert: CiBuildQueueStalled
+          expr: |
+            max by (namespace, job_name) (
+              (time() - kube_job_created{namespace="ci"}) > 1800
+            )
+            and on (namespace, job_name)
+              kube_job_spec_suspend{namespace="ci"} == 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: CI queued build {{ $labels.job_name }} has waited over 30 minutes to start.

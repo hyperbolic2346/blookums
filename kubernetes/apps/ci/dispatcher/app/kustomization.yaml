@@ -12,6 +12,7 @@ resources:
   - ./priorityclass.yaml
   - ./pvc.yaml
   - ./rbac.yaml
+  - ./prometheusrule.yaml
 configMapGenerator:
   # The dispatcher program and its settings. The name hash rolls the
   # Deployment when either changes.
