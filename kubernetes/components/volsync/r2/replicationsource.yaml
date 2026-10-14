@@ -22,9 +22,10 @@ spec:
     retain:
       daily: 7
     volumeSnapshotClassName: "${VOLSYNC_SNAPSHOTCLASS:-csi-ceph-block}"
-    # Set VOLSYNC_UNLOCK to a new value in an app's ks.yaml to run 'restic unlock' once before the next backup.
-    # Empty (the default) means no unlock. Kept in git so Flux doesn't strip a manual patch.
-    unlock: "${VOLSYNC_UNLOCK:-}"
+    # No `unlock` here: kustomize drops the quotes around a substituted var, so an
+    # empty substitution renders as null and fails VolSync's CRD validation (string).
+    # To run 'restic unlock' once, patch /spec/restic/unlock in the app's ks.yaml instead
+    # (see cicada in kubernetes/apps/gaming/minecraft/ks.yaml).
     # Commented out to fix scheduling issues - multiple VolSync jobs can now run on same node
     # moverAffinity:
     #   podAntiAffinity:
