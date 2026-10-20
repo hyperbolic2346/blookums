@@ -41,6 +41,15 @@ spec:
       failureThreshold: 120
       periodSeconds: 10
 
+    # Game port only (TCP 25565): public AT&T static IP from pool-public
+    # (BGP-advertised, no port forward needed), same as the Valheim servers.
+    # rcon and dynmap use their own Services and stay LAN/ClusterIP.
+    # Protected by online-mode + enforced whitelist.
+    serviceLabels:
+      io.cilium/lb-public: "true"
+    serviceAnnotations:
+      io.cilium/lb-ipam-ips: "99.136.248.249"
+
     minecraftServer:
       # This must be overridden, since we can't accept this for the user.
       eula: 'TRUE'
