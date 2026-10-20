@@ -22,9 +22,6 @@ spec:
     retain:
       daily: 7
     volumeSnapshotClassName: "${VOLSYNC_SNAPSHOTCLASS:-csi-ceph-block}"
-    # Set VOLSYNC_UNLOCK to a new value in an app's ks.yaml to run 'restic unlock' once before the next backup.
-    # Empty (the default) means no unlock. Kept in git so Flux doesn't strip a manual patch.
-    unlock: "${VOLSYNC_UNLOCK:-}"
     # Commented out to fix scheduling issues - multiple VolSync jobs can now run on same node
     # moverAffinity:
     #   podAntiAffinity:
