@@ -81,6 +81,8 @@ spec:
               AUTH_POST_LOGIN_REDIRECT: "/"
               DEFAULT_TENANT: "demo"
               SUPER_ADMIN_EMAILS: "mike@batcaveballistics.com"
+              # Sutler's retirement status, for the drop-ship move-over page (stockpile#614).
+              SUTLER_STATUS_URL: "http://sutler-api.batcave.svc.cluster.local:8000"
             envFrom: *envFrom
             probes:
               liveness: &apiProbe

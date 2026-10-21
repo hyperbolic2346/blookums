@@ -8,6 +8,7 @@
 #                is how HTTPRoute traffic reaches the api and web services
 #   prometheus - observability/kube-prometheus-stack, scraping /api/metrics
 #                through the ServiceMonitor in this directory
+#   stockpile  - its api, reading /api/retirement/status (stockpile#614)
 #
 # Ingress only. Egress is unchanged.
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
@@ -33,6 +34,14 @@ spec:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: observability
             app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "8000"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/instance: stockpile
+            app.kubernetes.io/controller: api
       toPorts:
         - ports:
             - port: "8000"
