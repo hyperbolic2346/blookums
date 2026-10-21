@@ -51,6 +51,12 @@ spec:
     pg_hba:
       - host stockpile stockpile_rehearsal 10.42.0.0/16 scram-sha-256
       - host all stockpile_rehearsal all reject
+      # Telemetry (apps/telemetry): its owner role and Grafana's read-only role may reach
+      # the telemetry database only, from pods. Same shape as above.
+      - host telemetry telemetry 10.42.0.0/16 scram-sha-256
+      - host all telemetry all reject
+      - host telemetry telemetry_reader 10.42.0.0/16 scram-sha-256
+      - host all telemetry_reader all reject
   managed:
     roles:
       # Login for Stockpile's migration rehearsal (ci namespace, PodTemplate

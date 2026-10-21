@@ -1,0 +1,42 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/kustomization-kustomize-v1.json
+#
+# Telemetry for Screwed and Teeter: POST https://telemetry.${SECRET_DOMAIN_SUTLER}/v2/batch.
+# Plan: hyperbolic2346/teeter docs/telemetry.md (issue #48). Source and image:
+# hyperbolic2346/nerdbucket-telemetry.
+#
+#   - dependsOn cloudnative-pg-cluster: the init containers create the telemetry database
+#     and its two roles on the shared cluster (and its pg_hba lines confine those roles);
+#   - dependsOn external-secrets-stores: the superuser login and the GHCR pull token come
+#     from 1Password;
+#   - dependsOn grafana-operator: the data source and dashboards are its resources;
+#   - postBuild.substituteFrom: the hostname uses ${SECRET_DOMAIN_SUTLER}.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: telemetry
+  namespace: telemetry
+spec:
+  dependsOn:
+    - name: cloudnative-pg-cluster
+      namespace: databases
+    - name: external-secrets-stores
+      namespace: kube-system
+    - name: grafana-operator
+      namespace: observability
+  path: ./kubernetes/apps/telemetry/telemetry/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  wait: true
+  interval: 30m
+  retryInterval: 1m
+  timeout: 10m
+  postBuild:
+    substituteFrom:
+      - name: cluster-secrets
+        kind: Secret
+      - name: cluster-settings
+        kind: ConfigMap

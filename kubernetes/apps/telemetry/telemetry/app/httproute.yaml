@@ -1,0 +1,52 @@
+---
+# The only public way in: POST https://telemetry.${SECRET_DOMAIN_SUTLER}/v2/batch.
+#
+# Path, and what each hop keeps:
+#   phone -> Cloudflare edge (orange-clouded CNAME, network/cloudflare-tunnel/app/dnsendpoint.yaml)
+#     Cloudflare sees the client address, as it does for every proxied site; its analytics
+#     keep aggregates. Nothing here can change that.
+#   -> cloudflared (network/cloudflare-tunnel, ingress rule for this hostname)
+#     Logs at its default level: tunnel connections, and failed origin requests by rule
+#     index and error only. No client address, no path, no body.
+#   -> Cilium gateway "external", listener https-sutler (*.${SECRET_DOMAIN_SUTLER})
+#     Envoy access logging is not configured and Hubble is disabled, so it logs nothing per
+#     request. This route strips every header that can carry the client address (below), so
+#     the server never receives it.
+#   -> telemetry pods: never read the socket address or a forwarding header, log nothing per
+#     request, store no address.
+#
+# Exactly one path is routed; anything else on this hostname is a 404 from the gateway, so
+# /healthz and /metrics stay inside the cluster.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: telemetry
+  namespace: telemetry
+spec:
+  parentRefs:
+    - name: external
+      namespace: kube-system
+      # The listener for this app's domain (not the cluster's default one).
+      sectionName: https-sutler
+  hostnames: ["telemetry.${SECRET_DOMAIN_SUTLER}"]
+  rules:
+    - matches:
+        - path:
+            type: Exact
+            value: /v2/batch
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            remove:
+              - X-Forwarded-For
+              - X-Real-IP
+              - Forwarded
+              - True-Client-IP
+              - CF-Connecting-IP
+              - CF-Connecting-IPv6
+              - CF-Pseudo-IPv4
+              - CF-IPCountry
+              - X-Envoy-External-Address
+      backendRefs:
+        - name: telemetry
+          port: 8080

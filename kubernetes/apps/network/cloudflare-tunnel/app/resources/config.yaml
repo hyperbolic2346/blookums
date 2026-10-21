@@ -43,6 +43,12 @@ ingress:
     service: *svc-external
     originRequest:
       originServerName: "tally-teach.${SECRET_DOMAIN_SUTLER}"
+  # Telemetry ingest for Screwed and Teeter (apps/telemetry). Only POST /v2/batch is routed
+  # behind it; see that HTTPRoute for what each hop logs.
+  - hostname: "telemetry.${SECRET_DOMAIN_SUTLER}"
+    service: *svc-external
+    originRequest:
+      originServerName: "telemetry.${SECRET_DOMAIN_SUTLER}"
   - hostname: "maison-flacon.com"
     service: *svc-external
     originRequest:

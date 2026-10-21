@@ -1,0 +1,203 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/helmrelease-helm-v2.json
+#
+# The telemetry server (ingest only) and its nightly job. One image, three commands:
+#   src/main.ts      the server, POST /v2/batch on :8080 (/healthz, /metrics for the cluster)
+#   src/migrate.ts   schema migrations, then SELECT grants for telemetry_reader
+#   src/maintain.ts  daily rollup, then deletes raw events older than 13 months
+#
+# Privacy: the server never reads the client address or forwarding headers and logs nothing
+# per request (see httproute.yaml for the whole path, which also strips those headers).
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: telemetry
+  namespace: telemetry
+spec:
+  interval: 30m
+  timeout: 10m
+  chartRef:
+    kind: OCIRepository
+    name: telemetry
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    defaultPodOptions:
+      imagePullSecrets:
+        - name: telemetry-ghcr-pull
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+    controllers:
+      # Two copies, rolling updates: a new copy must be ready before an old one stops. Phones
+      # retry anyway, so this is about tidiness, not survival.
+      telemetry:
+        replicas: 2
+        strategy: RollingUpdate
+        rollingUpdate:
+          surge: 1
+          unavailable: 0
+        annotations:
+          reloader.stakater.com/auto: "true"
+        pod:
+          topologySpreadConstraints:
+            - maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: ScheduleAnyway
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: telemetry
+                  app.kubernetes.io/controller: telemetry
+        initContainers:
+          # 1) the telemetry database and its owner role, on the shared CNPG cluster
+          01-init-db:
+            image: &pginit
+              repository: ghcr.io/home-operations/postgres-init
+              tag: 18.6@sha256:b6d3af974df781c673d37e49bdddfa14a6f5be28b18d2cb7713f0449bea4057b
+            # The superuser login is mounted here and in 02 only.
+            envFrom:
+              - secretRef:
+                  name: telemetry-db-init
+            env:
+              INIT_POSTGRES_PASS:
+                valueFrom:
+                  secretKeyRef:
+                    name: telemetry-generated
+                    key: DB_PASSWORD
+            securityContext: &hardened
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: {drop: ["ALL"]}
+          # 2) the read-only role Grafana logs in as (reader-role.sql)
+          02-reader-role:
+            image: *pginit
+            command: ["psql", "--no-psqlrc", "--quiet", "--dbname=telemetry", "--file=/sql/reader-role.sql"]
+            env:
+              PGHOST:
+                valueFrom:
+                  secretKeyRef: {name: telemetry-db-init, key: INIT_POSTGRES_HOST}
+              PGUSER:
+                valueFrom:
+                  secretKeyRef: {name: telemetry-db-init, key: INIT_POSTGRES_SUPER_USER}
+              PGPASSWORD:
+                valueFrom:
+                  secretKeyRef: {name: telemetry-db-init, key: INIT_POSTGRES_SUPER_PASS}
+              READER_PASSWORD:
+                valueFrom:
+                  secretKeyRef: {name: telemetry-generated, key: READER_PASSWORD}
+            securityContext: *hardened
+          # 3) schema migrations as the owner, then SELECT grants for the reader
+          03-migrate:
+            image: &image
+              repository: ghcr.io/hyperbolic2346/nerdbucket-telemetry
+              tag: main-efb9b20-b6 # {"$imagepolicy": "flux-system:nerdbucket-telemetry:tag"}
+            args: ["src/migrate.ts"]
+            env: &dbEnv
+              PGHOST: postgres-rw.databases.svc.cluster.local
+              PGDATABASE: telemetry
+              PGUSER: telemetry
+              PGPASSWORD:
+                valueFrom:
+                  secretKeyRef: {name: telemetry-generated, key: DB_PASSWORD}
+              DB_SSL: require
+              READER_ROLE: telemetry_reader
+            securityContext: *hardened
+        containers:
+          app:
+            image: *image
+            env:
+              !!merge <<: *dbEnv
+              PORT: "8080"
+              # The off-switch (plan rule 3). "all", or a comma list of games, answers 410
+              # Gone, and each phone that hears it stops sending for good. Empty = live.
+              RETIRED: ""
+            probes:
+              # Neither touches the database: a database blip answers 503 to batches (the
+              # phones retry) without getting the pods killed.
+              liveness: &probe
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: 8080
+                  periodSeconds: 15
+                  timeoutSeconds: 2
+                  failureThreshold: 3
+              readiness: *probe
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: 8080
+                  periodSeconds: 2
+                  failureThreshold: 30
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 256Mi
+            securityContext: *hardened
+      # Nightly at 04:17 UTC: refresh the daily aggregates (kept for good) for the last 35
+      # days, then delete raw events older than 13 months. Run it now with:
+      #   kubectl -n telemetry create job --from=cronjob/telemetry-maintain maintain-now
+      maintain:
+        type: cronjob
+        cronjob:
+          schedule: "17 4 * * *"
+          timeZone: Etc/UTC
+          concurrencyPolicy: Forbid
+          backoffLimit: 2
+          activeDeadlineSeconds: 1800
+          ttlSecondsAfterFinished: 86400
+          successfulJobsHistory: 1
+          failedJobsHistory: 2
+        containers:
+          app:
+            image: *image
+            args: ["src/maintain.ts"]
+            env: *dbEnv
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 256Mi
+            securityContext: *hardened
+    service:
+      app:
+        controller: telemetry
+        ports:
+          http:
+            port: 8080
+    serviceMonitor:
+      app:
+        endpoints:
+          - port: http
+            path: /metrics
+            interval: 1m
+    persistence:
+      reader-sql:
+        type: configMap
+        name: telemetry-reader-sql
+        advancedMounts:
+          telemetry:
+            02-reader-role:
+              - path: /sql
+                readOnly: true
