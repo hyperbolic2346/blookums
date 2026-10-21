@@ -1,0 +1,26 @@
+---
+# Scrapes each stockpile worker's /metrics on its health port (8091, named
+# "metrics" in the HelmRelease). Each worker reports only what its own job
+# families own (stockpile docs/metrics.md), so both are scraped. No Service:
+# the port has none, and the network policy admits only the node and
+# Prometheus. Job label: batcave/stockpile-worker.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/podmonitor_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: stockpile-worker
+spec:
+  selector:
+    matchExpressions:
+      - key: app.kubernetes.io/instance
+        operator: In
+        values: [stockpile]
+      - key: app.kubernetes.io/controller
+        operator: In
+        values: [worker, worker-catalog]
+  podTargetLabels: [app.kubernetes.io/controller]
+  podMetricsEndpoints:
+    - port: metrics
+      path: /metrics
+      interval: 60s
+      scrapeTimeout: 30s

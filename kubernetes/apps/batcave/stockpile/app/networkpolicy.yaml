@@ -6,6 +6,8 @@
 #   host    - kubelet probes (the node the pod runs on)
 #   ingress - the Cilium Gateway API proxy (kube-system/external), which is
 #             how HTTPRoute traffic reaches the api and web services
+#   prometheus - observability/kube-prometheus-stack, scraping the workers'
+#             /metrics on 8091 through the PodMonitor in this directory
 #
 # Ingress only. Egress is unchanged.
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
@@ -48,7 +50,8 @@ spec:
             - port: "3000"
               protocol: TCP
 ---
-# The worker serves nothing; only the node is admitted.
+# The workers serve only their health port (8091): /healthz and /readyz for
+# the kubelet (the node), /metrics for Prometheus.
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
@@ -62,6 +65,14 @@ spec:
   ingress:
     - fromEntities:
         - host
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: observability
+            app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "8091"
+              protocol: TCP
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
 apiVersion: cilium.io/v2
@@ -76,6 +87,14 @@ spec:
   ingress:
     - fromEntities:
         - host
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: observability
+            app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "8091"
+              protocol: TCP
 ---
 # Redis is used by this release's api and workers only.
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json

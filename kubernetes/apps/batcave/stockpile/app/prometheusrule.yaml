@@ -1,0 +1,222 @@
+---
+# Alerts on the stockpile workers' /metrics (stockpile#579, docs/metrics.md;
+# scraped by podmonitor.yaml). Ported from sutler's rules where a twin exists.
+#
+# Environment: marketplace series carry sandbox="true"/"false" from the seller
+# account's sandbox switch; the marketplace rules select sandbox="false" (a
+# test account is not an outage, sutler#125).
+#
+# Each worker reports only its own job families' series (store: marketplace
+# accounts; catalog: distributors and pricing pulls; marketplace: drop-ship),
+# so `max without (pod, instance)` only folds a pod restart's two series.
+#
+# Drop-ship rules are warning: nothing ends a listing on the strength of a bad
+# feed until drop-ship listing lands (#114); raise them then.
+#
+# Flux post-build substitution is strict about a dollar sign before a brace:
+# annotations use "{{ $value }}" / "{{ $labels.x }}" only.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/prometheusrule_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: stockpile
+spec:
+  groups:
+    - name: stockpile.workers
+      rules:
+        # If this fires, assume every other stockpile alert is not evaluating
+        # for that worker. (Also true while a worker waits for the schema at boot.)
+        - alert: StockpileWorkerMetricsDown
+          expr: up{job="batcave/stockpile-worker"} == 0
+          for: 10m
+          labels: { severity: critical }
+          annotations:
+            summary: >-
+              Stockpile worker {{ $labels.app_kubernetes_io_controller }} is not
+              answering /metrics — its other alerts are silent.
+        - alert: StockpileWorkerMetricsAbsent
+          expr: absent(up{job="batcave/stockpile-worker"})
+          for: 15m
+          labels: { severity: critical }
+          annotations:
+            summary: No Stockpile worker is being scraped at all (PodMonitor, policy or pods).
+        - alert: StockpileJobFamilyNotRunning
+          expr: max by (family) (stockpile_worker_family_runs) == 0
+          for: 10m
+          labels: { severity: critical }
+          annotations:
+            summary: >-
+              No Stockpile worker runs the {{ $labels.family }} job family — its
+              jobs wait in Redis and its schedules are not held. Check
+              WORKER_FAMILIES on the worker deployments.
+        - alert: StockpileJobFamilyUncovered
+          expr: max by (family) (stockpile_worker_family_uncovered_checks) >= 2
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: >-
+              A {{ $labels.family }} queue has had no worker listening for two
+              coverage checks in a row (the worker log says which).
+        - alert: StockpileWorkerUnhealthy
+          expr: max without (pod, instance) (stockpile_worker_healthy) == 0
+          for: 5m
+          labels: { severity: warning }
+          annotations:
+            summary: >-
+              Stockpile worker {{ $labels.app_kubernetes_io_controller }} fails its
+              Redis / database / schedules self-check.
+        - alert: StockpileMetricsSectionFailing
+          expr: max without (pod, instance) (stockpile_metrics_section_ok) == 0
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: >-
+              The {{ $labels.section }} part of a Stockpile worker's metrics keeps
+              failing — the alerts built on it are silent. Worker log: "Metrics section".
+    - name: stockpile.queues
+      rules:
+        - alert: StockpileStoreQueueBacklog
+          expr: max without (pod, instance) (stockpile_queue_oldest_waiting_seconds{family="store"}) > 900
+          for: 5m
+          labels: { severity: warning }
+          annotations:
+            summary: >-
+              A job on {{ $labels.queue }} has waited {{ $value | humanizeDuration }}
+              — the shop's background work (bound book, printing, orders) is backed up.
+        - alert: StockpileBackgroundQueueBacklog
+          expr: max without (pod, instance) (stockpile_queue_oldest_waiting_seconds{family!="store"}) > 7200
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: >-
+              A job on {{ $labels.queue }} ({{ $labels.family }}) has waited
+              {{ $value | humanizeDuration }}.
+        - alert: StockpileDropShipRecomputeFailing
+          expr: time() - max without (pod, instance) (stockpile_queue_last_failed_timestamp_seconds{queue="dropship-selection"}) < 3600
+          labels: { severity: warning }
+          annotations:
+            summary: A drop-ship recompute failed both attempts in the last hour (worker log "Drop-ship job").
+    - name: stockpile.distributors
+      rules:
+        - alert: StockpileDistributorNeverSynced
+          expr: >-
+            max without (pod, instance) (stockpile_distributor_sync_enabled) == 1
+            unless on (vendor)
+            max without (pod, instance) (stockpile_distributor_sync_last_success_timestamp_seconds{kind="catalog"})
+          for: 2h
+          labels: { severity: warning }
+          annotations:
+            summary: "{{ $labels.vendor }}'s catalog sync is on but has never succeeded."
+        - alert: StockpileDistributorCatalogStale
+          expr: >-
+            time() - max without (pod, instance) (stockpile_distributor_sync_last_success_timestamp_seconds{kind="catalog"}) > 46800
+            and on (vendor) max without (pod, instance) (stockpile_distributor_sync_enabled) == 1
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: >-
+              No successful {{ $labels.vendor }} catalog sync in 13h+ (two missed
+              six-hourly loads) — its offers are going stale.
+        - alert: StockpileDistributorStockStale
+          expr: >-
+            time() - max without (pod, instance) (stockpile_distributor_availability_timestamp_seconds)
+              > 0.75 * max without (pod, instance) (stockpile_distributor_stale_after_seconds)
+            and on (vendor) max without (pod, instance) (stockpile_distributor_sync_enabled) == 1
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: >-
+              {{ $labels.vendor }}'s stock counts are nearly past their window — soon
+              none of its offers can be ordered or drop-shipped.
+        - alert: StockpileDistributorQuantitySyncFailing
+          expr: max without (pod, instance) (stockpile_distributor_sync_last_status{kind="quantity"}) == 0
+          for: 1h
+          labels: { severity: warning }
+          annotations:
+            summary: "{{ $labels.vendor }}'s quantity sync has failed for an hour."
+        - alert: StockpileDistributorSyncWedged
+          expr: max without (pod, instance) (stockpile_distributor_sync_running_seconds) > 3600
+          for: 5m
+          labels: { severity: warning }
+          annotations:
+            summary: >-
+              A {{ $labels.vendor }} {{ $labels.kind }} sync has been RUNNING for
+              {{ $value | humanizeDuration }} (a catalog load takes 12-17 min).
+    - name: stockpile.pricing
+      rules:
+        - alert: StockpilePricingPullFailing
+          expr: >-
+            max without (pod, instance) (stockpile_pricing_pull_last_status) == 0
+            and on (shop, vendor) max without (pod, instance) (stockpile_pricing_pull_paused) == 0
+          for: 13h
+          labels: { severity: warning }
+          annotations:
+            summary: "{{ $labels.shop }}'s {{ $labels.vendor }} pricing pull has failed for 13h (not paused)."
+        - alert: StockpilePricingPullNotRunning
+          expr: >-
+            time() - max without (pod, instance) (stockpile_pricing_pull_last_attempt_timestamp_seconds) > 46800
+            and on (shop, vendor) max without (pod, instance) (stockpile_pricing_pull_paused) == 0
+          for: 30m
+          labels: { severity: warning }
+          annotations:
+            summary: "{{ $labels.shop }}'s {{ $labels.vendor }} pricing pull hasn't run in 13h+ — is its schedule there?"
+    - name: stockpile.marketplace
+      rules:
+        - alert: StockpileMarketplaceOrdersStale
+          expr: >-
+            time() - max without (pod, instance) (stockpile_marketplace_orders_last_success_timestamp_seconds{sandbox="false"}) > 3600
+            and on (account) max without (pod, instance) (stockpile_marketplace_paused) == 0
+          for: 10m
+          labels: { severity: critical }
+          annotations:
+            summary: >-
+              No complete {{ $labels.channel }} orders poll for {{ $labels.shop }}
+              in an hour+ — new sales are not being imported.
+        - alert: StockpileMarketplaceListingSyncStale
+          expr: >-
+            time() - max without (pod, instance) (stockpile_marketplace_listing_sync_last_attempt_timestamp_seconds{sandbox="false"}) > 1800
+            and on (account) max without (pod, instance) (stockpile_marketplace_paused) == 0
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: >-
+              {{ $labels.shop }}'s {{ $labels.channel }} listings haven't been read in
+              30 min+ — the reconcile that keeps quantity listings from overselling isn't running.
+        - alert: StockpileMarketplaceListingSyncFailing
+          expr: >-
+            max without (pod, instance) (stockpile_marketplace_listing_sync_last_status{sandbox="false"}) == 0
+            and on (account) max without (pod, instance) (stockpile_marketplace_paused) == 0
+          for: 30m
+          labels: { severity: warning }
+          annotations:
+            summary: "{{ $labels.shop }}'s {{ $labels.channel }} listing sync has failed for 30 min."
+        - alert: StockpileMarketplacePaused
+          expr: max without (pod, instance) (stockpile_marketplace_paused{sandbox="false"}) == 1
+          for: 1h
+          labels: { severity: warning }
+          annotations:
+            summary: >-
+              {{ $labels.shop }}'s {{ $labels.channel }} account is paused (refused
+              login or User-Agent) — no listing reads, no orders, until the owner fixes it.
+    # Sutler's sanity rules, at warning until drop-ship listing lands
+    # (then nothing yet ends a listing on the strength of a bad feed).
+    - name: stockpile.dropship
+      rules:
+        - alert: StockpileDropShipFlipStorm
+          expr: max without (pod, instance) (stockpile_dropship_flips_24h{direction="lost"}) > 500
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: >-
+              {{ $value }} products lost drop-ship eligibility for {{ $labels.shop }}
+              in 24h — suspect feed damage.
+        - alert: StockpileDropShipEligibleCollapse
+          expr: >-
+            max without (pod, instance) (stockpile_dropship_products{stage="eligible"})
+              < 0.60 * max without (pod, instance) (avg_over_time(stockpile_dropship_products{stage="eligible"}[6h] offset 6h))
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: >-
+              {{ $labels.shop }}'s eligible drop-ship shelf fell to {{ $value }}
+              (under 60% of the 6h before) — a bad feed, not a real stock move.

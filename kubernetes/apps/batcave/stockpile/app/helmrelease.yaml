@@ -133,6 +133,12 @@ spec:
               REDIS_URL: "redis://stockpile-redis.batcave.svc.cluster.local:6379"
               WORKER_FAMILIES: store
             envFrom: *envFrom
+            # The health port also serves /metrics (stockpile docs/metrics.md),
+            # scraped by the PodMonitor in this directory through this name.
+            ports: &workerPorts
+              - name: metrics
+                containerPort: 8091
+                protocol: TCP
             probes: &workerProbes
               # /healthz: 200 while the worker's Redis + database self-check
               # heartbeat is fresh (and while it waits for the schema at boot).
@@ -185,6 +191,7 @@ spec:
               REDIS_URL: "redis://stockpile-redis.batcave.svc.cluster.local:6379"
               WORKER_FAMILIES: catalog,marketplace
             envFrom: *envFrom
+            ports: *workerPorts
             probes: *workerProbes
             resources:
               requests:
