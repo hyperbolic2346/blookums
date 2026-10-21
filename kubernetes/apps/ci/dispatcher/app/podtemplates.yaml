@@ -63,7 +63,7 @@ template:
                   values: ["asok", "dogbert"]
     initContainers:
       - name: clone
-        image: docker.io/alpine/git:v2.54.0@sha256:a4bb51f1a3553df194ce679fc1db721d8bfba2046fa1a88fe9d4ac551ffbce25
+        image: docker.io/alpine/git:v2.54.0@sha256:03228d7ded483b0b3e55e1de7fa660d70d3e1bb432fa7021d29e192640de11aa
         command: ["sh", "-c"]
         args:
           - |
@@ -423,7 +423,7 @@ template:
                   values: ["asok", "dogbert"]
     initContainers:
       - name: clone
-        image: docker.io/alpine/git:v2.54.0@sha256:a4bb51f1a3553df194ce679fc1db721d8bfba2046fa1a88fe9d4ac551ffbce25
+        image: docker.io/alpine/git:v2.54.0@sha256:03228d7ded483b0b3e55e1de7fa660d70d3e1bb432fa7021d29e192640de11aa
         command: ["sh", "-c"]
         args:
           - |
