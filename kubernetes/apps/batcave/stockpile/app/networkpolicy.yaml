@@ -63,7 +63,21 @@ spec:
     - fromEntities:
         - host
 ---
-# Redis is used by this release's api and worker only.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: stockpile-worker-catalog
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: stockpile
+      app.kubernetes.io/controller: worker-catalog
+  ingress:
+    - fromEntities:
+        - host
+---
+# Redis is used by this release's api and workers only.
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
@@ -84,6 +98,9 @@ spec:
         - matchLabels:
             app.kubernetes.io/instance: stockpile
             app.kubernetes.io/controller: worker
+        - matchLabels:
+            app.kubernetes.io/instance: stockpile
+            app.kubernetes.io/controller: worker-catalog
       toPorts:
         - ports:
             - port: "6379"

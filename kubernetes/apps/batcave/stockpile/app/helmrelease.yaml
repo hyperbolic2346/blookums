@@ -116,8 +116,11 @@ spec:
       worker:
         annotations:
           reloader.stakater.com/auto: "true"
-        # One worker at a time by design (boot-time cleanup of in-progress
-        # sync runs assumes a single worker).
+        # The store worker: register, receiving, NFA, bound book, printing,
+        # labels, tracking, order import (stockpile docs/plugins.md, "Worker
+        # job families"). Catalog loads run in worker-catalog, so an OOM there
+        # can't take printing or the bound book down. Keep the controller
+        # name: the network policies select controller=worker.
         strategy: Recreate
         pod:
           # Running jobs get up to 25s to finish on SIGTERM.
@@ -128,8 +131,9 @@ spec:
             command: ["node", "dist/worker/main.js"]
             env:
               REDIS_URL: "redis://stockpile-redis.batcave.svc.cluster.local:6379"
+              WORKER_FAMILIES: store
             envFrom: *envFrom
-            probes:
+            probes: &workerProbes
               # /healthz: 200 while the worker's Redis + database self-check
               # heartbeat is fresh (and while it waits for the schema at boot).
               liveness:
@@ -163,6 +167,31 @@ spec:
                 cpu: 10m
                 memory: 128Mi
               limits:
+                memory: 768Mi
+      worker-catalog:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        # Exactly one, one pod at a time: the catalog worker's boot deletes
+        # interrupted sync runs. Sutler's heavy jobs (selection recompute,
+        # market sweeps, auto-list) land in the marketplace family here.
+        strategy: Recreate
+        pod:
+          terminationGracePeriodSeconds: 30
+        containers:
+          main:
+            image: *apiImage
+            command: ["node", "dist/worker/main.js"]
+            env:
+              REDIS_URL: "redis://stockpile-redis.batcave.svc.cluster.local:6379"
+              WORKER_FAMILIES: catalog,marketplace
+            envFrom: *envFrom
+            probes: *workerProbes
+            resources:
+              requests:
+                cpu: 10m
+                memory: 256Mi
+              limits:
+                # The RSR/Lipsey's catalog loads are what needed 768Mi.
                 memory: 768Mi
       web:
         # Stateless: surge the new pod first, like the api.
