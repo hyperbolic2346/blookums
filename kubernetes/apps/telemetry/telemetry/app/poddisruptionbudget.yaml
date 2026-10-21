@@ -1,0 +1,13 @@
+---
+# Node drains take down at most one server copy at a time.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: telemetry
+  namespace: telemetry
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: telemetry
+      app.kubernetes.io/controller: telemetry

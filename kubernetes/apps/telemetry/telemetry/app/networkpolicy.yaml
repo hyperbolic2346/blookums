@@ -1,0 +1,83 @@
+---
+# The server is reachable from the gateway (HTTPRoute traffic), the kubelet (probes) and
+# Prometheus (/metrics), on 8080 only.
+#
+# Sources:
+#   host       - kubelet probes (the node the pod runs on)
+#   ingress    - the Cilium Gateway API proxy (kube-system/external)
+#   prometheus - observability/kube-prometheus-stack, through the chart's ServiceMonitor
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: telemetry
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: telemetry
+      app.kubernetes.io/controller: telemetry
+  ingress:
+    - fromEntities:
+        - host
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: observability
+            app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+---
+# The nightly job listens on nothing; only the node is admitted.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: telemetry-maintain
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: telemetry
+      app.kubernetes.io/controller: maintain
+  ingress:
+    - fromEntities:
+        - host
+---
+# Every telemetry pod (server, its init containers, the nightly job) reaches DNS and the
+# database primary (postgres-rw) on 5432, and nothing else. This is a public endpoint; if it
+# were ever subverted it could talk to Postgres as its own two roles and that is all.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: telemetry-egress
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: telemetry
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: databases
+            cnpg.io/cluster: postgres
+            cnpg.io/instanceRole: primary
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP

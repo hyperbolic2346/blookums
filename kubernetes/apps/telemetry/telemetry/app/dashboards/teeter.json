@@ -1,0 +1,1380 @@
+{
+  "title": "Teeter telemetry",
+  "uid": "telemetry-teeter",
+  "description": "Anonymous play data from Teeter, from telemetry.nerdbucket.org. Days are UTC. Raw events cover the last 13 months; the \"kept for good\" panel reads the daily rollup.",
+  "tags": [
+    "telemetry",
+    "teeter"
+  ],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "editable": true,
+  "graphTooltip": 1,
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "refresh": "",
+  "panels": [
+    {
+      "type": "row",
+      "title": "Players",
+      "id": 1,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "New installs",
+      "description": "Installs whose first session_start falls in the time range.",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "id": 2,
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT count(*) AS \"new installs\" FROM (SELECT install, min(event_time) AS first_seen FROM events WHERE game = 'teeter' AND event = 'session_start' GROUP BY install) f WHERE $__timeFilter(first_seen)"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Active installs",
+      "description": "Installs that sent anything in the time range.",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "id": 3,
+      "gridPos": {
+        "x": 4,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT count(DISTINCT install) AS installs FROM events WHERE game = 'teeter' AND $__timeFilter(event_time)"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Sessions",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "id": 4,
+      "gridPos": {
+        "x": 8,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT count(DISTINCT session) AS sessions FROM events WHERE game = 'teeter' AND $__timeFilter(event_time)"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Median session",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "id": 5,
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY (CASE WHEN jsonb_typeof(body->'seconds') = 'number' THEN (body->>'seconds')::numeric END)) AS median FROM events WHERE game = 'teeter' AND event = 'session_end' AND $__timeFilter(event_time)"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Purchases",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "id": 6,
+      "gridPos": {
+        "x": 16,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT count(*) AS purchases FROM events WHERE game = 'teeter' AND event = 'purchase' AND $__timeFilter(event_time)"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Last batch received",
+      "description": "When the newest event for this game reached the server, whatever its own time says.",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeFromNow"
+        },
+        "overrides": []
+      },
+      "id": 7,
+      "gridPos": {
+        "x": 20,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT extract(epoch FROM max(received_at)) * 1000 AS received FROM events WHERE game = 'teeter'"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Installs per day",
+      "description": "Active: sent anything that UTC day. New: first session_start that day.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 2,
+            "showPoints": "auto",
+            "stacking": {
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "id": 8,
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "time_series",
+          "rawSql": "SELECT $__timeGroupAlias(event_time, 1d), count(DISTINCT install) AS \"active installs\" FROM events WHERE game = 'teeter' AND $__timeFilter(event_time) GROUP BY 1 ORDER BY 1"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "time_series",
+          "rawSql": "SELECT $__timeGroupAlias(first_seen, 1d), count(*) AS \"new installs\" FROM (SELECT install, min(event_time) AS first_seen FROM events WHERE game = 'teeter' AND event = 'session_start' GROUP BY install) f WHERE $__timeFilter(first_seen) GROUP BY 1 ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Session length per day",
+      "description": "From session_end.seconds.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "auto",
+            "stacking": {
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "id": 9,
+      "gridPos": {
+        "x": 12,
+        "y": 5,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "time_series",
+          "rawSql": "SELECT $__timeGroupAlias(event_time, 1d), percentile_cont(0.5) WITHIN GROUP (ORDER BY (CASE WHEN jsonb_typeof(body->'seconds') = 'number' THEN (body->>'seconds')::numeric END)) AS median, percentile_cont(0.9) WITHIN GROUP (ORDER BY (CASE WHEN jsonb_typeof(body->'seconds') = 'number' THEN (body->>'seconds')::numeric END)) AS \"90th percentile\" FROM events WHERE game = 'teeter' AND event = 'session_end' AND $__timeFilter(event_time) GROUP BY 1 ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Installs per day, kept for good",
+      "description": "From the daily_activity rollup, which outlives the 13 months of raw events. Refreshed nightly, so today is missing.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "auto",
+            "stacking": {
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "id": 10,
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "time_series",
+          "rawSql": "SELECT day::timestamp AS \"time\", active_installs AS \"active installs\", new_installs AS \"new installs\", sessions FROM daily_activity WHERE game = 'teeter' AND $__timeFilter(day::timestamptz) ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "App and OS versions",
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 11,
+      "gridPos": {
+        "x": 12,
+        "y": 13,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT app, os, count(DISTINCT install) AS installs, max(event_time) AS \"last seen\" FROM events WHERE game = 'teeter' AND $__timeFilter(event_time) GROUP BY app, os ORDER BY \"last seen\" DESC"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Progress",
+      "id": 12,
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "barchart",
+      "title": "Level funnel: installs that started each level",
+      "description": "Distinct installs with a level_start for each level in the time range.",
+      "options": {
+        "xField": "level",
+        "stacking": "none",
+        "showValue": "never",
+        "xTickLabelSpacing": 50,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 80
+          }
+        },
+        "overrides": []
+      },
+      "id": 13,
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT (CASE WHEN jsonb_typeof(body->'level') = 'number' THEN (body->>'level')::numeric END)::int::text AS level, count(DISTINCT install) AS installs FROM events WHERE game = 'teeter' AND event = 'level_start' AND (CASE WHEN jsonb_typeof(body->'level') = 'number' THEN (body->>'level')::numeric END)::int >= 1 AND $__timeFilter(event_time) GROUP BY (CASE WHEN jsonb_typeof(body->'level') = 'number' THEN (body->>'level')::numeric END)::int ORDER BY (CASE WHEN jsonb_typeof(body->'level') = 'number' THEN (body->>'level')::numeric END)::int LIMIT 300"
+        }
+      ]
+    },
+    {
+      "type": "barchart",
+      "title": "Sticking points: where installs not seen for 7 days stopped",
+      "description": "Each install's highest level started, for installs whose last event is over 7 days old and falls in the time range.",
+      "options": {
+        "xField": "level",
+        "stacking": "none",
+        "showValue": "never",
+        "xTickLabelSpacing": 50,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 80
+          }
+        },
+        "overrides": []
+      },
+      "id": 14,
+      "gridPos": {
+        "x": 12,
+        "y": 22,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH gone AS (SELECT install FROM events WHERE game = 'teeter' GROUP BY install HAVING max(event_time) < now() - interval '7 days' AND $__timeFilter(max(event_time))), reached AS (SELECT install, max((CASE WHEN jsonb_typeof(body->'level') = 'number' THEN (body->>'level')::numeric END)::int) AS level FROM events WHERE game = 'teeter' AND event = 'level_start' AND (CASE WHEN jsonb_typeof(body->'level') = 'number' THEN (body->>'level')::numeric END)::int >= 1 GROUP BY install) SELECT r.level::text AS level, count(*) AS installs FROM gone JOIN reached r USING (install) GROUP BY r.level ORDER BY r.level LIMIT 300"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Sticking points, worst first",
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 15,
+      "gridPos": {
+        "x": 0,
+        "y": 31,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH gone AS (SELECT install FROM events WHERE game = 'teeter' GROUP BY install HAVING max(event_time) < now() - interval '7 days' AND $__timeFilter(max(event_time))), reached AS (SELECT install, max((CASE WHEN jsonb_typeof(body->'level') = 'number' THEN (body->>'level')::numeric END)::int) AS level FROM events WHERE game = 'teeter' AND event = 'level_start' AND (CASE WHEN jsonb_typeof(body->'level') = 'number' THEN (body->>'level')::numeric END)::int >= 1 GROUP BY install), last AS (SELECT DISTINCT ON (install) install, event FROM events WHERE game = 'teeter' AND install IN (SELECT install FROM events WHERE game = 'teeter' GROUP BY install HAVING max(event_time) < now() - interval '7 days' AND $__timeFilter(max(event_time))) ORDER BY install, event_time DESC, n DESC) SELECT r.level, count(*) AS installs, round(100.0 * count(*) / sum(count(*)) OVER (), 1) AS \"share %\", mode() WITHIN GROUP (ORDER BY l.event) AS \"usual last event\" FROM gone JOIN reached r USING (install) JOIN last l USING (install) GROUP BY r.level ORDER BY installs DESC LIMIT 20"
+        }
+      ]
+    },
+    {
+      "type": "barchart",
+      "title": "Attempts per level",
+      "description": "level_start events per install that played the level.",
+      "options": {
+        "xField": "level",
+        "stacking": "none",
+        "showValue": "never",
+        "xTickLabelSpacing": 50,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 80
+          }
+        },
+        "overrides": []
+      },
+      "id": 16,
+      "gridPos": {
+        "x": 12,
+        "y": 31,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT (CASE WHEN jsonb_typeof(body->'level') = 'number' THEN (body->>'level')::numeric END)::int::text AS level, round(count(*)::numeric / count(DISTINCT install), 2) AS \"starts per install\" FROM events WHERE game = 'teeter' AND event = 'level_start' AND (CASE WHEN jsonb_typeof(body->'level') = 'number' THEN (body->>'level')::numeric END)::int >= 1 AND $__timeFilter(event_time) GROUP BY (CASE WHEN jsonb_typeof(body->'level') = 'number' THEN (body->>'level')::numeric END)::int ORDER BY (CASE WHEN jsonb_typeof(body->'level') = 'number' THEN (body->>'level')::numeric END)::int LIMIT 300"
+        }
+      ]
+    },
+    {
+      "type": "barchart",
+      "title": "Level results by level",
+      "options": {
+        "xField": "level",
+        "stacking": "normal",
+        "showValue": "never",
+        "xTickLabelSpacing": 50,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 80
+          }
+        },
+        "overrides": []
+      },
+      "id": 17,
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 18,
+        "h": 9
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT (CASE WHEN jsonb_typeof(body->'level') = 'number' THEN (body->>'level')::numeric END)::int::text AS level, count(*) FILTER (WHERE body->>'result' = 'won') AS \"won\", count(*) FILTER (WHERE body->>'result' = 'tipped') AS \"tipped\", count(*) FILTER (WHERE body->>'result' = 'jammed') AS \"jammed\", count(*) FILTER (WHERE body->>'result' = 'out_of_moves') AS \"out_of_moves\", count(*) FILTER (WHERE body->>'result' = 'quit') AS \"quit\" FROM (SELECT DISTINCT ON (install, body->>'level', body->>'attempt') * FROM events WHERE game = 'teeter' AND event = 'level_end' AND $__timeFilter(event_time) ORDER BY install, body->>'level', body->>'attempt', event_time DESC, n DESC) v WHERE (CASE WHEN jsonb_typeof(body->'level') = 'number' THEN (body->>'level')::numeric END)::int >= 1 GROUP BY (CASE WHEN jsonb_typeof(body->'level') = 'number' THEN (body->>'level')::numeric END)::int ORDER BY (CASE WHEN jsonb_typeof(body->'level') = 'number' THEN (body->>'level')::numeric END)::int LIMIT 300"
+        }
+      ]
+    },
+    {
+      "type": "piechart",
+      "title": "Loss causes",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "pieType": "pie",
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value",
+            "percent"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "id": 18,
+      "gridPos": {
+        "x": 18,
+        "y": 40,
+        "w": 6,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT body->>'result' AS result, count(*) AS levels FROM (SELECT DISTINCT ON (install, body->>'level', body->>'attempt') * FROM events WHERE game = 'teeter' AND event = 'level_end' AND $__timeFilter(event_time) ORDER BY install, body->>'level', body->>'attempt', event_time DESC, n DESC) v WHERE coalesce(body->>'result', '') NOT IN ('won') GROUP BY 1 ORDER BY 2 DESC"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Help, power-ups, ads and money",
+      "id": 19,
+      "gridPos": {
+        "x": 0,
+        "y": 49,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "table",
+      "title": "Revives (continues)",
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 20,
+      "gridPos": {
+        "x": 0,
+        "y": 50,
+        "w": 6,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT body->>'via' AS via, count(*) AS revives, count(DISTINCT install) AS installs FROM events WHERE game = 'teeter' AND event = 'revive' AND $__timeFilter(event_time) GROUP BY 1 ORDER BY 2 DESC"
+        }
+      ]
+    },
+    {
+      "type": "barchart",
+      "title": "Power-ups used",
+      "options": {
+        "xField": "kind",
+        "stacking": "none",
+        "showValue": "never",
+        "xTickLabelSpacing": 50,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 80
+          }
+        },
+        "overrides": []
+      },
+      "id": 21,
+      "gridPos": {
+        "x": 6,
+        "y": 50,
+        "w": 9,
+        "h": 9
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT body->>'kind' AS kind, count(*) AS uses, count(DISTINCT install) AS installs FROM events WHERE game = 'teeter' AND event = 'powerup' AND $__timeFilter(event_time) GROUP BY 1 ORDER BY 2 DESC"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Power-ups bought and given",
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 22,
+      "gridPos": {
+        "x": 15,
+        "y": 50,
+        "w": 9,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT event, body->>'item' AS item, count(*) AS times, sum((CASE WHEN jsonb_typeof(body->'qty') = 'number' THEN (body->>'qty')::numeric END)) AS qty, sum((CASE WHEN jsonb_typeof(body->'coins') = 'number' THEN (body->>'coins')::numeric END)) AS coins FROM events WHERE game = 'teeter' AND event IN ('shop_purchase', 'powerup_gain') AND $__timeFilter(event_time) GROUP BY 1, 2 ORDER BY 1, 3 DESC"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Coins earned and spent per day",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 2,
+            "showPoints": "auto",
+            "stacking": {
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "id": 23,
+      "gridPos": {
+        "x": 0,
+        "y": 59,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "time_series",
+          "rawSql": "SELECT $__timeGroupAlias(event_time, 1d), sum((CASE WHEN jsonb_typeof(body->'amount') = 'number' THEN (body->>'amount')::numeric END)) FILTER (WHERE event = 'coin_earn') AS earned, sum((CASE WHEN jsonb_typeof(body->'amount') = 'number' THEN (body->>'amount')::numeric END)) FILTER (WHERE event IN ('coin_spend', 'shop_purchase')) AS spent FROM events WHERE game = 'teeter' AND event IN ('coin_earn', 'coin_spend', 'shop_purchase') AND $__timeFilter(event_time) GROUP BY 1 ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Rewarded ad success",
+      "description": "Rewarded ads that paid out, out of all asked for.",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "id": 24,
+      "gridPos": {
+        "x": 12,
+        "y": 59,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT 100.0 * count(*) FILTER (WHERE body->>'rewarded' = 'true') / nullif(count(*), 0) AS rewarded FROM events WHERE game = 'teeter' AND event = 'ad_rewarded' AND $__timeFilter(event_time)"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Rewarded ads",
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 25,
+      "gridPos": {
+        "x": 0,
+        "y": 67,
+        "w": 10,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT body->>'placement' AS placement, body->>'rewarded' AS rewarded, body->>'detail' AS detail, count(*) AS ads FROM events WHERE game = 'teeter' AND event = 'ad_rewarded' AND $__timeFilter(event_time) GROUP BY 1, 2, 3 ORDER BY 1, 4 DESC"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Ad breaks",
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 26,
+      "gridPos": {
+        "x": 10,
+        "y": 67,
+        "w": 10,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT body->>'trigger' AS trigger, body->>'shown' AS shown, count(*) AS breaks FROM events WHERE game = 'teeter' AND event = 'ad_break' AND $__timeFilter(event_time) GROUP BY 1, 2 ORDER BY 1, 3 DESC"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Purchases",
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 27,
+      "gridPos": {
+        "x": 0,
+        "y": 75,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT body->>'product' AS product, body->>'currency' AS currency, count(*) AS purchases, sum((CASE WHEN jsonb_typeof(body->'cents') = 'number' THEN (body->>'cents')::numeric END)) / 100.0 AS amount, round((percentile_cont(0.5) WITHIN GROUP (ORDER BY (CASE WHEN jsonb_typeof(body->'since_install_s') = 'number' THEN (body->>'since_install_s')::numeric END)) / 3600)::numeric, 1) AS \"median hours since install\" FROM events WHERE game = 'teeter' AND event = 'purchase' AND $__timeFilter(event_time) GROUP BY 1, 2 ORDER BY 3 DESC"
+        }
+      ]
+    },
+    {
+      "type": "barchart",
+      "title": "Tutorial: installs reaching each step",
+      "options": {
+        "xField": "step",
+        "stacking": "none",
+        "showValue": "never",
+        "xTickLabelSpacing": 50,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 80
+          }
+        },
+        "overrides": []
+      },
+      "id": 28,
+      "gridPos": {
+        "x": 12,
+        "y": 75,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT body->>'step' AS step, count(DISTINCT install) AS installs FROM events WHERE game = 'teeter' AND event = 'tutorial_step' AND $__timeFilter(event_time) GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT 50"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Data flow",
+      "id": 29,
+      "gridPos": {
+        "x": 0,
+        "y": 84,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Oldest raw event",
+      "description": "By the earlier of its own time and its arrival. The nightly job deletes anything past 13 months, so this should never read more than about 13 months ago.",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeFromNow"
+        },
+        "overrides": []
+      },
+      "id": 30,
+      "gridPos": {
+        "x": 0,
+        "y": 85,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT extract(epoch FROM min(least(event_time, received_at))) * 1000 AS oldest FROM events WHERE game = 'teeter'"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Raw events stored",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "id": 31,
+      "gridPos": {
+        "x": 4,
+        "y": 85,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT count(*) AS events FROM events WHERE game = 'teeter'"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Events received per day, by name",
+      "description": "By arrival time, not event time: a backlog sent after days offline shows up on the day it arrived.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 2,
+            "showPoints": "auto",
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "id": 32,
+      "gridPos": {
+        "x": 8,
+        "y": 85,
+        "w": 16,
+        "h": 8
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "telemetry-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "telemetry-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "time_series",
+          "rawSql": "SELECT $__timeGroupAlias(received_at, 1d), event AS metric, count(*) AS value FROM events WHERE game = 'teeter' AND $__timeFilter(received_at) GROUP BY 1, 2 ORDER BY 1"
+        }
+      ]
+    }
+  ]
+}

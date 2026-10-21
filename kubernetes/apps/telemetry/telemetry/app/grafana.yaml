@@ -1,0 +1,73 @@
+---
+# Grafana (observability namespace, internal gateway only: https://grafana.${SECRET_DOMAIN})
+# reads the telemetry database as telemetry_reader: read-only, this database only, from a
+# replica. Defined here rather than in observability so its password can come from this
+# namespace's generated Secret; allowCrossNamespaceImport lets the operator use it.
+#
+# Substitution is off for this resource: the operator itself fills in the password at
+# ${READER_PASSWORD}, so Flux must leave that text alone.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/grafana.integreatly.org/grafanadatasource_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: telemetry-postgres
+  annotations:
+    kustomize.toolkit.fluxcd.io/substitute: disabled
+spec:
+  allowCrossNamespaceImport: true
+  instanceSelector:
+    matchLabels:
+      grafana.internal/instance: grafana
+  uid: telemetry-postgres
+  valuesFrom:
+    - targetPath: secureJsonData.password
+      valueFrom:
+        secretKeyRef:
+          name: telemetry-generated
+          key: READER_PASSWORD
+  datasource:
+    name: telemetry
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: postgres-ro.databases.svc.cluster.local:5432
+    user: telemetry_reader
+    jsonData:
+      database: telemetry
+      sslmode: require
+      postgresVersion: 1600
+      timescaledb: false
+      maxOpenConns: 4
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+    secureJsonData:
+      password: "${READER_PASSWORD}"
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/grafana.integreatly.org/grafanadashboard_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: telemetry-screwed
+spec:
+  allowCrossNamespaceImport: true
+  instanceSelector:
+    matchLabels:
+      grafana.internal/instance: grafana
+  folder: Telemetry
+  configMapRef:
+    name: telemetry-dashboards
+    key: screwed.json
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/grafana.integreatly.org/grafanadashboard_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: telemetry-teeter
+spec:
+  allowCrossNamespaceImport: true
+  instanceSelector:
+    matchLabels:
+      grafana.internal/instance: grafana
+  folder: Telemetry
+  configMapRef:
+    name: telemetry-dashboards
+    key: teeter.json
