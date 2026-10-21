@@ -1,0 +1,231 @@
+---
+# The nightly refresh (stockpile#331): last night's production database into
+# shadow staging, scrubbed. Steps in refresh/refresh.sh; the restore and
+# scrub in refresh/refresh.sql — one transaction, all or nothing.
+#
+#   dump    (init 1)  production from a READ REPLICA, read-only role, to the
+#                     pod's own disk. Staging keeps running.
+#   stop    (init 2)  staging's api and worker scaled to 0.
+#   restore (init 3)  into stockpile_staging as its owner, scrubbed.
+#   start   (main)    fresh Redis, then the api (migrates the copy to main's
+#                     schema, seeds) and the worker.
+#
+# A failure before `stop` leaves staging as it was; after it, staging stays
+# down on yesterday's scrubbed copy until the next run (or a manual one).
+#
+# Run it now:
+#   kubectl -n stockpile-staging create job --from=cronjob/stockpile-staging-refresh refresh-now
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: stockpile-staging-refresh
+  annotations:
+    # Shell variables below, never Flux's.
+    kustomize.toolkit.fluxcd.io/substitute: disabled
+spec:
+  # Quiet hours, after the day's work; well clear of the 00/06 catalog loads'
+  # end and the 05:10 drop-ship sweep. The dump reads a replica, never the
+  # primary.
+  schedule: "40 3 * * *"
+  timeZone: America/New_York
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 3600
+      ttlSecondsAfterFinished: 259200
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: stockpile-staging-refresh
+        spec:
+          restartPolicy: Never
+          serviceAccountName: stockpile-staging-refresh
+          enableServiceLinks: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 70
+            runAsGroup: 70
+            fsGroup: 70
+            seccompProfile:
+              type: RuntimeDefault
+          initContainers:
+            - name: dump
+              image: &pg docker.io/library/postgres:16.15-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+              command: ["sh", "/refresh/refresh.sh", "dump"]
+              env:
+                - name: SOURCE_HOST
+                  value: postgres-ro.databases.svc.cluster.local
+                - name: SOURCE_DB
+                  value: stockpile
+                - name: SOURCE_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: stockpile-staging-refresh
+                      key: SOURCE_USER
+                - name: SOURCE_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: stockpile-staging-refresh
+                      key: SOURCE_PASSWORD
+              securityContext: &secure
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources: &pgResources
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  memory: 512Mi
+              volumeMounts: &mounts
+                - name: refresh
+                  mountPath: /refresh
+                  readOnly: true
+                - name: work
+                  mountPath: /work
+                - name: tmp
+                  mountPath: /tmp
+            - name: stop
+              image: &kubectl docker.io/alpine/k8s:1.37.1@sha256:712dc5385d1c1a3f83b747fa9e40f64d433a97f72ff42f9755ff7dd1f62846e4
+              command: ["sh", "/refresh/refresh.sh", "stop"]
+              env:
+                - name: HOME
+                  value: /tmp
+              securityContext: *secure
+              resources: &kubectlResources
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi
+              volumeMounts: *mounts
+            - name: restore
+              image: *pg
+              command: ["sh", "/refresh/refresh.sh", "restore"]
+              env:
+                - name: PGHOST
+                  value: postgres-rw.databases.svc.cluster.local
+                - name: PGDATABASE
+                  value: stockpile_staging
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: stockpile-staging-refresh
+                      key: TARGET_USER
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: stockpile-staging-refresh
+                      key: TARGET_PASSWORD
+              securityContext: *secure
+              resources: *pgResources
+              volumeMounts: *mounts
+          containers:
+            - name: start
+              image: *kubectl
+              command: ["sh", "/refresh/refresh.sh", "start"]
+              env:
+                - name: HOME
+                  value: /tmp
+              securityContext: *secure
+              resources: *kubectlResources
+              volumeMounts: *mounts
+          volumes:
+            - name: refresh
+              configMap:
+                name: stockpile-staging-refresh
+            - name: work
+              emptyDir:
+                sizeLimit: 4Gi
+            - name: tmp
+              emptyDir:
+                sizeLimit: 64Mi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: stockpile-staging-refresh
+---
+# Scale and restart this namespace's deployments, and see its pods. Nothing
+# else, nowhere else.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: stockpile-staging-refresh
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["stockpile-staging-api", "stockpile-staging-worker", "stockpile-staging-redis"]
+    verbs: ["patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale"]
+    resourceNames: ["stockpile-staging-api", "stockpile-staging-worker"]
+    verbs: ["get", "patch", "update"]
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: stockpile-staging-refresh
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: stockpile-staging-refresh
+subjects:
+  - kind: ServiceAccount
+    name: stockpile-staging-refresh
+---
+# The refresh reaches DNS, the database (replicas for the dump, the primary
+# for the restore) and the Kubernetes API (scaling), nothing else; it
+# accepts nothing but the node.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: stockpile-staging-refresh
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: stockpile-staging-refresh
+  ingress:
+    - fromEntities:
+        - host
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: databases
+            cnpg.io/cluster: postgres
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+            - port: "6443"
+              protocol: TCP

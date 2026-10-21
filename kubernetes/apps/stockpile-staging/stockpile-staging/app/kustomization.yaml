@@ -1,0 +1,21 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: stockpile-staging
+resources:
+  - ./externalsecret.yaml
+  - ./helmrelease.yaml
+  - ./networkpolicy.yaml
+  - ./ocirepository.yaml
+  - ./refresh-cronjob.yaml
+configMapGenerator:
+  # The refresh's steps and its SQL (refresh-cronjob.yaml). Flux
+  # substitution off: they hold shell and SQL dollar signs.
+  - name: stockpile-staging-refresh
+    files:
+      - ./refresh/refresh.sh
+      - ./refresh/refresh.sql
+    options:
+      disableNameSuffixHash: true
+      annotations:
+        kustomize.toolkit.fluxcd.io/substitute: disabled
