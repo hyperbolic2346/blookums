@@ -17,8 +17,9 @@
 //     repository and lane, in creation order. Main-branch builds take their
 //     build number from a counter in the ConfigMap dispatcher-state. Queued
 //     builds nobody needs any more are dropped before they start (see
-//     planDrops): older main builds once a newer one is queued, and builds
-//     of pull requests that were merged or closed.
+//     planDrops): older main builds once a newer one is queued, builds of
+//     pull requests that were merged or closed, and builds of a pull
+//     request head that a newer push replaced.
 //   - Feedback: a commit status (config.statusContext) on every build, with
 //     a link to the build log served on the log port.
 //   - Rehearsal: for a repository with a `rehearsal` setting, every new api
@@ -589,7 +590,6 @@ async function enqueue(b) {
     log("error", "job name not valid; skipping build", { name });
     return;
   }
-  if (b.kind === "pr") await supersede(b);
   try {
     await k8s("POST", nsPath("jobs"), await jobFor(b));
   } catch (err) {
@@ -606,18 +606,6 @@ async function enqueue(b) {
   }
   log("info", "queued", { job: name, repo: b.repo, kind: b.kind, sha: b.sha, number: b.number });
   await postStatus(b.repo, b.sha, "pending", "Queued" + (b.number != null ? " as build " + b.number : ""), name, b.kind);
-}
-
-// A newer push to a pull request replaces its builds that have not started.
-async function supersede(b) {
-  const sel = encodeURIComponent("app.kubernetes.io/managed-by=" + MANAGED_BY + "," + LABEL + "repo=" + b.repo + "," + LABEL + "pr=" + b.pr);
-  const jobs = await k8s("GET", nsPath("jobs") + "?labelSelector=" + sel);
-  for (const j of jobs.items) {
-    if (!j.spec.suspend || j.metadata.annotations[LABEL + "sha"] === b.sha) continue;
-    await k8s("DELETE", nsPath("jobs") + "/" + j.metadata.name + "?propagationPolicy=Background").catch(() => {});
-    await postStatus(b.repo, j.metadata.annotations[LABEL + "sha"], "error", "Superseded by a newer push", null, "pr");
-    log("info", "superseded", { job: j.metadata.name });
-  }
 }
 
 function finished(job) {
@@ -642,6 +630,9 @@ function finished(job) {
 //     builds are skipped, "Skipped: pull request #N was merged before this
 //     build started", and a running one is stopped, "Stopped: pull request
 //     #N was merged". Only pull request builds are ever stopped.
+//   - Superseded pull request heads: a queued build of an older head of a
+//     pull request is skipped once a newer head is queued, "Skipped:
+//     superseded by <sha7> before it started".
 // Dropping happens in schedule(), the only place that starts builds, so
 // nothing starts between the decision and the delete. The decision is
 // written on the Job first (annotation dispatcher.ci/dropped, guarded by the
@@ -704,6 +695,22 @@ function planDrops(jobs, closed = {}) {
     const what = "pull request #" + pr + " was " + (c.how === "merged" ? "merged" : "closed");
     if (j.spec.suspend === true) add(j, "Skipped: " + what + " before this build started", false);
     else add(j, "Stopped: " + what, true);
+  }
+
+  // Pull requests with a newer head: queued builds of an older head are
+  // skipped. A running one finishes (its result is still worth having).
+  const head = new Map();
+  for (const j of jobs) {
+    if (kindOf(j) !== "pr") continue;
+    const key = repoOf(j) + "#" + lbl(j)[LABEL + "pr"];
+    const top = head.get(key);
+    if (!top || String(ann(j)[LABEL + "seq"]) > String(ann(top)[LABEL + "seq"])) head.set(key, j);
+  }
+  for (const j of live) {
+    if (kindOf(j) !== "pr" || j.spec.suspend !== true) continue;
+    const top = head.get(repoOf(j) + "#" + lbl(j)[LABEL + "pr"]);
+    if (top === j || ann(top)[LABEL + "sha"] === ann(j)[LABEL + "sha"]) continue;
+    add(j, "Skipped: superseded by " + sha7(ann(top)[LABEL + "sha"]) + " before it started", false);
   }
 
   // A commit whose status another build (kept, queued, running or done)

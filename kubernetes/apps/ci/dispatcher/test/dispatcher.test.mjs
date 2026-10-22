@@ -478,3 +478,43 @@ test("webhook: a signed pull_request closed event is recorded in the state", asy
     hooks.close();
   }
 });
+
+// ---------------------------------------------------------------- superseded pull request heads
+
+test("planDrops: a queued build of an older pull request head is skipped for the newest head", () => {
+  const a = job({ kind: "pr", sha: sha(1), pr: 8 });
+  const b = job({ kind: "pr", sha: sha(2), pr: 8 });
+  const c = job({ kind: "pr", sha: sha(3), pr: 8 });
+  const drops = d.planDrops([a, b, c]);
+  assert.deepEqual(names(drops), [a.metadata.name, b.metadata.name].sort());
+  for (const x of drops) {
+    assert.equal(x.stop, false);
+    assert.equal(x.description, "Skipped: superseded by 3333333 before it started");
+  }
+});
+
+test("planDrops: a running build of an older head finishes; other pull requests are separate", () => {
+  const running = job({ kind: "pr", sha: sha(1), pr: 8, state: "running" });
+  const newer = job({ kind: "pr", sha: sha(2), pr: 8 });
+  const other = job({ kind: "pr", sha: sha(3), pr: 9 });
+  assert.deepEqual(d.planDrops([running, newer, other]), []);
+});
+
+test("planDrops: a closed pull request says closed, not superseded", () => {
+  const a = job({ kind: "pr", sha: sha(1), pr: 8 });
+  const b = job({ kind: "pr", sha: sha(2), pr: 8 });
+  const drops = d.planDrops([a, b], { stockpile: { 8: { how: "closed" } } });
+  assert.deepEqual(drops.map((x) => x.description), [
+    "Skipped: pull request #8 was closed before this build started",
+    "Skipped: pull request #8 was closed before this build started",
+  ]);
+});
+
+test("schedule: the superseded head is dropped and the newest head starts", async () => {
+  const [a, b] = put(job({ kind: "pr", sha: sha(1), pr: 8 }), job({ kind: "pr", sha: sha(2), pr: 8 }));
+  await d.schedule();
+  assert.ok(!fake.jobs.has(a.metadata.name));
+  assert.deepEqual(released(), [b.metadata.name]);
+  const err = fake.statuses.filter((s) => s.state === "error");
+  assert.deepEqual(err.map((s) => [s.sha, s.description]), [[sha(1), "Skipped: superseded by 2222222 before it started"]]);
+});
