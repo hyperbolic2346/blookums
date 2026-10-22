@@ -252,13 +252,16 @@ test("repositories are coalesced separately", () => {
   assert.deepEqual(d.planDrops([a, b]), []);
 });
 
-test("no status when another build of the same commit owns it", () => {
+test("no status when another build of the same commit will still report it", () => {
   const old = job({ sha: sha(1), number: 1001 });
   const newer = job({ sha: sha(2), number: 1002 });
-  const pr = job({ kind: "pr", sha: sha(1), pr: 9, state: "success" });
+  const pr = job({ kind: "pr", sha: sha(1), pr: 9, state: "running" });
   const [x] = d.planDrops([old, newer, pr]);
   assert.equal(x.job, old);
   assert.equal(x.post, false);
+  // A finished one has reported already; the skip is the latest word.
+  const done = job({ kind: "pr", sha: sha(1), pr: 10, state: "success" });
+  assert.equal(d.planDrops([old, newer, done])[0].post, true);
 });
 
 test("schedule: skips the older queued main builds, keeps lane order, posts honest statuses", async () => {

@@ -653,7 +653,7 @@ function buildNumber(j) {
 // closed pull requests `closed` (readClosedPulls): a list of { job,
 // description, stop, post }. `stop` means the build is running and is
 // stopped (pull requests only); `post` is false when another build of the
-// same commit owns its status. Pure, for tests.
+// same commit will still report its status. Pure, for tests.
 function planDrops(jobs, closed = {}) {
   const kindOf = (j) => lbl(j)[LABEL + "kind"];
   const repoOf = (j) => lbl(j)[LABEL + "repo"];
@@ -713,10 +713,10 @@ function planDrops(jobs, closed = {}) {
     add(j, "Skipped: superseded by " + sha7(ann(top)[LABEL + "sha"]) + " before it started", false);
   }
 
-  // A commit whose status another build (kept, queued, running or done)
-  // reports under the same context: leave the status to that build.
+  // A commit that another build still to report (kept, queued or running)
+  // shares, under the same context: leave the status to that build.
   const kept = new Set();
-  for (const j of jobs) {
+  for (const j of live) {
     if (!["main", "pr"].includes(kindOf(j)) || drops.has(j.metadata.name) || ann(j)[LABEL + "dropped"]) continue;
     kept.add(repoOf(j) + "@" + ann(j)[LABEL + "sha"]);
   }
