@@ -220,3 +220,143 @@ spec:
             summary: >-
               {{ $labels.shop }}'s eligible drop-ship shelf fell to {{ $value }}
               (under 60% of the 6h before) — a bad feed, not a real stock move.
+    # Sutler's order alerts (sutler.orders, sutler.homework, sutler.velocity,
+    # its listing rules) on the orders and drop-ship order series
+    # (stockpile#579; stockpile docs/metrics.md). Labels are the shop's slug,
+    # the channel, the environment and fixed words, never a buyer or an order
+    # number: the order itself is on Needs attention. Pushover routing is the
+    # cluster's (warning and critical page; critical also goes to Discord).
+    - name: stockpile.orders
+      rules:
+        - alert: StockpileOrderNeedsAttention
+          expr: max without (pod, instance) (stockpile_orders{status="NEEDS_ATTENTION", sandbox="false"}) > 0
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: >-
+              {{ $value }} {{ $labels.shop }} order(s) flagged for a person. The
+              reason is on each one in Needs attention.
+        # A drop-ship order (every line sold from a drop-ship listing), paid,
+        # that nobody has chosen a source for. Orders for the shop's own stock
+        # sit in NEW while the shop works them, so they don't page.
+        - alert: StockpileDropShipOrderNotStarted
+          expr: max without (pod, instance) (stockpile_orders_oldest_new_age_seconds{kind="dropship", sandbox="false"}) > 3600
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: >-
+              A paid {{ $labels.shop }} drop-ship order has waited
+              {{ $value | humanizeDuration }} with nobody choosing who ships it.
+              Open it in Orders.
+        - alert: StockpileDropShipUnshipped
+          # 24h, as sutler's: 48h spends the marketplace's handling window first.
+          expr: max without (pod, instance) (stockpile_dropship_oldest_unshipped_age_seconds) > 86400
+          for: 30m
+          labels: { severity: warning }
+          annotations:
+            summary: >-
+              A {{ $labels.shop }} drop-ship order placed with a distributor
+              ({{ $labels.mode }}) has had no tracking for
+              {{ $value | humanizeDuration }}. The distributor may not have
+              shipped it, and the buyer's clock is running.
+    # Orders a person must place on the distributor's site (a gun or NFA item
+    # from RSR or Lipsey's). Silence looks like success, so these speak up.
+    - name: stockpile.homework
+      rules:
+        - alert: StockpileByHandOrderPending
+          expr: max without (pod, instance) (stockpile_dropship_oldest_by_hand_age_seconds) > 7200
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: >-
+              A {{ $labels.shop }} sale has waited {{ $value | humanizeDuration }}
+              for you to order it on the distributor's site. Process shows what
+              to order and where.
+        - alert: StockpileByHandOrderOverdue
+          expr: max without (pod, instance) (stockpile_dropship_oldest_by_hand_age_seconds) > 86400
+          for: 15m
+          labels: { severity: critical }
+          annotations:
+            summary: >-
+              OVERDUE 24h+: a {{ $labels.shop }} sale still isn't ordered from
+              the distributor. The buyer is waiting and the shipping clock is
+              running. Order it, or cancel and refund.
+    # Order velocity is the earliest mispricing signal: it comes from the
+    # market, not from our own (possibly wrong) data. The order limits already
+    # hold the API sends (stockpile dropship/order-limits.ts); these say why
+    # the phone should ring. Silent until a shop has the dropship module.
+    - name: stockpile.velocity
+      rules:
+        - alert: StockpileOrderLimitsHolding
+          expr: max without (pod, instance) (stockpile_dropship_orders_held_by_limits) > 0
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: >-
+              The order limits held back {{ $value }} {{ $labels.shop }} drop-ship
+              order(s), and nothing was sent. Check the item's price. The owner's
+              "Send it anyway" is on the order (Needs attention).
+        - alert: StockpileProductOrderBurst
+          expr: max without (pod, instance) (stockpile_dropship_orders_max_per_product_1h) >= 3
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: >-
+              {{ $value }} {{ $labels.shop }} drop-ship orders for ONE product in
+              the last hour. A run on one item is the classic sign it is
+              mispriced. Check the listing.
+        - alert: StockpileCommittedSpendSpike
+          # Divided here so the annotation reads in dollars without a dollar
+          # sign before a brace (Flux's post-build envsubst).
+          expr: max without (pod, instance) (stockpile_dropship_committed_spend_cents_1h) / 100 > 500
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: >-
+              {{ $value }} dollars of distributor cost went out for
+              {{ $labels.shop }} in the last hour. If that isn't a sale day you
+              recognize, switch the distributor's ordering to hold.
+    - name: stockpile.listings
+      rules:
+        # Stockpile's own listings: a publish that failed or got no clear
+        # answer, and listings waiting for a person, per channel.
+        - alert: StockpileListingErrors
+          expr: >-
+            sum by (shop, channel, problem) (max without (pod, instance)
+              (stockpile_listing_problems{sandbox="false"})) > 0
+          for: 30m
+          labels: { severity: warning }
+          annotations:
+            summary: >-
+              {{ $value }} {{ $labels.shop }} {{ $labels.channel }} listing(s):
+              {{ $labels.problem }}. See Needs attention and Listings.
+        # Absolute or proportional. The floor of 5 keeps a small storefront
+        # from paging when one or two listings end.
+        - alert: StockpileListingMassEnding
+          expr: >-
+            sum by (shop, channel) (max without (pod, instance) (stockpile_listings_ended_1h{sandbox="false"})) > 20
+            or
+            (
+              sum by (shop, channel) (max without (pod, instance) (stockpile_listings_ended_1h{sandbox="false"})) >= 5
+              and
+              sum by (shop, channel) (max without (pod, instance) (stockpile_listings_ended_1h{sandbox="false"}))
+                > 0.25 * clamp_min(sum by (shop, channel) (max without (pod, instance) (stockpile_listings_active{sandbox="false"})), 1)
+            )
+          for: 10m
+          labels: { severity: critical }
+          annotations:
+            summary: >-
+              {{ $value }} of {{ $labels.shop }}'s {{ $labels.channel }} listings
+              ended in the last hour. A feed glitch may be taking the storefront
+              down. Check the worker log.
+        - alert: StockpileDropShipMarginCliff
+          expr: >-
+            max without (pod, instance) (stockpile_dropship_listing_margin_cents{agg="p50"})
+              < 0.50 * max without (pod, instance) (avg_over_time(stockpile_dropship_listing_margin_cents{agg="p50"}[24h] offset 24h))
+          for: 15m
+          labels: { severity: critical }
+          annotations:
+            summary: >-
+              {{ $labels.shop }}'s median drop-ship margin halved to
+              {{ $value | humanize }} cents. Suspect a distributor COST feed
+              error. Turn automatic listing off until it's checked.
