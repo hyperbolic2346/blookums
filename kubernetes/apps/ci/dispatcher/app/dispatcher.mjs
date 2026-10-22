@@ -11,9 +11,15 @@
 //   - Webhooks: POST /hooks/github/<repo>. The X-Hub-Signature-256 HMAC is
 //     checked against that repository's secret before the body is parsed,
 //     and the body must name the same repository. Anything else is dropped.
+//     A pull_request "closed" or "reopened" event is also recorded, because
+//     the refs can't show it (applyPullEvent).
 //   - Queue: Jobs are created suspended and released one at a time per
 //     repository and lane, in creation order. Main-branch builds take their
-//     build number from a counter in the ConfigMap dispatcher-state.
+//     build number from a counter in the ConfigMap dispatcher-state. Queued
+//     builds nobody needs any more are dropped before they start (see
+//     planDrops): older main builds once a newer one is queued, builds of
+//     pull requests that were merged or closed, and builds of a pull
+//     request head that a newer push replaced.
 //   - Feedback: a commit status (config.statusContext) on every build, with
 //     a link to the build log served on the log port.
 //   - Rehearsal: for a repository with a `rehearsal` setting, every new api
@@ -154,7 +160,8 @@ const deploymentPath = (ns, name) =>
 
 // ---------------------------------------------------------------- state
 
-// { <repo>: { nextBuild, main, tags: {name: sha}, pulls: {n: sha} } }
+// { <repo>: { nextBuild, main, tags: {name: sha}, pulls: {n: sha},
+//             closedPulls: {n: {how, at}} } }
 let state = {};
 let stateVersion = null;
 
@@ -317,16 +324,83 @@ async function syncRepo(repo, why) {
     if (s.tags[tag] !== sha) builds.push({ repo, kind: "tag", sha, ref: "refs/tags/" + tag, tag });
     s.tags[tag] = sha;
   }
-  for (const [pr, sha] of Object.entries(refs.pulls)) {
-    if (s.pulls[pr] !== sha) builds.push({ repo, kind: "pr", sha, ref: "refs/pull/" + pr + "/head", pr });
-    s.pulls[pr] = sha;
-  }
+  builds.push(...pullRequestBuilds(repo, s, refs.pulls));
 
   // Jobs first (deterministic names make a repeat harmless), then state.
   for (const b of builds) await enqueue(b);
   await saveState();
   log("info", "synced", { repo, why, queued: builds.length, main: refs.main });
   if (builds.length) kick();
+}
+
+// New pull request heads to build, recorded in `s`. The head of a closed
+// pull request is recorded but not built.
+function pullRequestBuilds(repo, s, pulls) {
+  const out = [];
+  const closed = s.closedPulls || {};
+  for (const [pr, sha] of Object.entries(pulls)) {
+    if (s.pulls[pr] !== sha) {
+      if (closed[pr]) log("info", "pull request closed; head not built", { repo, pr, sha });
+      else out.push({ repo, kind: "pr", sha, ref: "refs/pull/" + pr + "/head", pr });
+    }
+    s.pulls[pr] = sha;
+  }
+  return out;
+}
+
+// Pull request events that change what is built: { action, pr, merged }
+// for "closed" and "reopened", else null. The refs alone can't tell: GitHub
+// keeps refs/pull/<n>/head after a pull request is closed or merged.
+function pullEvent(event, payload) {
+  if (event !== "pull_request" || !payload) return null;
+  const action = payload.action;
+  if (action !== "closed" && action !== "reopened") return null;
+  const pr = payload.pull_request || {};
+  const n = Number(pr.number ?? payload.number);
+  if (!Number.isSafeInteger(n) || n <= 0) return null;
+  return { action, pr: String(n), merged: pr.merged === true };
+}
+
+// Record `ev` in the repository's state `s` (s.closedPulls: { <n>: { how:
+// merged | closed, at } }). Closing one makes schedule() drop its queued
+// builds and stop a running one; reopening it builds its head again.
+// Entries are kept a week, long after any build of theirs is gone.
+function applyPullEvent(s, ev, now) {
+  s.closedPulls = s.closedPulls || {};
+  if (ev.action === "closed") {
+    s.closedPulls[ev.pr] = { how: ev.merged ? "merged" : "closed", at: now.toISOString() };
+  } else if (ev.action === "reopened") {
+    delete s.closedPulls[ev.pr];
+    delete s.pulls[ev.pr];
+  }
+  const cutoff = now.getTime() - 7 * 86400_000;
+  for (const [pr, c] of Object.entries(s.closedPulls)) {
+    if (!(Date.parse(c.at) >= cutoff)) delete s.closedPulls[pr];
+  }
+}
+
+async function recordPullEvent(repo, ev) {
+  await loadState();
+  applyPullEvent(repoState(repo), ev, new Date());
+  await saveState();
+  log("info", "pull request " + ev.action, { repo, pr: ev.pr, merged: ev.merged });
+}
+
+// The closed pull requests of every repository, read from the state
+// ConfigMap without touching the in-memory state (which belongs to the
+// "state" chain): { <repo>: { <n>: { how, at } } }.
+async function readClosedPulls() {
+  try {
+    const cm = await k8s("GET", nsPath("configmaps") + "/" + STATE_CM);
+    const out = {};
+    for (const [k, v] of Object.entries(cm.data || {})) {
+      if (k.endsWith(".json")) out[k.slice(0, -5)] = JSON.parse(v).closedPulls || {};
+    }
+    return out;
+  } catch (err) {
+    if (err.status !== 404) log("warn", "closed pull requests not read; their builds are dropped next round", { err: err.message });
+    return {};
+  }
 }
 
 // ---------------------------------------------------------------- jobs
@@ -516,7 +590,6 @@ async function enqueue(b) {
     log("error", "job name not valid; skipping build", { name });
     return;
   }
-  if (b.kind === "pr") await supersede(b);
   try {
     await k8s("POST", nsPath("jobs"), await jobFor(b));
   } catch (err) {
@@ -535,23 +608,179 @@ async function enqueue(b) {
   await postStatus(b.repo, b.sha, "pending", "Queued" + (b.number != null ? " as build " + b.number : ""), name, b.kind);
 }
 
-// A newer push to a pull request replaces its builds that have not started.
-async function supersede(b) {
-  const sel = encodeURIComponent("app.kubernetes.io/managed-by=" + MANAGED_BY + "," + LABEL + "repo=" + b.repo + "," + LABEL + "pr=" + b.pr);
-  const jobs = await k8s("GET", nsPath("jobs") + "?labelSelector=" + sel);
-  for (const j of jobs.items) {
-    if (!j.spec.suspend || j.metadata.annotations[LABEL + "sha"] === b.sha) continue;
-    await k8s("DELETE", nsPath("jobs") + "/" + j.metadata.name + "?propagationPolicy=Background").catch(() => {});
-    await postStatus(b.repo, j.metadata.annotations[LABEL + "sha"], "error", "Superseded by a newer push", null, "pr");
-    log("info", "superseded", { job: j.metadata.name });
-  }
-}
-
 function finished(job) {
   const c = (job.status && job.status.conditions) || [];
   if (c.some((x) => x.type === "Complete" && x.status === "True")) return "success";
   if (c.some((x) => x.type === "Failed" && x.status === "True")) return "failure";
   return null;
+}
+
+// ---------------------------------------------------------------- dropping
+//
+// A queued build that nobody needs any more is dropped before it starts,
+// and its commit gets a status that says so instead of a pending one that
+// never ends:
+//   - Main: only the newest queued main build of a repository runs. An
+//     older queued one is skipped, "Skipped: superseded by <sha7> (build
+//     N)": Flux deploys the highest build number, so its image would never
+//     be used. A running main build is never touched, and tag builds are
+//     never dropped. The trusted lane keeps its order and runs one at a time.
+//   - Closed pull requests: once GitHub says a pull request was merged or
+//     closed (the pull_request webhook; see applyPullEvent), its queued
+//     builds are skipped, "Skipped: pull request #N was merged before this
+//     build started", and a running one is stopped, "Stopped: pull request
+//     #N was merged". Only pull request builds are ever stopped.
+//   - Superseded pull request heads: a queued build of an older head of a
+//     pull request is skipped once a newer head is queued, "Skipped:
+//     superseded by <sha7> before it started".
+// Dropping happens in schedule(), the only place that starts builds, so
+// nothing starts between the decision and the delete. The decision is
+// written on the Job first (annotation dispatcher.ci/dropped, guarded by the
+// Job's resourceVersion), then the log and the status, then the Job is
+// deleted (guarded again): after a restart part way through, the next round
+// finishes the drop. The status is "error", like every other "did not
+// run" outcome here; GitHub statuses have no "skipped".
+
+const ann = (j) => j.metadata.annotations || {};
+const lbl = (j) => j.metadata.labels || {};
+
+function buildNumber(j) {
+  const n = Number(ann(j)[LABEL + "build-number"]);
+  return Number.isFinite(n) ? n : -1;
+}
+
+// What to drop from `jobs` (every Job this dispatcher manages), given the
+// closed pull requests `closed` (readClosedPulls): a list of { job,
+// description, stop, post }. `stop` means the build is running and is
+// stopped (pull requests only); `post` is false when another build of the
+// same commit will still report its status. Pure, for tests.
+function planDrops(jobs, closed = {}) {
+  const kindOf = (j) => lbl(j)[LABEL + "kind"];
+  const repoOf = (j) => lbl(j)[LABEL + "repo"];
+  const live = jobs.filter((j) => !finished(j) && !j.metadata.deletionTimestamp && kindOf(j) !== "rehearsal");
+  const drops = new Map();
+  const add = (j, description, stop) => {
+    if (!drops.has(j.metadata.name)) drops.set(j.metadata.name, { job: j, description: description.slice(0, 140), stop });
+  };
+
+  // Drops decided in an earlier round that did not finish. Only a pull
+  // request build is ever stopped once running.
+  for (const j of live) {
+    if (!ann(j)[LABEL + "dropped"]) continue;
+    if (j.spec.suspend === true) add(j, ann(j)[LABEL + "dropped"], false);
+    else if (kindOf(j) === "pr") add(j, ann(j)[LABEL + "dropped"], true);
+  }
+
+  // Main: everything queued below the newest main build of the repository.
+  const newest = new Map();
+  for (const j of live) {
+    if (kindOf(j) !== "main") continue;
+    const top = newest.get(repoOf(j));
+    if (!top || buildNumber(j) > buildNumber(top)) newest.set(repoOf(j), j);
+  }
+  for (const j of live) {
+    if (kindOf(j) !== "main" || j.spec.suspend !== true) continue;
+    const top = newest.get(repoOf(j));
+    if (top === j || !(buildNumber(j) < buildNumber(top))) continue;
+    add(j, "Skipped: superseded by " + sha7(ann(top)[LABEL + "sha"]) + " (build " + buildNumber(top) + ") before it started", false);
+  }
+
+  // Pull requests that were merged or closed: queued builds skipped,
+  // running ones stopped. Never a main or tag build.
+  for (const j of live) {
+    if (kindOf(j) !== "pr") continue;
+    const pr = lbl(j)[LABEL + "pr"];
+    const c = (closed[repoOf(j)] || {})[pr];
+    if (!c) continue;
+    const what = "pull request #" + pr + " was " + (c.how === "merged" ? "merged" : "closed");
+    if (j.spec.suspend === true) add(j, "Skipped: " + what + " before this build started", false);
+    else add(j, "Stopped: " + what, true);
+  }
+
+  // Pull requests with a newer head: queued builds of an older head are
+  // skipped. A running one finishes (its result is still worth having).
+  const head = new Map();
+  for (const j of jobs) {
+    if (kindOf(j) !== "pr") continue;
+    const key = repoOf(j) + "#" + lbl(j)[LABEL + "pr"];
+    const top = head.get(key);
+    if (!top || String(ann(j)[LABEL + "seq"]) > String(ann(top)[LABEL + "seq"])) head.set(key, j);
+  }
+  for (const j of live) {
+    if (kindOf(j) !== "pr" || j.spec.suspend !== true) continue;
+    const top = head.get(repoOf(j) + "#" + lbl(j)[LABEL + "pr"]);
+    if (top === j || ann(top)[LABEL + "sha"] === ann(j)[LABEL + "sha"]) continue;
+    add(j, "Skipped: superseded by " + sha7(ann(top)[LABEL + "sha"]) + " before it started", false);
+  }
+
+  // A commit that another build still to report (kept, queued or running)
+  // shares, under the same context: leave the status to that build.
+  const kept = new Set();
+  for (const j of live) {
+    if (!["main", "pr"].includes(kindOf(j)) || drops.has(j.metadata.name) || ann(j)[LABEL + "dropped"]) continue;
+    kept.add(repoOf(j) + "@" + ann(j)[LABEL + "sha"]);
+  }
+  return [...drops.values()].map((d) => ({ ...d, post: !kept.has(repoOf(d.job) + "@" + ann(d.job)[LABEL + "sha"]) }));
+}
+
+// Carry out one drop from planDrops. True when the Job is on its way out;
+// false when it changed under us (it is looked at again next round).
+async function applyDrop(d) {
+  const j = d.job;
+  const name = j.metadata.name;
+  const kind = lbl(j)[LABEL + "kind"];
+  if (d.stop && kind !== "pr") throw new Error("refusing to stop a running " + kind + " build: " + name);
+  let rv = j.metadata.resourceVersion;
+  const conflict = (err) => err.status === 409 || err.status === 404;
+  if (ann(j)[LABEL + "dropped"] !== d.description) {
+    try {
+      const res = await k8s("PATCH", nsPath("jobs") + "/" + name,
+        { metadata: { resourceVersion: rv, annotations: { [LABEL + "dropped"]: d.description } } }, "application/merge-patch+json");
+      rv = res.metadata.resourceVersion;
+    } catch (err) {
+      if (!conflict(err)) throw err;
+      log("info", "drop deferred: the build changed", { job: name, status: err.status });
+      return false;
+    }
+  }
+  // Log and status before the delete, so that a restart in between repeats
+  // them rather than skips them.
+  await writeDropLog(j, d).catch((err) => log("warn", "drop log not written", { job: name, err: err.message }));
+  if (d.post) await postStatus(lbl(j)[LABEL + "repo"], ann(j)[LABEL + "sha"], "error", d.description, name, kind);
+  try {
+    // Foreground for a running build: the Job stays, and keeps its lane
+    // busy, until its pod is gone and the cache volume is free again.
+    await k8s("DELETE", nsPath("jobs") + "/" + name + "?propagationPolicy=" + (d.stop ? "Foreground" : "Background"),
+      { apiVersion: "v1", kind: "DeleteOptions", preconditions: { resourceVersion: rv } });
+  } catch (err) {
+    if (err.status === 404) return true;
+    if (err.status !== 409) throw err;
+    log("info", "drop deferred: the build changed", { job: name, status: err.status });
+    return false;
+  }
+  log("info", d.stop ? "stopped" : "skipped", { job: name, why: d.description, status_posted: d.post });
+  return true;
+}
+
+async function writeDropLog(j, d) {
+  const a = ann(j);
+  const name = j.metadata.name;
+  let text = [
+    "build:    " + name,
+    "result:   " + (d.stop ? "stopped" : "skipped"),
+    "repo:     " + OWNER + "/" + lbl(j)[LABEL + "repo"],
+    "ref:      " + a[LABEL + "ref"],
+    "commit:   " + a[LABEL + "sha"],
+    "version:  " + a[LABEL + "version"],
+    "status:   " + d.description,
+  ].join("\n") + "\n";
+  if (d.stop) {
+    // What it printed before it was stopped.
+    const pod = await podOf(name).catch(() => null);
+    if (pod) text += "\nsteps:\n" + summary(j, "stopped", pod).text.split("\nsteps:\n")[1] + (await podLogs(pod).catch(() => "\n(logs unavailable)\n"));
+  }
+  await fsp.mkdir(LOG_DIR, { recursive: true });
+  await fsp.writeFile(path.join(LOG_DIR, name + ".log"), text);
 }
 
 let kickTimer = null;
@@ -568,17 +797,28 @@ async function schedule() {
   await takeRehearsalRequests();
   const sel = encodeURIComponent("app.kubernetes.io/managed-by=" + MANAGED_BY);
   const jobs = (await k8s("GET", nsPath("jobs") + "?labelSelector=" + sel)).items;
+  // A drop that was deferred (the Job changed under us) is still not
+  // started this round; the next round decides again.
+  const planned = new Set();
+  for (const d of planDrops(jobs, await readClosedPulls())) {
+    planned.add(d.job.metadata.name);
+    await applyDrop(d).catch((err) => log("error", "drop failed; retried next round", { job: d.job.metadata.name, err: err.message }));
+  }
   const lanes = new Map();
   for (const j of jobs) {
     const result = finished(j);
-    if (result && j.metadata.annotations[LABEL + "reported"] !== "true") await report(j, result);
+    const dropped = planned.has(j.metadata.name) || Boolean(ann(j)[LABEL + "dropped"]);
+    if (result && !dropped && j.metadata.annotations[LABEL + "reported"] !== "true") await report(j, result);
     if (await sweepRehearsal(j, result)) continue;
     const key = j.metadata.labels[LABEL + "repo"] + "/" + j.metadata.labels[LABEL + "lane"];
     if (!lanes.has(key)) lanes.set(key, { running: 0, queued: [] });
     const lane = lanes.get(key);
     if (result) continue;
-    if (j.spec.suspend) lane.queued.push(j);
-    else lane.running++;
+    // A stopped build holds its lane until its pod is gone; a dropped or
+    // deleted queued one is never started.
+    if (j.spec.suspend) {
+      if (!dropped && !j.metadata.deletionTimestamp) lane.queued.push(j);
+    } else lane.running++;
   }
   for (const [key, lane] of lanes) {
     if (lane.running || !lane.queued.length) continue;
@@ -1183,8 +1423,9 @@ async function takeRehearsalRequests() {
 //   - One rehearsal per commit: an image another builder pushed is
 //     rehearsed only when this dispatcher has no build of that commit. While
 //     its build is queued or running the image waits; once it succeeded the
-//     image is skipped (the build's own image is rehearsed); if it failed,
-//     the other image is rehearsed.
+//     image is skipped (the build's own image is rehearsed), and also when
+//     the build was skipped for a newer main build; if it failed, the other
+//     image is rehearsed.
 //   - Own builds are also queued when they finish (report()); the digest
 //     makes the two paths one rehearsal.
 //   - On first sight only the newest image is rehearsed, the dispatcher's
@@ -1276,7 +1517,8 @@ async function resolveCommit(repo, short) {
 
 // This dispatcher's main build of `short` (7 hex) as `name` (with -b<N>),
 // or any of that commit: "building" (queued or running), "built",
-// "failed", or null. From the Jobs and the kept logs.
+// "skipped" (dropped for a newer main build), "failed", or null. From the
+// Jobs and the kept logs.
 async function ownBuild(repo, jobs, logs, prefix) {
   let st = null;
   for (const j of jobs) {
@@ -1288,7 +1530,7 @@ async function ownBuild(repo, jobs, logs, prefix) {
   for (const f of logs) {
     if (!f.startsWith(prefix) || !f.endsWith(".log")) continue;
     const head = (await fsp.readFile(path.join(LOG_DIR, f), "utf8").catch(() => "")).slice(0, 600);
-    st = /^result:\s+success/m.test(head) ? "built" : st || "failed";
+    st = /^result:\s+success/m.test(head) ? "built" : st || (/^result:\s+skipped/m.test(head) ? "skipped" : "failed");
   }
   return st;
 }
@@ -1341,6 +1583,12 @@ async function pollRegistry(repo) {
       if (!x.own && x.build_ === "built") {
         seen[x.key] = "skipped";
         log("info", "registry image not rehearsed: this dispatcher built that commit", { repo, tag: x.tag });
+        continue;
+      }
+      if (!x.own && x.build_ === "skipped") {
+        // A newer main build replaced this commit's; that one is rehearsed.
+        seen[x.key] = "skipped";
+        log("info", "registry image not rehearsed: this dispatcher skipped that commit for a newer one", { repo, tag: x.tag });
         continue;
       }
       const sha = await resolveCommit(repo, x.short);
@@ -1479,6 +1727,11 @@ function hookHandler(req, res) {
       return res.end();
     }
     log("info", "webhook accepted", { repo, ...fields });
+    const ev = pullEvent(fields.event, payload);
+    if (ev) {
+      serialize("state", () => recordPullEvent(repo, ev)).then(kick, (err) =>
+        log("error", "pull request event not recorded", { repo, pr: ev.pr, action: ev.action, err: err.message.slice(0, 500) }));
+    }
     requestSync(repo, "webhook " + fields.event);
     res.writeHead(202);
     res.end("accepted\n");
@@ -1615,7 +1868,7 @@ async function main() {
   process.on("SIGINT", stop);
 }
 
-export { verifySignature, versionAndTags, buildArgsFor, jobName, assertCredentialScope, rehearsalJob, assertRehearsalScope, rehearsalDescription, rehearsalOutcome, inRepository, imageSuffix, tagOf };
+export { planDrops, schedule, pullEvent, applyPullEvent, pullRequestBuilds, hookHandler, verifySignature, versionAndTags, buildArgsFor, jobName, assertCredentialScope, rehearsalJob, assertRehearsalScope, rehearsalDescription, rehearsalOutcome, inRepository, imageSuffix, tagOf };
 
 if (!env.DISPATCHER_NO_MAIN) {
   main().catch((err) => {
