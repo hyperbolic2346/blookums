@@ -98,6 +98,39 @@ spec:
     numerical:
       order: asc
 ---
+# Stockpile SHADOW STAGING (stockpile#331) follows main. Today prod does too
+# (stockpile-api / stockpile-web above); these stay on main when prod moves
+# to release tags (the nightly release train, stockpile#334).
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: stockpile-api-staging
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: stockpile-api
+  filterTags:
+    pattern: '^main-[0-9a-f]+-b(?P<build>\d+)$'
+    extract: '$build'
+  policy:
+    numerical:
+      order: asc
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: stockpile-web-staging
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: stockpile-web
+  filterTags:
+    pattern: '^main-[0-9a-f]+-b(?P<build>\d+)$'
+    extract: '$build'
+  policy:
+    numerical:
+      order: asc
+---
 # Maison Flacon (Medusa test build) follows main.
 apiVersion: image.toolkit.fluxcd.io/v1
 kind: ImagePolicy
