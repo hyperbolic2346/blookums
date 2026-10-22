@@ -1,3 +1,6 @@
+# The old PHP gate site, retired in favour of Gatehouse (which now serves
+# gate.${SECRET_DOMAIN}). Kept running, reachable only on the internal
+# gateway, until it is removed for good.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -8,11 +11,11 @@ metadata:
   namespace: gate
 spec:
   hostnames:
-  - gate.${SECRET_DOMAIN}
+  - gate-old.${SECRET_DOMAIN}
   parentRefs:
   - group: gateway.networking.k8s.io
     kind: Gateway
-    name: external
+    name: internal
     namespace: kube-system
     sectionName: https
   rules:

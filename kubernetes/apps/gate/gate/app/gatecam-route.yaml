@@ -1,3 +1,5 @@
+# motion's live stream for the old gate site; it has no auth, so it is
+# internal only.
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -10,7 +12,7 @@ spec:
   parentRefs:
   - group: gateway.networking.k8s.io
     kind: Gateway
-    name: external
+    name: internal
     namespace: kube-system
     sectionName: https
   rules:
