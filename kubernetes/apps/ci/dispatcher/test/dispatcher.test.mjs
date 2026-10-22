@@ -318,17 +318,17 @@ test("schedule: a build that changed under the drop is not started that round", 
   const [b1, b2] = put(job({ sha: sha(1), number: 1001 }), job({ sha: sha(2), number: 1002 }));
   // Something else touches b1 between the list and the drop.
   const orig = fake.jobs.get(b1.metadata.name);
-  const realList = server.listeners("request")[0];
+  const realHandler = server.listeners("request")[0];
   server.removeAllListeners("request");
   server.on("request", (req, res) => {
     if (req.method === "PATCH" && req.url.endsWith("/" + b1.metadata.name)) orig.metadata.resourceVersion = String(fake.rv++);
-    realList(req, res);
+    realHandler(req, res);
   });
   try {
     await d.schedule();
   } finally {
     server.removeAllListeners("request");
-    server.on("request", realList);
+    server.on("request", realHandler);
   }
   // b1 is held, neither dropped nor started; b2, the newest, starts.
   assert.ok(fake.jobs.has(b1.metadata.name));
@@ -348,4 +348,133 @@ test("schedule: a drop interrupted after its annotation is finished next round",
   assert.ok(!fake.jobs.has(b1.metadata.name));
   assert.ok(fake.jobs.has(b2.metadata.name));
   assert.equal(fake.statuses[0].description, "Skipped: superseded by 2222222 (build 1002) before it started");
+});
+
+// ---------------------------------------------------------------- closed pull requests
+
+function stateConfigMap(perRepo) {
+  const data = {};
+  for (const [repo, s] of Object.entries(perRepo)) {
+    data[repo + ".json"] = JSON.stringify({ nextBuild: 1000, main: null, tags: {}, pulls: {}, initialized: true, ...s });
+  }
+  fake.configmaps.set("dispatcher-state", { metadata: { name: "dispatcher-state", resourceVersion: String(fake.rv++) }, data });
+}
+
+test("pullEvent: closed and reopened pull requests only", () => {
+  assert.deepEqual(d.pullEvent("pull_request", { action: "closed", number: 5, pull_request: { number: 5, merged: true } }),
+    { action: "closed", pr: "5", merged: true });
+  assert.deepEqual(d.pullEvent("pull_request", { action: "closed", number: 6, pull_request: { number: 6, merged: false } }),
+    { action: "closed", pr: "6", merged: false });
+  assert.deepEqual(d.pullEvent("pull_request", { action: "reopened", number: 6, pull_request: { number: 6 } }),
+    { action: "reopened", pr: "6", merged: false });
+  assert.equal(d.pullEvent("pull_request", { action: "synchronize", number: 5, pull_request: { number: 5 } }), null);
+  assert.equal(d.pullEvent("push", { action: "closed", number: 5 }), null);
+  assert.equal(d.pullEvent("pull_request", { action: "closed", pull_request: { number: "5; rm" } }), null);
+  assert.equal(d.pullEvent("pull_request", { action: "closed", pull_request: { number: -1 } }), null);
+});
+
+test("applyPullEvent: closing records it, reopening forgets it and rebuilds the head, a week later it is gone", () => {
+  const now = new Date("2026-10-22T03:00:00Z");
+  const s = { pulls: { 5: sha(5), 6: sha(6) } };
+  d.applyPullEvent(s, { action: "closed", pr: "5", merged: true }, now);
+  d.applyPullEvent(s, { action: "closed", pr: "6", merged: false }, now);
+  assert.deepEqual(s.closedPulls, { 5: { how: "merged", at: now.toISOString() }, 6: { how: "closed", at: now.toISOString() } });
+  d.applyPullEvent(s, { action: "reopened", pr: "6", merged: false }, now);
+  assert.deepEqual(Object.keys(s.closedPulls), ["5"]);
+  assert.deepEqual(Object.keys(s.pulls), ["5"]);
+  d.applyPullEvent(s, { action: "closed", pr: "7", merged: false }, new Date(now.getTime() + 8 * 86400_000));
+  assert.deepEqual(Object.keys(s.closedPulls), ["7"]);
+});
+
+test("pullRequestBuilds: a new head of a closed pull request is recorded, not built", () => {
+  const s = { pulls: { 5: sha(1), 6: sha(2) }, closedPulls: { 5: { how: "merged", at: new Date().toISOString() } } };
+  const builds = d.pullRequestBuilds("stockpile", s, { 5: sha(3), 6: sha(4), 7: sha(5) });
+  assert.deepEqual(builds.map((b) => b.pr), ["6", "7"]);
+  assert.deepEqual(s.pulls, { 5: sha(3), 6: sha(4), 7: sha(5) });
+});
+
+test("planDrops: a closed pull request's queued build is skipped and its running one stopped; nothing else", () => {
+  const queued = job({ kind: "pr", sha: sha(1), pr: 5 });
+  const running = job({ kind: "pr", sha: sha(2), pr: 6, state: "running" });
+  const other = job({ kind: "pr", sha: sha(3), pr: 7 });
+  const main = job({ sha: sha(4), number: 1001, state: "running" });
+  const tag = job({ kind: "tag", sha: sha(5), tag: "v1.0.0" });
+  const done = job({ kind: "pr", sha: sha(6), pr: 5, state: "success" });
+  const closed = { stockpile: { 5: { how: "merged" }, 6: { how: "closed" } } };
+  const drops = d.planDrops([queued, running, other, main, tag, done], closed);
+  assert.deepEqual(names(drops), [queued.metadata.name, running.metadata.name].sort());
+  const by = Object.fromEntries(drops.map((x) => [x.job.metadata.name, x]));
+  assert.equal(by[queued.metadata.name].stop, false);
+  assert.equal(by[queued.metadata.name].description, "Skipped: pull request #5 was merged before this build started");
+  assert.equal(by[running.metadata.name].stop, true);
+  assert.equal(by[running.metadata.name].description, "Stopped: pull request #6 was closed");
+  // Another repository's pull request of the same number is not touched.
+  assert.deepEqual(d.planDrops([job({ repo: "sutler", kind: "pr", sha: sha(7), pr: 5 })], closed), []);
+});
+
+test("schedule: closed pull request builds are dropped; the stopped one holds the PR lane until its pod is gone", async () => {
+  stateConfigMap({ stockpile: { closedPulls: { 5: { how: "merged", at: new Date().toISOString() }, 6: { how: "closed", at: new Date().toISOString() } } } });
+  const [running, queued, next] = put(
+    job({ kind: "pr", sha: sha(1), pr: 5, state: "running" }),
+    job({ kind: "pr", sha: sha(2), pr: 6 }),
+    job({ kind: "pr", sha: sha(3), pr: 7 }));
+  const [main] = put(job({ sha: sha(4), number: 1001 }));
+
+  await d.schedule();
+
+  const del = Object.fromEntries(deletes().map((c) => [c.path.split("/").pop(), c]));
+  assert.equal(Object.keys(del).length, 2);
+  assert.match(del[running.metadata.name].query, /propagationPolicy=Foreground/);
+  assert.match(del[queued.metadata.name].query, /propagationPolicy=Background/);
+  assert.ok(fake.jobs.get(running.metadata.name).metadata.deletionTimestamp);
+  assert.ok(!fake.jobs.has(queued.metadata.name));
+  // The main build runs in its own lane; PR 7 waits for the stopped pod.
+  assert.deepEqual(released(), [main.metadata.name]);
+  const st = Object.fromEntries(fake.statuses.filter((s) => s.state === "error").map((s) => [s.sha, s.description]));
+  assert.deepEqual(st, {
+    [sha(1)]: "Stopped: pull request #5 was merged",
+    [sha(2)]: "Skipped: pull request #6 was closed before this build started",
+  });
+  assert.match(fs.readFileSync(path.join(dirs.logs, running.metadata.name + ".log"), "utf8"), /^result:\s+stopped$/m);
+
+  // Still terminating: nothing new, and no second delete or status.
+  fake.calls.length = 0;
+  fake.statuses.length = 0;
+  await d.schedule();
+  assert.deepEqual(released(), []);
+  assert.deepEqual(deletes(), []);
+  assert.deepEqual(fake.statuses, []);
+
+  // The pod is gone: PR 7 starts.
+  fake.jobs.delete(running.metadata.name);
+  await d.schedule();
+  assert.deepEqual(released(), [next.metadata.name]);
+});
+
+test("webhook: a signed pull_request closed event is recorded in the state", async () => {
+  const crypto = await import("node:crypto");
+  const hooks = http.createServer(d.hookHandler);
+  await new Promise((r) => hooks.listen(0, "127.0.0.1", r));
+  const url = "http://127.0.0.1:" + hooks.address().port + "/hooks/github/stockpile";
+  try {
+    const body = JSON.stringify({ action: "closed", number: 12, pull_request: { number: 12, merged: true },
+      repository: { full_name: "hyperbolic2346/stockpile" } });
+    const sig = "sha256=" + crypto.createHmac("sha256", "hook-secret").update(body).digest("hex");
+    const res = await fetch(url, { method: "POST", body, headers: { "X-GitHub-Event": "pull_request", "X-Hub-Signature-256": sig } });
+    assert.equal(res.status, 202);
+    // Recorded on the state chain; the kick and the sync after it (a no-op
+    // here: no deploy key) run within about a second.
+    await new Promise((r) => setTimeout(r, 1500));
+    const s = JSON.parse(fake.configmaps.get("dispatcher-state").data["stockpile.json"]);
+    assert.equal(s.closedPulls["12"].how, "merged");
+
+    // A bad signature records nothing.
+    const forged = body.replace('"number":12', '"number":13');
+    const bad = await fetch(url, { method: "POST", body: forged, headers: { "X-GitHub-Event": "pull_request", "X-Hub-Signature-256": sig } });
+    assert.equal(bad.status, 401);
+    await new Promise((r) => setTimeout(r, 100));
+    assert.equal(JSON.parse(fake.configmaps.get("dispatcher-state").data["stockpile.json"]).closedPulls["13"], undefined);
+  } finally {
+    hooks.close();
+  }
 });

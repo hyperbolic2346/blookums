@@ -11,11 +11,14 @@
 //   - Webhooks: POST /hooks/github/<repo>. The X-Hub-Signature-256 HMAC is
 //     checked against that repository's secret before the body is parsed,
 //     and the body must name the same repository. Anything else is dropped.
+//     A pull_request "closed" or "reopened" event is also recorded, because
+//     the refs can't show it (applyPullEvent).
 //   - Queue: Jobs are created suspended and released one at a time per
 //     repository and lane, in creation order. Main-branch builds take their
 //     build number from a counter in the ConfigMap dispatcher-state. Queued
 //     builds nobody needs any more are dropped before they start (see
-//     planDrops): older main builds once a newer one is queued.
+//     planDrops): older main builds once a newer one is queued, and builds
+//     of pull requests that were merged or closed.
 //   - Feedback: a commit status (config.statusContext) on every build, with
 //     a link to the build log served on the log port.
 //   - Rehearsal: for a repository with a `rehearsal` setting, every new api
@@ -156,7 +159,8 @@ const deploymentPath = (ns, name) =>
 
 // ---------------------------------------------------------------- state
 
-// { <repo>: { nextBuild, main, tags: {name: sha}, pulls: {n: sha} } }
+// { <repo>: { nextBuild, main, tags: {name: sha}, pulls: {n: sha},
+//             closedPulls: {n: {how, at}} } }
 let state = {};
 let stateVersion = null;
 
@@ -319,16 +323,83 @@ async function syncRepo(repo, why) {
     if (s.tags[tag] !== sha) builds.push({ repo, kind: "tag", sha, ref: "refs/tags/" + tag, tag });
     s.tags[tag] = sha;
   }
-  for (const [pr, sha] of Object.entries(refs.pulls)) {
-    if (s.pulls[pr] !== sha) builds.push({ repo, kind: "pr", sha, ref: "refs/pull/" + pr + "/head", pr });
-    s.pulls[pr] = sha;
-  }
+  builds.push(...pullRequestBuilds(repo, s, refs.pulls));
 
   // Jobs first (deterministic names make a repeat harmless), then state.
   for (const b of builds) await enqueue(b);
   await saveState();
   log("info", "synced", { repo, why, queued: builds.length, main: refs.main });
   if (builds.length) kick();
+}
+
+// New pull request heads to build, recorded in `s`. The head of a closed
+// pull request is recorded but not built.
+function pullRequestBuilds(repo, s, pulls) {
+  const out = [];
+  const closed = s.closedPulls || {};
+  for (const [pr, sha] of Object.entries(pulls)) {
+    if (s.pulls[pr] !== sha) {
+      if (closed[pr]) log("info", "pull request closed; head not built", { repo, pr, sha });
+      else out.push({ repo, kind: "pr", sha, ref: "refs/pull/" + pr + "/head", pr });
+    }
+    s.pulls[pr] = sha;
+  }
+  return out;
+}
+
+// Pull request events that change what is built: { action, pr, merged }
+// for "closed" and "reopened", else null. The refs alone can't tell: GitHub
+// keeps refs/pull/<n>/head after a pull request is closed or merged.
+function pullEvent(event, payload) {
+  if (event !== "pull_request" || !payload) return null;
+  const action = payload.action;
+  if (action !== "closed" && action !== "reopened") return null;
+  const pr = payload.pull_request || {};
+  const n = Number(pr.number ?? payload.number);
+  if (!Number.isSafeInteger(n) || n <= 0) return null;
+  return { action, pr: String(n), merged: pr.merged === true };
+}
+
+// Record `ev` in the repository's state `s` (s.closedPulls: { <n>: { how:
+// merged | closed, at } }). Closing one makes schedule() drop its queued
+// builds and stop a running one; reopening it builds its head again.
+// Entries are kept a week, long after any build of theirs is gone.
+function applyPullEvent(s, ev, now) {
+  s.closedPulls = s.closedPulls || {};
+  if (ev.action === "closed") {
+    s.closedPulls[ev.pr] = { how: ev.merged ? "merged" : "closed", at: now.toISOString() };
+  } else if (ev.action === "reopened") {
+    delete s.closedPulls[ev.pr];
+    delete s.pulls[ev.pr];
+  }
+  const cutoff = now.getTime() - 7 * 86400_000;
+  for (const [pr, c] of Object.entries(s.closedPulls)) {
+    if (!(Date.parse(c.at) >= cutoff)) delete s.closedPulls[pr];
+  }
+}
+
+async function recordPullEvent(repo, ev) {
+  await loadState();
+  applyPullEvent(repoState(repo), ev, new Date());
+  await saveState();
+  log("info", "pull request " + ev.action, { repo, pr: ev.pr, merged: ev.merged });
+}
+
+// The closed pull requests of every repository, read from the state
+// ConfigMap without touching the in-memory state (which belongs to the
+// "state" chain): { <repo>: { <n>: { how, at } } }.
+async function readClosedPulls() {
+  try {
+    const cm = await k8s("GET", nsPath("configmaps") + "/" + STATE_CM);
+    const out = {};
+    for (const [k, v] of Object.entries(cm.data || {})) {
+      if (k.endsWith(".json")) out[k.slice(0, -5)] = JSON.parse(v).closedPulls || {};
+    }
+    return out;
+  } catch (err) {
+    if (err.status !== 404) log("warn", "closed pull requests not read; their builds are dropped next round", { err: err.message });
+    return {};
+  }
 }
 
 // ---------------------------------------------------------------- jobs
@@ -566,6 +637,11 @@ function finished(job) {
 //     N)": Flux deploys the highest build number, so its image would never
 //     be used. A running main build is never touched, and tag builds are
 //     never dropped. The trusted lane keeps its order and runs one at a time.
+//   - Closed pull requests: once GitHub says a pull request was merged or
+//     closed (the pull_request webhook; see applyPullEvent), its queued
+//     builds are skipped, "Skipped: pull request #N was merged before this
+//     build started", and a running one is stopped, "Stopped: pull request
+//     #N was merged". Only pull request builds are ever stopped.
 // Dropping happens in schedule(), the only place that starts builds, so
 // nothing starts between the decision and the delete. The decision is
 // written on the Job first (annotation dispatcher.ci/dropped, guarded by the
@@ -582,11 +658,12 @@ function buildNumber(j) {
   return Number.isFinite(n) ? n : -1;
 }
 
-// What to drop from `jobs` (every Job this dispatcher manages): a list of
-// { job, description, stop, post }. `stop` means the build is running and
-// is stopped (pull requests only); `post` is false when another build of
-// the same commit owns its status. Pure, for tests.
-function planDrops(jobs) {
+// What to drop from `jobs` (every Job this dispatcher manages), given the
+// closed pull requests `closed` (readClosedPulls): a list of { job,
+// description, stop, post }. `stop` means the build is running and is
+// stopped (pull requests only); `post` is false when another build of the
+// same commit owns its status. Pure, for tests.
+function planDrops(jobs, closed = {}) {
   const kindOf = (j) => lbl(j)[LABEL + "kind"];
   const repoOf = (j) => lbl(j)[LABEL + "repo"];
   const live = jobs.filter((j) => !finished(j) && !j.metadata.deletionTimestamp && kindOf(j) !== "rehearsal");
@@ -615,6 +692,18 @@ function planDrops(jobs) {
     const top = newest.get(repoOf(j));
     if (top === j || !(buildNumber(j) < buildNumber(top))) continue;
     add(j, "Skipped: superseded by " + sha7(ann(top)[LABEL + "sha"]) + " (build " + buildNumber(top) + ") before it started", false);
+  }
+
+  // Pull requests that were merged or closed: queued builds skipped,
+  // running ones stopped. Never a main or tag build.
+  for (const j of live) {
+    if (kindOf(j) !== "pr") continue;
+    const pr = lbl(j)[LABEL + "pr"];
+    const c = (closed[repoOf(j)] || {})[pr];
+    if (!c) continue;
+    const what = "pull request #" + pr + " was " + (c.how === "merged" ? "merged" : "closed");
+    if (j.spec.suspend === true) add(j, "Skipped: " + what + " before this build started", false);
+    else add(j, "Stopped: " + what, true);
   }
 
   // A commit whose status another build (kept, queued, running or done)
@@ -704,7 +793,7 @@ async function schedule() {
   // A drop that was deferred (the Job changed under us) is still not
   // started this round; the next round decides again.
   const planned = new Set();
-  for (const d of planDrops(jobs)) {
+  for (const d of planDrops(jobs, await readClosedPulls())) {
     planned.add(d.job.metadata.name);
     await applyDrop(d).catch((err) => log("error", "drop failed; retried next round", { job: d.job.metadata.name, err: err.message }));
   }
@@ -1631,6 +1720,11 @@ function hookHandler(req, res) {
       return res.end();
     }
     log("info", "webhook accepted", { repo, ...fields });
+    const ev = pullEvent(fields.event, payload);
+    if (ev) {
+      serialize("state", () => recordPullEvent(repo, ev)).then(kick, (err) =>
+        log("error", "pull request event not recorded", { repo, pr: ev.pr, action: ev.action, err: err.message.slice(0, 500) }));
+    }
     requestSync(repo, "webhook " + fields.event);
     res.writeHead(202);
     res.end("accepted\n");
@@ -1767,7 +1861,7 @@ async function main() {
   process.on("SIGINT", stop);
 }
 
-export { planDrops, schedule, verifySignature, versionAndTags, buildArgsFor, jobName, assertCredentialScope, rehearsalJob, assertRehearsalScope, rehearsalDescription, rehearsalOutcome, inRepository, imageSuffix, tagOf };
+export { planDrops, schedule, pullEvent, applyPullEvent, pullRequestBuilds, hookHandler, verifySignature, versionAndTags, buildArgsFor, jobName, assertCredentialScope, rehearsalJob, assertRehearsalScope, rehearsalDescription, rehearsalOutcome, inRepository, imageSuffix, tagOf };
 
 if (!env.DISPATCHER_NO_MAIN) {
   main().catch((err) => {
