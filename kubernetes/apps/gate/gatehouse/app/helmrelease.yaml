@@ -18,13 +18,14 @@ spec:
           main:
             image:
               repository: ghcr.io/hyperbolic2346/gatehouse
-              tag: 2b2c2ac7fcbfc2cc6727b3c0ab315a981d670b0c@sha256:2f33dd691c743abc6ecff06333a8da6595d79a1fe4f77b323bbba8ab464bd31d
+              tag: 00fd3c08061a9192454adb4d5cc4c78bcc1b341f@sha256:116155beb86624da7ca0e82c780417cf53a0dd35669d467790d2cd6de698eda9
             env:
               PORT: "8080"
               FRONTEND_DIR: /app/frontend-dist
               FRIGATE_URL: http://frigate.home.svc.cluster.local:5000
               MQTT_BROKER: tcp://mosquitto.home.svc.cluster.local:8883
               DB_PATH: /data/gatehouse.db
+              TZ: America/New_York
             envFrom:
               - secretRef:
                   name: gatehouse-secret
