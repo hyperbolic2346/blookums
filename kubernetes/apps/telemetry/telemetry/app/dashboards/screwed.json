@@ -211,7 +211,7 @@
           "editorMode": "code",
           "rawQuery": true,
           "format": "table",
-          "rawSql": "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY (CASE WHEN jsonb_typeof(body->'duration_s') = 'number' THEN (body->>'duration_s')::numeric END)) AS median FROM events WHERE game = 'screwed' AND event = 'session_end' AND $__timeFilter(event_time)"
+          "rawSql": "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY (CASE WHEN jsonb_typeof(body->'seconds') = 'number' THEN (body->>'seconds')::numeric END)) AS median FROM events WHERE game = 'screwed' AND event = 'session_end' AND $__timeFilter(event_time)"
         }
       ]
     },
@@ -375,7 +375,7 @@
     {
       "type": "timeseries",
       "title": "Session length per day",
-      "description": "From session_end.duration_s.",
+      "description": "From session_end.seconds.",
       "fieldConfig": {
         "defaults": {
           "unit": "s",
@@ -421,7 +421,7 @@
           "editorMode": "code",
           "rawQuery": true,
           "format": "time_series",
-          "rawSql": "SELECT $__timeGroupAlias(event_time, 1d), percentile_cont(0.5) WITHIN GROUP (ORDER BY (CASE WHEN jsonb_typeof(body->'duration_s') = 'number' THEN (body->>'duration_s')::numeric END)) AS median, percentile_cont(0.9) WITHIN GROUP (ORDER BY (CASE WHEN jsonb_typeof(body->'duration_s') = 'number' THEN (body->>'duration_s')::numeric END)) AS \"90th percentile\" FROM events WHERE game = 'screwed' AND event = 'session_end' AND $__timeFilter(event_time) GROUP BY 1 ORDER BY 1"
+          "rawSql": "SELECT $__timeGroupAlias(event_time, 1d), percentile_cont(0.5) WITHIN GROUP (ORDER BY (CASE WHEN jsonb_typeof(body->'seconds') = 'number' THEN (body->>'seconds')::numeric END)) AS median, percentile_cont(0.9) WITHIN GROUP (ORDER BY (CASE WHEN jsonb_typeof(body->'seconds') = 'number' THEN (body->>'seconds')::numeric END)) AS \"90th percentile\" FROM events WHERE game = 'screwed' AND event = 'session_end' AND $__timeFilter(event_time) GROUP BY 1 ORDER BY 1"
         }
       ]
     },
