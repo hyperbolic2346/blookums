@@ -5,7 +5,7 @@ metadata:
   name: stockpile-api
   namespace: flux-system
 spec:
-  image: ghcr.io/hyperbolic2346/stockpile-api
+  image: ghcr.io/nerdbucketinc/stockpile-api
   interval: 10m
   secretRef:
     name: ghcr-pull
@@ -16,7 +16,7 @@ metadata:
   name: stockpile-web
   namespace: flux-system
 spec:
-  image: ghcr.io/hyperbolic2346/stockpile-web
+  image: ghcr.io/nerdbucketinc/stockpile-web
   interval: 10m
   secretRef:
     name: ghcr-pull
@@ -27,7 +27,7 @@ metadata:
   name: sutler-api
   namespace: flux-system
 spec:
-  image: ghcr.io/hyperbolic2346/sutler-api
+  image: ghcr.io/nerdbucketinc/sutler-api
   interval: 10m
   secretRef:
     name: ghcr-pull
@@ -38,7 +38,7 @@ metadata:
   name: sutler-web
   namespace: flux-system
 spec:
-  image: ghcr.io/hyperbolic2346/sutler-web
+  image: ghcr.io/nerdbucketinc/sutler-web
   interval: 10m
   secretRef:
     name: ghcr-pull

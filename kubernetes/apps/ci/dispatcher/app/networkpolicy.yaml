@@ -89,7 +89,8 @@ spec:
 #   ingress  the Cilium Gateway API proxy (`ingress` entity): webhooks on
 #            8080 from the external gateway, log pages on 8081 from the
 #            internal gateway
-#   egress   the Kubernetes API (build Jobs); GitHub over ssh (22, fetch)
+#   egress   the Kubernetes API (build Jobs); GitHub over ssh (fetch: 443
+#            via ssh.github.com; 22 kept for the plain host)
 #            and https (443: commit statuses, and the ghcr.io registry API
 #            for the tags to rehearse) on public addresses only
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
