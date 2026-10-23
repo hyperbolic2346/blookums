@@ -1,5 +1,6 @@
 {
   "owner": "NerdbucketInc",
+  "cloneUrl": "ssh://git@ssh.github.com:443/{owner}/{repo}.git",
   "statusContext": "cluster/build",
   "releaseStatusContext": "cluster/release",
   "rehearsalStatusContext": "cluster/rehearsal",
@@ -16,8 +17,8 @@
     "stockpile": {
       "buildArgs": { "BUILD_SHA": "sha7", "BUILD_NUMBER": "number", "BUILD_DATE": "date", "BUILD_REF": "ref" },
       "images": [
-        { "name": "api", "dockerfile": "apps/api/Dockerfile", "repository": "ghcr.io/hyperbolic2346/stockpile-api" },
-        { "name": "web", "dockerfile": "apps/web/Dockerfile", "repository": "ghcr.io/hyperbolic2346/stockpile-web" }
+        { "name": "api", "dockerfile": "apps/api/Dockerfile", "repository": "ghcr.io/nerdbucketinc/stockpile-api" },
+        { "name": "web", "dockerfile": "apps/web/Dockerfile", "repository": "ghcr.io/nerdbucketinc/stockpile-web" }
       ],
       "rehearsal": {
         "template": "rehearsal-stockpile",
@@ -37,8 +38,8 @@
     "sutler": {
       "buildArgs": { "VERSION": "version" },
       "images": [
-        { "name": "api", "dockerfile": "apps/api/Dockerfile", "repository": "ghcr.io/hyperbolic2346/sutler-api" },
-        { "name": "web", "dockerfile": "apps/web/Dockerfile", "repository": "ghcr.io/hyperbolic2346/sutler-web" }
+        { "name": "api", "dockerfile": "apps/api/Dockerfile", "repository": "ghcr.io/nerdbucketinc/sutler-api" },
+        { "name": "web", "dockerfile": "apps/web/Dockerfile", "repository": "ghcr.io/nerdbucketinc/sutler-web" }
       ]
     }
   }

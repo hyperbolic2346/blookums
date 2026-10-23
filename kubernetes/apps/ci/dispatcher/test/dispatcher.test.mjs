@@ -130,7 +130,7 @@ fs.mkdirSync(path.join(dirs.secrets, "hooks"));
 fs.writeFileSync(path.join(dirs.secrets, "hooks", "stockpile"), "hook-secret\n");
 fs.writeFileSync(path.join(dirs.sa, "token"), "sa-token\n");
 fs.writeFileSync(path.join(tmp, "config.json"), JSON.stringify({
-  owner: "hyperbolic2346",
+  owner: "NerdbucketInc",
   statusContext: "cluster/build",
   releaseStatusContext: "cluster/release",
   githubApi: API,
@@ -461,7 +461,7 @@ test("webhook: a signed pull_request closed event is recorded in the state", asy
   const url = "http://127.0.0.1:" + hooks.address().port + "/hooks/github/stockpile";
   try {
     const body = JSON.stringify({ action: "closed", number: 12, pull_request: { number: 12, merged: true },
-      repository: { full_name: "hyperbolic2346/stockpile" } });
+      repository: { full_name: "NerdbucketInc/stockpile" } });
     const sig = "sha256=" + crypto.createHmac("sha256", "hook-secret").update(body).digest("hex");
     const res = await fetch(url, { method: "POST", body, headers: { "X-GitHub-Event": "pull_request", "X-Hub-Signature-256": sig } });
     assert.equal(res.status, 202);
