@@ -643,14 +643,14 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: "{{ now().hour >= 21 }}"
+        value_template: "{{ now().hour >= 2 and now().hour < 6 }}"
       sequence:
       - action: scene.turn_on
         target:
           entity_id: scene.master_bath_late_night
     - conditions:
       - condition: template
-        value_template: "{{ now().hour >= 19 }}"
+        value_template: "{{ now().hour >= 19 or now().hour < 2 }}"
       sequence:
       - action: scene.turn_on
         target:
