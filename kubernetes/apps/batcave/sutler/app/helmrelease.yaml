@@ -118,6 +118,10 @@ spec:
               limits:
                 memory: 512Mi
       worker:
+        # Retired: Stockpile took over drop-ship (stockpile#591). The worker did
+        # all listing, repricing, ordering and polling; with it at 0 sutler only
+        # serves its web/api for looking up old orders.
+        replicas: 0
         annotations:
           reloader.stakater.com/auto: "true"
         initContainers:
