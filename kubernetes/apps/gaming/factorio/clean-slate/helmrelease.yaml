@@ -38,7 +38,7 @@ spec:
       # floating tag renovate only bumps the digest, i.e. only when stable moves.
       # Game majors are one-way for saves and players must update clients, so
       # keep these PRs manual (digest bumps are not auto-merged in .renovaterc).
-      tag: stable@sha256:312341f29987b5a6b11f00ba8240192f7564936af9913384d13f7f4c535708ef
+      tag: stable@sha256:74f41f9450f2ba8464c445fb712f5ca1643a6b92b495c7a1f301bb3f1c7e2940
 
     service:
       type: LoadBalancer
