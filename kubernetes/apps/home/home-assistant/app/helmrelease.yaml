@@ -58,7 +58,7 @@ spec:
               # Pinned so the release could be resumed safely. Renovate will keep
               # proposing the bump — that PR is the reminder to do the upgrade
               # deliberately, not something to merge on autopilot.
-              tag: 2026.9.3@sha256:638c4c8d62caad377e70bfa7beef75f70c9343a49aed64aad824f2cd06843c1c
+              tag: 2026.10.3@sha256:3a5bf87bb8192cbef21a2e44383477a48a227c2dd19c2383ada2cb229981c127
             env:
               TZ: ${TIMEZONE}
               HASS_UNIT_SYSTEM: imperial
