@@ -16,3 +16,15 @@ spec:
     cleanupOnFail: true
     remediation:
       retries: 3
+  # The chart ships the CRDs as templates, so a Helm uninstall (including an
+  # install-failure remediation) would delete them and cascade-delete every
+  # Gateway/HTTPRoute. Keep them no matter what happens to this release.
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: CustomResourceDefinition
+            patch: |
+              - op: add
+                path: /metadata/annotations/helm.sh~1resource-policy
+                value: keep
