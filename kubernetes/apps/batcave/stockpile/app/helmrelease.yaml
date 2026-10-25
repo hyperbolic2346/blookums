@@ -81,6 +81,11 @@ spec:
               AUTH_POST_LOGIN_REDIRECT: "/"
               DEFAULT_TENANT: "demo"
               SUPER_ADMIN_EMAILS: "mike@batcaveballistics.com"
+              # Settings › Printing shows the print helper card (pairing codes)
+              # only when this is set. The releases page, not /releases/latest:
+              # the test builds are pre-releases, which "latest" skips.
+              PRINT_HELPER_DOWNLOAD_URL: "https://github.com/NerdbucketInc/stockpile-print-helper/releases"
+              PRINT_HELPER_ABOUT_URL: "https://github.com/NerdbucketInc/stockpile-print-helper#readme"
             envFrom: *envFrom
             probes:
               liveness: &apiProbe
