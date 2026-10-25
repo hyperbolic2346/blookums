@@ -70,8 +70,8 @@ spec:
           #    and the product catalog)
           02-migrate:
             image: &backendImage
-              repository: ghcr.io/hyperbolic2346/maison-flacon-backend
-              tag: main-2b20e31-b35 # {"$imagepolicy": "flux-system:maison-flacon-backend:tag"}
+              repository: ghcr.io/nerdbucketinc/maison-flacon-backend
+              tag: main-836c666-b37 # {"$imagepolicy": "flux-system:maison-flacon-backend:tag"}
             command: ["medusa", "db:migrate"]
             env: &backendEnv
               REDIS_URL: "redis://maison-flacon-redis.maison-flacon.svc.cluster.local:6379"
@@ -246,8 +246,8 @@ spec:
         containers:
           main:
             image:
-              repository: ghcr.io/hyperbolic2346/maison-flacon-storefront
-              tag: main-2b20e31-b35 # {"$imagepolicy": "flux-system:maison-flacon-storefront:tag"}
+              repository: ghcr.io/nerdbucketinc/maison-flacon-storefront
+              tag: main-836c666-b37 # {"$imagepolicy": "flux-system:maison-flacon-storefront:tag"}
             env:
               # Server-side rendering talks to the backend in-cluster...
               MEDUSA_BACKEND_URL_INTERNAL: "http://maison-flacon-backend.maison-flacon.svc.cluster.local:9000"

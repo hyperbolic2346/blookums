@@ -49,7 +49,7 @@ metadata:
   name: maison-flacon-backend
   namespace: flux-system
 spec:
-  image: ghcr.io/hyperbolic2346/maison-flacon-backend
+  image: ghcr.io/nerdbucketinc/maison-flacon-backend
   interval: 10m
   secretRef:
     name: ghcr-pull
@@ -60,7 +60,7 @@ metadata:
   name: maison-flacon-storefront
   namespace: flux-system
 spec:
-  image: ghcr.io/hyperbolic2346/maison-flacon-storefront
+  image: ghcr.io/nerdbucketinc/maison-flacon-storefront
   interval: 10m
   secretRef:
     name: ghcr-pull
