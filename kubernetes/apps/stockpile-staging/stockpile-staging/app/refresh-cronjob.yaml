@@ -3,21 +3,29 @@
 # shadow staging, scrubbed BEFORE the staging app can see it. Steps in
 # refresh/refresh.sh:
 #
+#   precheck (init)  staging's api image: staging mode present, and
+#                    staging-scrub.js loads and refuses an unconfirmed run,
+#                    before anything of production is read.
 #   dump     (init)  production from a READ REPLICA, as the rehearsal's
 #                    read-only role, to the pod's own disk.
 #   restore  (init)  into the scratch database stockpile_staging_next, as the
 #                    refresh role. The app's role can't open it.
 #   migrate  (init)  staging's api image: prisma migrate deploy on the copy.
 #   scrub    (init)  staging's api image: dist/tools/staging-scrub.js on the
-#                    copy. Non-zero: the Job stops, staging keeps yesterday's.
+#                    copy. Non-zero: nothing swapped, staging keeps
+#                    yesterday's.
 #   stop     (init)  staging's api and worker scaled to 0.
 #   swap     (init)  the copy handed to the app's role and renamed into
-#                    place, one transaction; yesterday's dropped.
+#                    place, one transaction; yesterday's dropped. After any
+#                    earlier failure it drops the scratch copy instead.
 #   start    (main)  OUTBOUND_MODE checked, fresh Redis, api and worker up.
 #
 # Until `stop`, staging runs on yesterday's copy throughout. From `stop` on,
 # `start` always brings it back (refresh.sh explains), unless the settings
 # no longer say readonly.
+#
+# Ships SUSPENDED: the first copy is run by hand and its scrubbed output
+# checked; then set suspend: false here (a PR) to make it nightly.
 #
 # Run it now:
 #   kubectl -n stockpile-staging create job --from=cronjob/stockpile-staging-refresh refresh-now
@@ -33,6 +41,7 @@ spec:
   # production's 00/06/12/18 UTC catalog syncs and the 05:10 drop-ship sweep.
   # The dump reads a replica, never the primary.
   schedule: "40 3 * * *"
+  suspend: true
   timeZone: America/New_York
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 2
@@ -41,7 +50,9 @@ spec:
     spec:
       backoffLimit: 0
       activeDeadlineSeconds: 3600
-      ttlSecondsAfterFinished: 259200
+      # Long enough to read the logs; the pod's disk (and anything left on
+      # it) goes with it.
+      ttlSecondsAfterFinished: 3600
       template:
         metadata:
           labels:
@@ -71,6 +82,34 @@ spec:
             seccompProfile:
               type: RuntimeDefault
           initContainers:
+            # The api-image steps name the image in full, each with its own
+            # marker, so image automation moves them with the api.
+            - name: precheck
+              image: ghcr.io/nerdbucketinc/stockpile-api:main-63ced11-b1184 # {"$imagepolicy": "flux-system:stockpile-api-staging"}
+              command: ["sh", "/refresh/refresh.sh", "precheck"]
+              envFrom:
+                - configMapRef:
+                    name: stockpile-staging-env
+              securityContext: &appSecure
+                runAsUser: 1000
+                runAsGroup: 1000
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+              resources: &appResources
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi
+              volumeMounts: &mounts
+                - name: refresh
+                  mountPath: /refresh
+                  readOnly: true
+                - name: work
+                  mountPath: /work
+                - name: tmp
+                  mountPath: /tmp
             - name: dump
               image: &pg docker.io/library/postgres:16.15-alpine@sha256:f4610795587492cd4fb887c2dc3de301b813278bb6f616992061141b5f15ac36
               command: ["sh", "/refresh/refresh.sh", "dump"]
@@ -96,14 +135,7 @@ spec:
                   memory: 64Mi
                 limits:
                   memory: 512Mi
-              volumeMounts: &mounts
-                - name: refresh
-                  mountPath: /refresh
-                  readOnly: true
-                - name: work
-                  mountPath: /work
-                - name: tmp
-                  mountPath: /tmp
+              volumeMounts: *mounts
             - name: restore
               image: *pg
               command: ["sh", "/refresh/refresh.sh", "restore"]
@@ -118,7 +150,7 @@ spec:
               resources: *pgResources
               volumeMounts: *mounts
             - name: migrate
-              image: &apiImage ghcr.io/nerdbucketinc/stockpile-api:main-63ced11-b1184 # {"$imagepolicy": "flux-system:stockpile-api-staging"}
+              image: ghcr.io/nerdbucketinc/stockpile-api:main-63ced11-b1184 # {"$imagepolicy": "flux-system:stockpile-api-staging"}
               command: ["sh", "/refresh/refresh.sh", "migrate"]
               envFrom: &appEnv
                 - configMapRef:
@@ -127,21 +159,11 @@ spec:
                 - name: NEXT_DATABASE_URL
                   valueFrom:
                     secretKeyRef: {name: stockpile-staging-refresh, key: NEXT_DATABASE_URL}
-              securityContext: &appSecure
-                runAsUser: 1000
-                runAsGroup: 1000
-                allowPrivilegeEscalation: false
-                capabilities:
-                  drop: ["ALL"]
-              resources: &appResources
-                requests:
-                  cpu: 100m
-                  memory: 256Mi
-                limits:
-                  memory: 1Gi
+              securityContext: *appSecure
+              resources: *appResources
               volumeMounts: *mounts
             - name: scrub
-              image: *apiImage
+              image: ghcr.io/nerdbucketinc/stockpile-api:main-63ced11-b1184 # {"$imagepolicy": "flux-system:stockpile-api-staging"}
               command: ["sh", "/refresh/refresh.sh", "scrub"]
               envFrom: *appEnv
               env: *nextUrl

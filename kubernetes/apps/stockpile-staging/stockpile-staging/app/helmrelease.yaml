@@ -8,6 +8,7 @@
 #     which every container here loads. The api and the worker refuse to
 #     start without it (their commands check it first), and the app refuses
 #     to boot in staging without it. Email goes to the Mailpit capture below.
+#   - Reach: the app and its mail page are on the internal gateway only.
 #   - Egress: the api and worker reach only DNS, the database, their Redis,
 #     Mailpit and Google's token endpoint (sign-in); no other internet
 #     (networkpolicy.yaml), on top of the app's guard.
@@ -59,14 +60,25 @@ spec:
         pod:
           terminationGracePeriodSeconds: 30
         initContainers:
+          # Nothing runs, migrations included, on an image without staging
+          # mode (STAGING_LOGIN_TOKEN, STAGING_SCHEDULES): a cheap look for
+          # the names in its build.
+          00-staging-image:
+            image: &apiImage
+              repository: ghcr.io/nerdbucketinc/stockpile-api
+              tag: main-63ced11-b1184 # {"$imagepolicy": "flux-system:stockpile-api-staging:tag"}
+            command:
+              - sh
+              - -c
+              - >-
+                { grep -rqs -e STAGING_LOGIN_TOKEN dist && grep -rqs -e STAGING_SCHEDULES dist || { echo 'Refusing to start: this image has no staging mode (STAGING_LOGIN_TOKEN / STAGING_SCHEDULES); it needs a Stockpile main build that ships it.' >&2; exit 1; }; }
+                && echo 'staging mode present'
           # The database and its role are CNPG objects
           # (databases/cloudnative-pg/stockpile-staging): no superuser login
           # in this namespace. The refresh migrates each night's copy before
           # swapping it in; this catches main moving during the day.
           01-migrate:
-            image: &apiImage
-              repository: ghcr.io/nerdbucketinc/stockpile-api
-              tag: main-63ced11-b1184 # {"$imagepolicy": "flux-system:stockpile-api-staging:tag"}
+            image: *apiImage
             command: ["npx", "prisma", "migrate", "deploy"]
             envFrom: &envFrom
               - configMapRef:
@@ -83,14 +95,16 @@ spec:
         containers:
           main:
             image: *apiImage
-            # Fail closed: no start unless OUTBOUND_MODE is exactly readonly
-            # (and STOCKPILE_ENV staging). Checked in this container's own
-            # environment, so a change that drops either can't slip by.
+            # Fail closed: no start unless the image has staging mode and
+            # OUTBOUND_MODE is exactly readonly (and STOCKPILE_ENV staging).
+            # Checked in this container's own environment, so a change that
+            # drops either can't slip by.
             command:
               - sh
               - -c
               - >-
-                node -e "if (process.env.OUTBOUND_MODE !== 'readonly' || process.env.STOCKPILE_ENV !== 'staging') { console.error('Refusing to start: staging needs OUTBOUND_MODE=readonly and STOCKPILE_ENV=staging (stockpile#331).'); process.exit(1); }"
+                { grep -rqs -e STAGING_LOGIN_TOKEN dist && grep -rqs -e STAGING_SCHEDULES dist || { echo 'Refusing to start: this image has no staging mode (STAGING_LOGIN_TOKEN / STAGING_SCHEDULES); it needs a Stockpile main build that ships it.' >&2; exit 1; }; }
+                && node -e "if (process.env.OUTBOUND_MODE !== 'readonly' || process.env.STOCKPILE_ENV !== 'staging') { console.error('Refusing to start: staging needs OUTBOUND_MODE=readonly and STOCKPILE_ENV=staging (stockpile#331).'); process.exit(1); }"
                 && exec node dist/main.js
             env:
               API_PORT: "8000"
@@ -146,7 +160,8 @@ spec:
               - sh
               - -c
               - >-
-                node -e "if (process.env.OUTBOUND_MODE !== 'readonly' || process.env.STOCKPILE_ENV !== 'staging') { console.error('Refusing to start: staging needs OUTBOUND_MODE=readonly and STOCKPILE_ENV=staging (stockpile#331).'); process.exit(1); }"
+                { grep -rqs -e STAGING_LOGIN_TOKEN dist && grep -rqs -e STAGING_SCHEDULES dist || { echo 'Refusing to start: this image has no staging mode (STAGING_LOGIN_TOKEN / STAGING_SCHEDULES); it needs a Stockpile main build that ships it.' >&2; exit 1; }; }
+                && node -e "if (process.env.OUTBOUND_MODE !== 'readonly' || process.env.STOCKPILE_ENV !== 'staging') { console.error('Refusing to start: staging needs OUTBOUND_MODE=readonly and STOCKPILE_ENV=staging (stockpile#331).'); process.exit(1); }"
                 && exec node dist/worker/main.js
             # WORKER_FAMILIES unset: this one worker runs every job family.
             envFrom: *envFrom
@@ -304,10 +319,14 @@ spec:
           smtp:
             port: 1025
     route:
+      # INTERNAL gateway (home network) until the first scrubbed copy has
+      # been checked. To publish it: parentRefs name external (sectionName
+      # https stays); the wildcard DNS and tunnel entries already cover the
+      # name.
       app:
         hostnames: ["stockpile-staging.${SECRET_DOMAIN}"]
         parentRefs:
-          - name: external
+          - name: internal
             namespace: kube-system
             sectionName: https
         rules:
