@@ -1,0 +1,20 @@
+---
+# Stockpile shadow staging's database, owned by its app role. Declared here
+# so the staging namespace never holds the superuser's login (no
+# postgres-init there). The nightly refresh replaces its contents by
+# renaming a scrubbed copy into this name (apps/stockpile-staging,
+# refresh-cronjob.yaml); CNPG only creates it when it is missing.
+# Retained if this object goes: deleting staging's data is a manual step.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/postgresql.cnpg.io/database_v1.json
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: stockpile-staging
+  namespace: databases
+spec:
+  cluster:
+    name: postgres
+  name: stockpile_staging
+  owner: stockpile_staging
+  ensure: present
+  databaseReclaimPolicy: retain

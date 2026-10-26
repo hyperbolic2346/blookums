@@ -1,0 +1,246 @@
+---
+# Network rules for the stockpile-staging pods, modeled on production's
+# (batcave/stockpile networkpolicy.yaml). Each policy selects one component
+# of THIS release only.
+#
+# Sources:
+#   host    - kubelet probes (the node the pod runs on)
+#   ingress - the Cilium Gateway API proxies (kube-system external and internal), which is
+#             how HTTPRoute traffic reaches the api, web and mail page
+#
+# Egress, unlike production: the api and the worker reach only DNS, the
+# database primary, this release's Redis and Mailpit, and (the api) Google's
+# OAuth token endpoint for sign-in. Everything else on the internet is
+# refused here, on top of the app's own guard (OUTBOUND_MODE=readonly): if
+# the guard ever let a write through, it would have nowhere to go. Real
+# GunBroker or distributor READS would need their hosts added to the api's
+# and worker's toFQDNs; the fake GunBroker (stockpile#332) will be an
+# in-namespace endpoint instead. The web pod holds no secret and no
+# database login, so it keeps production's ingress-only policy. The refresh
+# job's pods limit their own egress (refresh-cronjob.yaml).
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: stockpile-staging-api
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: stockpile-staging
+      app.kubernetes.io/controller: api
+  ingress:
+    - fromEntities:
+        - host
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "8000"
+              protocol: TCP
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+          # Cilium's DNS proxy learns the toFQDNs address below from these.
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: databases
+            cnpg.io/cluster: postgres
+            cnpg.io/instanceRole: primary
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/instance: stockpile-staging
+            app.kubernetes.io/controller: redis
+      toPorts:
+        - ports:
+            - port: "6379"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/instance: stockpile-staging
+            app.kubernetes.io/controller: mailpit
+      toPorts:
+        - ports:
+            - port: "1025"
+              protocol: TCP
+    # The fake GunBroker (stockpile#332), once it exists:
+    # - toEndpoints:
+    #     - matchLabels:
+    #         app.kubernetes.io/instance: stockpile-staging
+    #         app.kubernetes.io/controller: fake-gunbroker
+    #   toPorts:
+    #     - ports:
+    #         - port: "8080"
+    #           protocol: TCP
+    # Google sign-in: the code-for-token exchange (stockpile auth.service).
+    - toFQDNs:
+        - matchName: oauth2.googleapis.com
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: stockpile-staging-web
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: stockpile-staging
+      app.kubernetes.io/controller: web
+  ingress:
+    - fromEntities:
+        - host
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "3000"
+              protocol: TCP
+---
+# The worker serves only its health port (8091) to the kubelet.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: stockpile-staging-worker
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: stockpile-staging
+      app.kubernetes.io/controller: worker
+  ingress:
+    - fromEntities:
+        - host
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: databases
+            cnpg.io/cluster: postgres
+            cnpg.io/instanceRole: primary
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/instance: stockpile-staging
+            app.kubernetes.io/controller: redis
+      toPorts:
+        - ports:
+            - port: "6379"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/instance: stockpile-staging
+            app.kubernetes.io/controller: mailpit
+      toPorts:
+        - ports:
+            - port: "1025"
+              protocol: TCP
+    # The fake GunBroker (stockpile#332), once it exists:
+    # - toEndpoints:
+    #     - matchLabels:
+    #         app.kubernetes.io/instance: stockpile-staging
+    #         app.kubernetes.io/controller: fake-gunbroker
+    #   toPorts:
+    #     - ports:
+    #         - port: "8080"
+    #           protocol: TCP
+---
+# Redis is this release's api and worker's only.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: stockpile-staging-redis
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: stockpile-staging
+      app.kubernetes.io/controller: redis
+  ingress:
+    - fromEntities:
+        - host
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/instance: stockpile-staging
+            app.kubernetes.io/controller: api
+        - matchLabels:
+            app.kubernetes.io/instance: stockpile-staging
+            app.kubernetes.io/controller: worker
+      toPorts:
+        - ports:
+            - port: "6379"
+              protocol: TCP
+---
+# The capture inbox: SMTP from this release's api and worker only; its web
+# page through the gateway (basic auth in Mailpit itself). It sends nothing
+# anywhere: no egress at all.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: stockpile-staging-mailpit
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: stockpile-staging
+      app.kubernetes.io/controller: mailpit
+  ingress:
+    - fromEntities:
+        - host
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/instance: stockpile-staging
+            app.kubernetes.io/controller: api
+        - matchLabels:
+            app.kubernetes.io/instance: stockpile-staging
+            app.kubernetes.io/controller: worker
+      toPorts:
+        - ports:
+            - port: "1025"
+              protocol: TCP
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "8025"
+              protocol: TCP
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP

@@ -1,0 +1,339 @@
+# Stockpile SHADOW STAGING (stockpile#331, epic #328): main's images on
+# last night's production data, scrubbed, with every outside write refused.
+#
+#   - Data: every night the CronJob stockpile-staging-refresh builds a
+#     scrubbed copy of production in a scratch database the app cannot
+#     open, then swaps it in (refresh-cronjob.yaml, refresh/refresh.sh).
+#   - Writes: OUTBOUND_MODE=readonly (stockpile#329), from config.yaml,
+#     which every container here loads. The api and the worker refuse to
+#     start without it (their commands check it first), and the app refuses
+#     to boot in staging without it. Email goes to the Mailpit capture below.
+#   - Egress: the api and worker reach only DNS, the database, their Redis,
+#     Mailpit and Google's token endpoint (sign-in); no other internet
+#     (networkpolicy.yaml), on top of the app's guard.
+#   - Credentials: staging's own 1Password item, role, key, Redis and
+#     hostname. The copy's stored plugin credentials are sealed under
+#     production's key, which staging never has; the scrub deletes them.
+#   - Repeating jobs: none of staging's own (STAGING_SCHEDULES empty).
+#
+# Pods stay off wally (small image disk) and the control plane.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: stockpile-staging
+  namespace: stockpile-staging
+spec:
+  interval: 30m
+  timeout: 15m
+  chartRef:
+    kind: OCIRepository
+    name: stockpile-staging
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    defaultPodOptions:
+      imagePullSecrets:
+        - name: stockpile-staging-ghcr-pull
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: ["wally"]
+    controllers:
+      api:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        pod:
+          terminationGracePeriodSeconds: 30
+        initContainers:
+          # The database and its role are CNPG objects
+          # (databases/cloudnative-pg/stockpile-staging): no superuser login
+          # in this namespace. The refresh migrates each night's copy before
+          # swapping it in; this catches main moving during the day.
+          01-migrate:
+            image: &apiImage
+              repository: ghcr.io/nerdbucketinc/stockpile-api
+              tag: main-63ced11-b1184 # {"$imagepolicy": "flux-system:stockpile-api-staging:tag"}
+            command: ["npx", "prisma", "migrate", "deploy"]
+            envFrom: &envFrom
+              - configMapRef:
+                  name: stockpile-staging-env
+              - secretRef:
+                  name: stockpile-staging-secret
+          # the seed (idempotent, additive)
+          02-seed:
+            image: *apiImage
+            command: ["node", "dist/seed/main.js"]
+            env:
+              SUPER_ADMIN_EMAILS: "mike@batcaveballistics.com"
+            envFrom: *envFrom
+        containers:
+          main:
+            image: *apiImage
+            # Fail closed: no start unless OUTBOUND_MODE is exactly readonly
+            # (and STOCKPILE_ENV staging). Checked in this container's own
+            # environment, so a change that drops either can't slip by.
+            command:
+              - sh
+              - -c
+              - >-
+                node -e "if (process.env.OUTBOUND_MODE !== 'readonly' || process.env.STOCKPILE_ENV !== 'staging') { console.error('Refusing to start: staging needs OUTBOUND_MODE=readonly and STOCKPILE_ENV=staging (stockpile#331).'); process.exit(1); }"
+                && exec node dist/main.js
+            env:
+              API_PORT: "8000"
+              AUTH_CALLBACK_URL: "https://stockpile-staging.${SECRET_DOMAIN}/api/auth/google/callback"
+              AUTH_SECURE_COOKIES: "true"
+              AUTH_REQUIRE_STRONG_SECRET: "true"
+              AUTH_POST_LOGIN_REDIRECT: "/"
+              DEFAULT_TENANT: "demo"
+              SUPER_ADMIN_EMAILS: "mike@batcaveballistics.com"
+            envFrom: *envFrom
+            probes:
+              liveness: &apiProbe
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/health
+                    port: 8000
+                  initialDelaySeconds: 10
+                  periodSeconds: 15
+                  timeoutSeconds: 2
+                  failureThreshold: 3
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/health/ready
+                    port: 8000
+                  initialDelaySeconds: 5
+                  periodSeconds: 5
+                  timeoutSeconds: 2
+                  failureThreshold: 2
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 25m
+                memory: 192Mi
+              limits:
+                memory: 512Mi
+      worker:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        # One worker runs every job family (staging's load is small).
+        strategy: Recreate
+        pod:
+          terminationGracePeriodSeconds: 30
+        containers:
+          main:
+            image: *apiImage
+            command:
+              - sh
+              - -c
+              - >-
+                node -e "if (process.env.OUTBOUND_MODE !== 'readonly' || process.env.STOCKPILE_ENV !== 'staging') { console.error('Refusing to start: staging needs OUTBOUND_MODE=readonly and STOCKPILE_ENV=staging (stockpile#331).'); process.exit(1); }"
+                && exec node dist/worker/main.js
+            # WORKER_FAMILIES unset: this one worker runs every job family.
+            envFrom: *envFrom
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: 8091
+                  initialDelaySeconds: 30
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 4
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /readyz
+                    port: 8091
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 3
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 10m
+                memory: 192Mi
+              limits:
+                memory: 768Mi
+      web:
+        strategy: RollingUpdate
+        rollingUpdate:
+          surge: 1
+          unavailable: 0
+        containers:
+          main:
+            image:
+              repository: ghcr.io/nerdbucketinc/stockpile-web
+              tag: main-63ced11-b1184 # {"$imagepolicy": "flux-system:stockpile-web-staging:tag"}
+            env:
+              PUBLIC_API_URL: "https://stockpile-staging.${SECRET_DOMAIN}"
+              PORT: "3000"
+              # No Umami: staging's visits stay out of prod's stats.
+            probes:
+              liveness: &webProbe
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 3000
+                  initialDelaySeconds: 5
+                  periodSeconds: 30
+                  timeoutSeconds: 2
+                  failureThreshold: 3
+              readiness: *webProbe
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 192Mi
+      # Its own ephemeral Redis: no BullMQ job crosses from production. The
+      # refresh restarts it, so no job from yesterday's copy survives.
+      redis:
+        containers:
+          main:
+            image:
+              repository: public.ecr.aws/docker/library/redis
+              tag: 8-alpine
+            command: ["redis-server", "--save", "", "--appendonly", "no"]
+            probes:
+              liveness: &redisProbe
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 6379
+                  initialDelaySeconds: 5
+                  periodSeconds: 20
+              readiness: *redisProbe
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                memory: 128Mi
+      # The capture inbox (stockpile#329 OUTBOUND_MAIL_CAPTURE): every email
+      # staging "sends" lands here, addressed to a .invalid envelope, and
+      # nowhere else. In memory; the newest 500 kept. Its web page is behind
+      # basic auth (MP_UI_AUTH, from the 1Password item).
+      mailpit:
+        containers:
+          main:
+            image:
+              repository: docker.io/axllent/mailpit
+              tag: v1.31.3@sha256:ed9b00c609e77e99c79b93f1178255ebc271868920f2c69a8d166bd5634ed10d
+            env:
+              MP_SMTP_BIND_ADDR: "0.0.0.0:1025"
+              MP_UI_BIND_ADDR: "0.0.0.0:8025"
+              MP_MAX_MESSAGES: "500"
+              MP_UI_AUTH:
+                valueFrom:
+                  secretKeyRef:
+                    name: stockpile-staging-mailpit
+                    key: MP_UI_AUTH
+            probes:
+              liveness: &mailProbe
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 1025
+                  initialDelaySeconds: 5
+                  periodSeconds: 20
+              readiness: *mailProbe
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                memory: 128Mi
+    service:
+      api:
+        controller: api
+        ports:
+          http:
+            port: 8000
+      web:
+        controller: web
+        ports:
+          http:
+            port: 3000
+      redis:
+        controller: redis
+        ports:
+          redis:
+            port: 6379
+      mailpit:
+        controller: mailpit
+        ports:
+          http:
+            port: 8025
+          smtp:
+            port: 1025
+    route:
+      app:
+        hostnames: ["stockpile-staging.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: external
+            namespace: kube-system
+            sectionName: https
+        rules:
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /api
+            backendRefs:
+              - identifier: api
+                port: 8000
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /
+            backendRefs:
+              - identifier: web
+                port: 3000
+      # The capture inbox's page: internal gateway (home network) only,
+      # behind Mailpit's own basic auth as well.
+      mail:
+        hostnames: ["stockpile-staging-mail.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: internal
+            namespace: kube-system
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: mailpit
+                port: 8025

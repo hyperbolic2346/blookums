@@ -57,6 +57,16 @@ spec:
       - host all telemetry all reject
       - host telemetry telemetry_reader 10.42.0.0/16 scram-sha-256
       - host all telemetry_reader all reject
+      # Stockpile shadow staging (apps/stockpile-staging, roles below). The
+      # app role reaches its own database only: never production's
+      # stockpile, never the refresh's scratch copy stockpile_staging_next
+      # (which holds unscrubbed data until the scrub has passed). The refresh
+      # role reaches the staging databases and the maintenance database
+      # (CREATE/RENAME/DROP DATABASE), never stockpile.
+      - host stockpile_staging stockpile_staging 10.42.0.0/16 scram-sha-256
+      - host all stockpile_staging all reject
+      - host stockpile_staging,stockpile_staging_next,stockpile_staging_old,postgres stockpile_staging_refresh 10.42.0.0/16 scram-sha-256
+      - host all stockpile_staging_refresh all reject
   managed:
     roles:
       # Login for Stockpile's migration rehearsal (ci namespace, PodTemplate
@@ -73,6 +83,35 @@ spec:
         connectionLimit: 2
         passwordSecret:
           name: stockpile-rehearsal-db
+      # Stockpile shadow staging (apps/stockpile-staging, stockpile#331).
+      # Passwords: 1Password item "stockpile-staging", through the
+      # ExternalSecret in ../stockpile-staging. Its database is the Database
+      # object there, owned by stockpile_staging.
+      #   stockpile_staging          the staging app (and its migrations).
+      #   stockpile_staging_refresh  the nightly refresh: builds the scratch
+      #       copy stockpile_staging_next as its own (the app role may not
+      #       connect to it), then hands it to stockpile_staging and swaps
+      #       it in. CREATEDB and membership in stockpile_staging are what
+      #       that needs (REASSIGN OWNED, ALTER DATABASE RENAME, DROP).
+      #       No membership in any production role.
+      - name: stockpile_staging
+        ensure: present
+        comment: Stockpile shadow staging app (stockpile-staging namespace)
+        login: true
+        connectionLimit: 30
+        passwordSecret:
+          name: stockpile-staging-db
+      - name: stockpile_staging_refresh
+        ensure: present
+        comment: Stockpile shadow staging nightly refresh (stockpile-staging namespace)
+        login: true
+        createdb: true
+        inherit: true
+        connectionLimit: 3
+        inRoles:
+          - stockpile_staging
+        passwordSecret:
+          name: stockpile-staging-refresh-db
   backup:
     retentionPolicy: 14d
     barmanObjectStore:
