@@ -97,6 +97,8 @@ spec:
               STOREFRONT_REVALIDATE_DNS: "maison-flacon-storefront-copies.maison-flacon.svc.cluster.local:8000"
               # Links in emails (password reset) point here.
               STOREFRONT_URL: "https://maison-flacon.com"
+              # The credentials in maison-flacon-paypal are the live app's.
+              PAYPAL_ENVIRONMENT: "live"
             envFrom: &backendEnvFrom
               - secretRef:
                   name: maison-flacon-secret
@@ -106,6 +108,9 @@ spec:
               # is off until its settings exist (see externalsecret.yaml).
               - secretRef:
                   name: maison-flacon-stripe
+                  optional: true
+              - secretRef:
+                  name: maison-flacon-paypal
                   optional: true
               - secretRef:
                   name: maison-flacon-email
