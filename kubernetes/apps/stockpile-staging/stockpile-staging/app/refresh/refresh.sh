@@ -133,12 +133,13 @@ precheck() {
     fail "this image has no staging mode (STAGING_LOGIN_TOKEN / STAGING_SCHEDULES): it needs a Stockpile main build that ships it. Nothing read from production."
   [ -f dist/tools/staging-scrub.js ] ||
     fail "this image has no dist/tools/staging-scrub.js: it needs a Stockpile main build that ships it. Nothing read from production."
-  # The tool must load, and refuse: called WITHOUT --confirm-staging-scrub
-  # and with an address that resolves nowhere, it exits 2 (its refusal
-  # code) before connecting. Anything else (a load error is 1, a run would
-  # be 0) means this isn't the tool the refresh expects.
+  # The tool must load, and refuse: run WITHOUT --confirm-staging-scrub and
+  # with a made-up SCRUB_DATABASE_URL that resolves nowhere, it exits 2 (its
+  # refusal code) before connecting. Anything else (a load error is 1, a
+  # run would be 0) means this isn't the tool the refresh expects.
   rc=0
-  node dist/tools/staging-scrub.js --database-url "postgresql://precheck@precheck.invalid:5432/stockpile_staging_next"     > "$WORK/check.out" 2>&1 || rc=$?
+  SCRUB_DATABASE_URL="postgresql://x:y@scrub-check.invalid/precheck_staging" \
+    node dist/tools/staging-scrub.js > "$WORK/check.out" 2>&1 || rc=$?
   if [ "$rc" -ne 2 ]; then
     redact < "$WORK/check.out" | tail -n 20
     rm -f "$WORK/check.out"
@@ -226,7 +227,8 @@ restore() {
 }
 
 # ------------------------------------------------------------------ migrate
-# Runs in the staging api image, DATABASE_URL = the scratch copy.
+# Runs in the staging api image, DATABASE_URL = the scratch copy, taken
+# from the environment (NEXT_DATABASE_URL, from a Secret), never argv.
 migrate() {
   : "$NEXT_DATABASE_URL"
   skip_if_failed
@@ -240,14 +242,16 @@ migrate() {
 }
 
 # ------------------------------------------------------------------ scrub
-# Runs in the staging api image: the SAME tag as the api and worker.
+# Runs in the staging api image: the SAME tag as the api and worker. The
+# tool reads SCRUB_DATABASE_URL (the scratch copy, as the refresh role) from
+# this container's environment (the pod spec, from a Secret): no address or
+# password is ever in argv. STOCKPILE_ENV=staging comes from the ConfigMap.
 scrub() {
-  : "$NEXT_DATABASE_URL"
+  : "$SCRUB_DATABASE_URL" "$STOCKPILE_ENV"
   skip_if_failed
   export HOME=/tmp
   rc=0
-  node dist/tools/staging-scrub.js --database-url "$NEXT_DATABASE_URL" --confirm-staging-scrub \
-    > "$WORK/scrub.out" 2>&1 || rc=$?
+  node dist/tools/staging-scrub.js --confirm-staging-scrub > "$WORK/scrub.out" 2>&1 || rc=$?
   redact < "$WORK/scrub.out" | tail -n 60
   rm -f "$WORK/scrub.out"
   [ "$rc" -eq 0 ] || soft_fail "the scrub exited $rc. Nothing swapped: staging keeps yesterday's copy."

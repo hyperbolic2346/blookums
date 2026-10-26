@@ -155,7 +155,7 @@ spec:
               envFrom: &appEnv
                 - configMapRef:
                     name: stockpile-staging-env
-              env: &nextUrl
+              env:
                 - name: NEXT_DATABASE_URL
                   valueFrom:
                     secretKeyRef: {name: stockpile-staging-refresh, key: NEXT_DATABASE_URL}
@@ -166,7 +166,10 @@ spec:
               image: ghcr.io/nerdbucketinc/stockpile-api:main-63ced11-b1184 # {"$imagepolicy": "flux-system:stockpile-api-staging"}
               command: ["sh", "/refresh/refresh.sh", "scrub"]
               envFrom: *appEnv
-              env: *nextUrl
+              env:
+                - name: SCRUB_DATABASE_URL
+                  valueFrom:
+                    secretKeyRef: {name: stockpile-staging-refresh, key: SCRUB_DATABASE_URL}
               securityContext: *appSecure
               resources: *appResources
               volumeMounts: *mounts
