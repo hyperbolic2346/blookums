@@ -1,0 +1,34 @@
+---
+# Stockpile SHADOW STAGING (stockpile#331, apps/stockpile-staging) follows
+# main builds (main-<shortsha>-b<run#>), whatever production follows. Same
+# image repositories as production's policies (imagerepository.yaml); its
+# own policies, so the two never move together by accident.
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: stockpile-api-staging
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: stockpile-api
+  filterTags:
+    pattern: '^main-[0-9a-f]+-b(?P<build>\d+)$'
+    extract: '$build'
+  policy:
+    numerical:
+      order: asc
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: stockpile-web-staging
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: stockpile-web
+  filterTags:
+    pattern: '^main-[0-9a-f]+-b(?P<build>\d+)$'
+    extract: '$build'
+  policy:
+    numerical:
+      order: asc

@@ -6,4 +6,5 @@ resources:
   - ./externalsecret.yaml
   - ./imagerepository.yaml
   - ./imagepolicy.yaml
+  - ./imagepolicy-stockpile-staging.yaml
   - ./imageupdateautomation.yaml

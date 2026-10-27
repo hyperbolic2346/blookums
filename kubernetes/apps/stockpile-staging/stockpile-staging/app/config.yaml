@@ -1,0 +1,32 @@
+---
+# Staging's settings, in ONE place: every container that runs the Stockpile
+# api image here (the api, its init steps, the worker, the refresh's
+# migrate and scrub steps) loads this whole map through envFrom, so none
+# of them can run without OUTBOUND_MODE=readonly. The api and the worker
+# also refuse to start unless it reads exactly that (their commands, in
+# helmrelease.yaml), and the app refuses to boot in staging without it.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stockpile-staging-env
+  namespace: stockpile-staging
+data:
+  STOCKPILE_ENV: staging
+  # stockpile#329: every outside write refused before it is sent.
+  OUTBOUND_MODE: readonly
+  # No repeating jobs of staging's own (catalog syncs, sweeps): empty.
+  STAGING_SCHEDULES: ""
+  # Email to the capture inbox (mailpit in helmrelease.yaml), never a
+  # recipient.
+  OUTBOUND_MAIL_CAPTURE: "smtp://stockpile-staging-mailpit.stockpile-staging.svc.cluster.local:1025"
+  REDIS_URL: "redis://stockpile-staging-redis.stockpile-staging.svc.cluster.local:6379"
+  # Staging's own key id for anything sealed here (externalsecret.yaml).
+  SECRETS_ENCRYPTION_PRIMARY_ID: staging
+  # Auto-list off as well: its writes would be refused anyway.
+  DROPSHIP_AUTOLIST: "off"
+  # The fake GunBroker (stockpile#332), once it exists in this namespace;
+  # the api's and worker's egress policy (networkpolicy.yaml) then needs it.
+  # GUNBROKER_API_BASE: "http://stockpile-staging-fake-gunbroker.stockpile-staging.svc.cluster.local:8080"
+  # Prisma's update check calls the internet, which egress refuses here.
+  CHECKPOINT_DISABLE: "1"
+  PRISMA_HIDE_UPDATE_MESSAGE: "1"
