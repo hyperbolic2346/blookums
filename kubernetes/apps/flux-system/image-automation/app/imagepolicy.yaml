@@ -1,7 +1,12 @@
 ---
-# CI tags main-branch builds as main-<shortsha>-b<run#> (stockpile
-# .github/workflows/build.yaml); the run number gives a sortable ordering
-# that a bare short SHA can't.
+# Stockpile PROD tracks released semver tags only (stockpile#334, the nightly
+# release train), as sutler prod does. A scheduled workflow in the stockpile
+# repo tags main's head vX.Y.Z overnight once the cluster build and the
+# migration rehearsal passed on that commit; the CI dispatcher builds the tag
+# and pushes X.Y.Z. Main builds (main-<sha>-b<N>) are still built and pushed
+# (staging, the rehearsal), but prod no longer takes them.
+# Rollback to every-merge deploys: put both policies back to filterTags
+# '^main-[0-9a-f]+-b(?P<build>\d+)$' / extract '$build' / numerical asc.
 apiVersion: image.toolkit.fluxcd.io/v1
 kind: ImagePolicy
 metadata:
@@ -11,11 +16,11 @@ spec:
   imageRepositoryRef:
     name: stockpile-api
   filterTags:
-    pattern: '^main-[0-9a-f]+-b(?P<build>\d+)$'
-    extract: '$build'
+    pattern: '^(?P<version>\d+\.\d+\.\d+)$'
+    extract: '$version'
   policy:
-    numerical:
-      order: asc
+    semver:
+      range: '>=0.0.0'
 ---
 apiVersion: image.toolkit.fluxcd.io/v1
 kind: ImagePolicy
@@ -26,11 +31,11 @@ spec:
   imageRepositoryRef:
     name: stockpile-web
   filterTags:
-    pattern: '^main-[0-9a-f]+-b(?P<build>\d+)$'
-    extract: '$build'
+    pattern: '^(?P<version>\d+\.\d+\.\d+)$'
+    extract: '$version'
   policy:
-    numerical:
-      order: asc
+    semver:
+      range: '>=0.0.0'
 ---
 # Sutler PROD tracks released semver tags only. Sutler applies Prisma
 # migrations from an initContainer, so tracking `main` here would run every
