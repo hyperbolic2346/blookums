@@ -66,13 +66,12 @@ spec:
           00-staging-image:
             image: &apiImage
               repository: ghcr.io/nerdbucketinc/stockpile-api
-              tag: main-63ced11-b1184 # {"$imagepolicy": "flux-system:stockpile-api-staging:tag"}
+              tag: main-634dbd9-b1189 # {"$imagepolicy": "flux-system:stockpile-api-staging:tag"}
             command:
               - sh
               - -c
               - >-
-                { grep -rqs -e STAGING_LOGIN_TOKEN dist && grep -rqs -e STAGING_SCHEDULES dist || { echo 'Refusing to start: this image has no staging mode (STAGING_LOGIN_TOKEN / STAGING_SCHEDULES); it needs a Stockpile main build that ships it.' >&2; exit 1; }; }
-                && echo 'staging mode present'
+                { grep -rqs -e STAGING_LOGIN_TOKEN dist && grep -rqs -e STAGING_SCHEDULES dist || { echo 'Refusing to start: this image has no staging mode (STAGING_LOGIN_TOKEN / STAGING_SCHEDULES); it needs a Stockpile main build that ships it.' >&2; exit 1; }; } && echo 'staging mode present'
           # The database and its role are CNPG objects
           # (databases/cloudnative-pg/stockpile-staging): no superuser login
           # in this namespace. The refresh migrates each night's copy before
@@ -103,9 +102,7 @@ spec:
               - sh
               - -c
               - >-
-                { grep -rqs -e STAGING_LOGIN_TOKEN dist && grep -rqs -e STAGING_SCHEDULES dist || { echo 'Refusing to start: this image has no staging mode (STAGING_LOGIN_TOKEN / STAGING_SCHEDULES); it needs a Stockpile main build that ships it.' >&2; exit 1; }; }
-                && node -e "if (process.env.OUTBOUND_MODE !== 'readonly' || process.env.STOCKPILE_ENV !== 'staging') { console.error('Refusing to start: staging needs OUTBOUND_MODE=readonly and STOCKPILE_ENV=staging (stockpile#331).'); process.exit(1); }"
-                && exec node dist/main.js
+                { grep -rqs -e STAGING_LOGIN_TOKEN dist && grep -rqs -e STAGING_SCHEDULES dist || { echo 'Refusing to start: this image has no staging mode (STAGING_LOGIN_TOKEN / STAGING_SCHEDULES); it needs a Stockpile main build that ships it.' >&2; exit 1; }; } && node -e "if (process.env.OUTBOUND_MODE !== 'readonly' || process.env.STOCKPILE_ENV !== 'staging') { console.error('Refusing to start: staging needs OUTBOUND_MODE=readonly and STOCKPILE_ENV=staging (stockpile#331).'); process.exit(1); }" && exec node dist/main.js
             env:
               API_PORT: "8000"
               AUTH_CALLBACK_URL: "https://stockpile-staging.${SECRET_DOMAIN}/api/auth/google/callback"
@@ -160,9 +157,7 @@ spec:
               - sh
               - -c
               - >-
-                { grep -rqs -e STAGING_LOGIN_TOKEN dist && grep -rqs -e STAGING_SCHEDULES dist || { echo 'Refusing to start: this image has no staging mode (STAGING_LOGIN_TOKEN / STAGING_SCHEDULES); it needs a Stockpile main build that ships it.' >&2; exit 1; }; }
-                && node -e "if (process.env.OUTBOUND_MODE !== 'readonly' || process.env.STOCKPILE_ENV !== 'staging') { console.error('Refusing to start: staging needs OUTBOUND_MODE=readonly and STOCKPILE_ENV=staging (stockpile#331).'); process.exit(1); }"
-                && exec node dist/worker/main.js
+                { grep -rqs -e STAGING_LOGIN_TOKEN dist && grep -rqs -e STAGING_SCHEDULES dist || { echo 'Refusing to start: this image has no staging mode (STAGING_LOGIN_TOKEN / STAGING_SCHEDULES); it needs a Stockpile main build that ships it.' >&2; exit 1; }; } && node -e "if (process.env.OUTBOUND_MODE !== 'readonly' || process.env.STOCKPILE_ENV !== 'staging') { console.error('Refusing to start: staging needs OUTBOUND_MODE=readonly and STOCKPILE_ENV=staging (stockpile#331).'); process.exit(1); }" && exec node dist/worker/main.js
             # WORKER_FAMILIES unset: this one worker runs every job family.
             envFrom: *envFrom
             probes:
@@ -205,7 +200,7 @@ spec:
           main:
             image:
               repository: ghcr.io/nerdbucketinc/stockpile-web
-              tag: main-63ced11-b1184 # {"$imagepolicy": "flux-system:stockpile-web-staging:tag"}
+              tag: main-634dbd9-b1189 # {"$imagepolicy": "flux-system:stockpile-web-staging:tag"}
             env:
               PUBLIC_API_URL: "https://stockpile-staging.${SECRET_DOMAIN}"
               PORT: "3000"

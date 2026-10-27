@@ -1,4 +1,3 @@
----
 # The nightly refresh (stockpile#331): last night's production database into
 # shadow staging, scrubbed BEFORE the staging app can see it. Steps in
 # refresh/refresh.sh:
@@ -85,7 +84,7 @@ spec:
             # The api-image steps name the image in full, each with its own
             # marker, so image automation moves them with the api.
             - name: precheck
-              image: ghcr.io/nerdbucketinc/stockpile-api:main-63ced11-b1184 # {"$imagepolicy": "flux-system:stockpile-api-staging"}
+              image: ghcr.io/nerdbucketinc/stockpile-api:main-634dbd9-b1189 # {"$imagepolicy": "flux-system:stockpile-api-staging"}
               command: ["sh", "/refresh/refresh.sh", "precheck"]
               envFrom:
                 - configMapRef:
@@ -150,7 +149,7 @@ spec:
               resources: *pgResources
               volumeMounts: *mounts
             - name: migrate
-              image: ghcr.io/nerdbucketinc/stockpile-api:main-63ced11-b1184 # {"$imagepolicy": "flux-system:stockpile-api-staging"}
+              image: ghcr.io/nerdbucketinc/stockpile-api:main-634dbd9-b1189 # {"$imagepolicy": "flux-system:stockpile-api-staging"}
               command: ["sh", "/refresh/refresh.sh", "migrate"]
               envFrom: &appEnv
                 - configMapRef:
@@ -163,7 +162,7 @@ spec:
               resources: *appResources
               volumeMounts: *mounts
             - name: scrub
-              image: ghcr.io/nerdbucketinc/stockpile-api:main-63ced11-b1184 # {"$imagepolicy": "flux-system:stockpile-api-staging"}
+              image: ghcr.io/nerdbucketinc/stockpile-api:main-634dbd9-b1189 # {"$imagepolicy": "flux-system:stockpile-api-staging"}
               command: ["sh", "/refresh/refresh.sh", "scrub"]
               envFrom: *appEnv
               env:
