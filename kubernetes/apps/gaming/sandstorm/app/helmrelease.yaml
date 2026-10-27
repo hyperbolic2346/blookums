@@ -42,6 +42,23 @@ spec:
             image:
               repository: "docker.io/andrewmhub/insurgency-sandstorm"
               tag: lite # I wish this wasn't how it's tagged, but alas
+            # Self-heal on every container start (initContainers only run on pod
+            # creation). SteamCMD delta updates need the *old* depot manifest,
+            # which anonymous logins can no longer fetch ("Access Denied"),
+            # leaving app 581330 stuck at state 0x6. On failure, drop the app
+            # manifest/staging so SteamCMD validates against the new build.
+            # Game files, configs and saves are kept. $$ escapes Flux substitution.
+            command: ["/bin/bash", "-c"]
+            args:
+              - |
+                G=/home/steam/steamcmd/sandstorm
+                upd() { /home/steam/steamcmd/steamcmd.sh +force_install_dir "$${G}/" +login anonymous +app_update 581330 validate +quit; }
+                if ! upd; then
+                  echo "[heal] app_update failed; clearing appmanifest_581330.acf and retrying with validate"
+                  rm -rf "$${G}/steamapps/appmanifest_581330.acf" "$${G}/steamapps/downloading" "$${G}/steamapps/temp"
+                  upd || exit 8
+                fi
+                exec "$${G}/Insurgency/Binaries/Linux/InsurgencyServer-Linux-Shipping" $${LAUNCH_SERVER_ENV} -hostname="$${HOSTNAME}" -Port=$${PORT} -QueryPort=$${QUERYPORT}
             env:
               TZ: ${TIMEZONE}
               PORT: "27102"
