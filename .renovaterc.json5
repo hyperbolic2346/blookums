@@ -154,6 +154,19 @@
       matchFileNames: ["kubernetes/apps/gaming/**"],
       automerge: false,
     },
+    {
+      description: "CNPG Postgres images roll the database cluster: never automerge (a major needs a planned upgrade)",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/cloudnative-pg/postgresql"],
+      automerge: false,
+    },
+    {
+      description: "CNPG Postgres floating tags are rebuilt weekly: batch digest-only refreshes monthly",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/cloudnative-pg/postgresql"],
+      matchUpdateTypes: ["digest"],
+      schedule: ["on the first day of the month"],
+    },
   ],
   customDatasources: {
     hangar: {
@@ -229,6 +242,18 @@
       datasourceTemplate: "custom.hangar",
       versioningTemplate: "loose",
       autoReplaceStringTemplate: "https://hangarcdn.papermc.io/plugins/pop4959/Chunky/versions/{{{newValue}}}/PAPER/Chunky-Bukkit-{{{newValue}}}.jar",
+    },
+    {
+      customType: "regex",
+      description: "Process CloudNativePG Cluster images (spec.imageName, which the kubernetes manager does not read)",
+      managerFilePatterns: [
+        "/(^|/)kubernetes/.+\\.ya?ml(?:\\.j2)?$/",
+      ],
+      matchStrings: [
+        // imageName: ghcr.io/cloudnative-pg/postgresql:16.15-system-bookworm@sha256:...
+        "imageName:\\s*(?<depName>ghcr\\.io/cloudnative-pg/postgresql):(?<currentValue>[^@\\s]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?",
+      ],
+      datasourceTemplate: "docker",
     },
     {
       customType: "regex",

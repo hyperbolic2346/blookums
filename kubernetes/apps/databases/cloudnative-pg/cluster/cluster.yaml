@@ -7,7 +7,7 @@ metadata:
   namespace: databases
 spec:
   instances: 3
-  imageName: ghcr.io/cloudnative-pg/postgresql:16.2-10
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.15-system-bookworm@sha256:ca1ca2e092bdc01d28d558a20d9ce71360aacb501608e7efea1a63fb9ce5c9a7
   enableSuperuserAccess: true
   primaryUpdateStrategy: unsupervised
   bootstrap:
