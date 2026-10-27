@@ -87,3 +87,27 @@ spec:
             severity: warning
           annotations:
             summary: CI queued build {{ $labels.job_name }} has waited over 30 minutes to start.
+        # KubeJobFailed is silenced for ci (build failures are expected), so
+        # the release trigger has its own: a failed dispatch means no
+        # release tonight.
+        - alert: CiReleaseTriggerFailed
+          expr: |
+            max by (namespace, job_name) (
+              kube_job_status_failed{namespace="ci",job_name=~"stockpile-release-trigger-.*"} > 0
+            )
+            # Only the last day's: a failed Job is kept for a week.
+            and on (namespace, job_name)
+              (time() - kube_job_created{namespace="ci"}) < 86400
+          labels:
+            severity: warning
+          annotations:
+            summary: "Stockpile's nightly release trigger {{ $labels.job_name }} failed: no release was dispatched. Check its log; before 05:00 New York, run it again with release-trigger.yaml's command (a stockpile-release-trigger-manual-N Job), and delete the failed Job to clear this."
+        # The trigger didn't run at all (controller down, or its start missed
+        # by more than startingDeadlineSeconds): no failed Job to see.
+        - alert: CiReleaseTriggerNotRun
+          expr: |
+            time() - kube_cronjob_status_last_successful_time{namespace="ci",cronjob="stockpile-release-trigger"} > 26 * 3600
+          labels:
+            severity: warning
+          annotations:
+            summary: "Stockpile's nightly release trigger hasn't succeeded in over 26 hours: last night's release was not dispatched."
