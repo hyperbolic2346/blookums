@@ -11,8 +11,9 @@
 # Until it exists the job fails with a message and CiReleaseTriggerFailed
 # fires; nothing else depends on it.
 #
-# Run it at once:
-#   kubectl -n ci create job --from=cronjob/stockpile-release-trigger release-now
+# Run it at once (keep the stockpile-release-trigger- prefix so
+# CiReleaseTriggerFailed sees it; bump the number each time):
+#   KUBECONFIG=C:/Users/knobb/code/blookums/kubeconfig kubectl -n ci create job --from=cronjob/stockpile-release-trigger stockpile-release-trigger-manual-1
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -29,7 +30,9 @@ spec:
   jobTemplate:
     spec:
       backoffLimit: 0
-      activeDeadlineSeconds: 300
+      # Counts from the Job's start: room to pull the image on a node that
+      # doesn't have it, plus the retries (about 3 minutes at worst).
+      activeDeadlineSeconds: 600
       ttlSecondsAfterFinished: 604800
       template:
         metadata:
@@ -82,9 +85,10 @@ spec:
                         status = res.status;
                         text = (await res.text()).slice(0, 300);
                       } catch (err) {
-                        text = String(err && err.message);
+                        // "fetch failed" alone says nothing: add the cause's code.
+                        text = String(err && err.message) + (err && err.cause && err.cause.code ? " (" + err.cause.code + ")" : "");
                       }
-                      if (status === 204) {
+                      if (status >= 200 && status < 300) {
                         console.log("Dispatched stockpile release (nightly) on main.");
                         return;
                       }
