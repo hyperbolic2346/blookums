@@ -23,6 +23,7 @@ resources:
   - ./navidrome/ks.yaml
   - ./nextcloud/ks.yaml
   - ./overseerr/ks.yaml
+  - ./pinchflat/ks.yaml
   - ./plex/ks.yaml
   - ./prowlarr/ks.yaml
   - ./radarr/ks.yaml
@@ -31,4 +32,3 @@ resources:
   - ./sonarr/ks.yaml
   - ./tautulli/ks.yaml
   - ./volition/ks.yaml
-  - ./youtubedl/ks.yaml

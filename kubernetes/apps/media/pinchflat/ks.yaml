@@ -2,7 +2,7 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: youtubedl
+  name: pinchflat
   namespace: media
 spec:
   dependsOn:
@@ -11,7 +11,7 @@ spec:
       namespace: volsync-system
   components:
     - ../../../../components/volsync
-  path: ./kubernetes/apps/media/youtubedl/app
+  path: ./kubernetes/apps/media/pinchflat/app
   prune: true
   sourceRef:
     kind: GitRepository
@@ -28,7 +28,9 @@ spec:
       - name: cluster-settings
         kind: ConfigMap
     substitute:
-      APP: youtubedl
-      VOLSYNC_CLAIM: youtubedl-config
+      APP: pinchflat
+      APP_UID: "1000"
+      APP_GID: "545"
+      VOLSYNC_CLAIM: pinchflat-config
       VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
-      VOLSYNC_CAPACITY: 10Gi
+      VOLSYNC_CAPACITY: 5Gi

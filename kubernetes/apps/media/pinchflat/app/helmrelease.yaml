@@ -1,0 +1,102 @@
+# https://github.com/kieraneglin/pinchflat
+# Replaces youtubedl-material (unmaintained; its Ubuntu 22.04 image ships Python 3.10,
+# which current yt-dlp no longer supports). Pinchflat bundles the standalone yt-dlp
+# binary and self-updates it. Downloads go to the same NFS share (youtubedl-nfs).
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/helmrelease-helm-v2beta1.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: pinchflat
+  namespace: media
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: pinchflat
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    defaultPodOptions:
+      securityContext:
+        # Match ownership of existing files on the youtubedl NFS share (1000:545)
+        runAsUser: 1000
+        runAsGroup: 545
+        fsGroup: 545
+        fsGroupChangePolicy: OnRootMismatch
+
+    controllers:
+      main:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          main:
+            image:
+              repository: ghcr.io/kieraneglin/pinchflat
+              tag: latest@sha256:01b4f98aabaf3f5fe394213f7a32578c9e84e42080f52e2f8334021a4473b202
+            env:
+              TZ: ${TIMEZONE}
+              UMASK: "002"
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthcheck
+                    port: 8945
+                  initialDelaySeconds: 30
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+              readiness: *probes
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                cpu: 2000m
+                memory: 2Gi
+
+    service:
+      main:
+        controller: main
+        ports:
+          http:
+            port: 8945
+
+    route:
+      main:
+        hostnames: ["ytd.${SECRET_DOMAIN}", "pinchflat.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: internal
+            namespace: kube-system
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: main
+                port: 8945
+
+    persistence:
+      config:
+        enabled: true
+        existingClaim: pinchflat-config
+        globalMounts:
+          - path: /config
+      downloads:
+        enabled: true
+        existingClaim: youtubedl-nfs
+        globalMounts:
+          - path: /downloads
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
