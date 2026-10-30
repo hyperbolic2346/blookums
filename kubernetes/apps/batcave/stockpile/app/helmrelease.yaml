@@ -55,7 +55,7 @@ spec:
           02-migrate:
             image: &apiImage
               repository: ghcr.io/nerdbucketinc/stockpile-api
-              tag: 1.0.1 # {"$imagepolicy": "flux-system:stockpile-api:tag"}
+              tag: 1.0.2 # {"$imagepolicy": "flux-system:stockpile-api:tag"}
             command: ["npx", "prisma", "migrate", "deploy"]
             envFrom: &envFrom
               - secretRef:
