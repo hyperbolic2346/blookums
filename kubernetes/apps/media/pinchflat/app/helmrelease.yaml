@@ -58,13 +58,16 @@ spec:
                   timeoutSeconds: 5
                   failureThreshold: 5
               readiness: *probes
+            # Indexing runs up to ~9 yt-dlp processes at once (2 per queue), each with a
+            # deno JS-challenge solver (100-320Mi apiece) plus ffmpeg remuxes. 2Gi OOMKilled
+            # on 2026-10-29 during initial channel backfill; CPU was pinned at the 2-core
+            # limit and heavily throttled. No CPU limit; it's bursty background work.
             resources:
               requests:
-                cpu: 100m
-                memory: 512Mi
+                cpu: 500m
+                memory: 1Gi
               limits:
-                cpu: 2000m
-                memory: 2Gi
+                memory: 4Gi
 
     service:
       main:
