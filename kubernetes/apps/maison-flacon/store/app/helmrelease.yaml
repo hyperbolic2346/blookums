@@ -267,6 +267,8 @@ spec:
               UMAMI_HOST_URL: "https://maison-flacon.com/_mf"
               UMAMI_WEBSITE_ID: "ef8c80e6-79de-42fe-975e-c39727a4e4de"
               UMAMI_DOMAINS: "maison-flacon.com"
+              # Google Ads tag (gtag.js); only the real site sets it.
+              GOOGLE_TAG_ID: "AW-18537401336"
             envFrom:
               # Browser-side keys for Stripe and PayPal. Optional, as above.
               - secretRef:
