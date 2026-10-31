@@ -1,9 +1,11 @@
 ---
-# Grants for the migration rehearsal's read-only role (rehearsal-grants.sql),
-# made by the stockpile database's owner, hourly. Declarative and idempotent;
-# not a Stockpile migration, because the role exists only here. Uses the
-# owner's login from stockpile-db-init, never the superuser's. Nothing about
-# the app's Deployment or init chain changes.
+# Grants for the stockpile database's read-only roles, made by its owner,
+# hourly: the migration rehearsal's (rehearsal-grants.sql) and Grafana's
+# (grafana-grants.sql, column by column). Declarative and idempotent; not a
+# Stockpile migration, because the roles exist only here. Uses the owner's
+# login from stockpile-db-init, never the superuser's. Nothing about the
+# app's Deployment or init chain changes. A role CNPG hasn't made yet is
+# reported and the job fails, after granting the other.
 #
 # Run it at once (e.g. right after the role is created):
 #   kubectl -n batcave create job --from=cronjob/stockpile-rehearsal-grants grants-now
@@ -45,12 +47,20 @@ spec:
                 - |
                   set -eu
                   conn="host=$PGHOST dbname=$PGDATABASE sslmode=require connect_timeout=15 application_name=stockpile-rehearsal-grants"
-                  role=$(psql "$conn" -XAtqc "select count(*) from pg_roles where rolname = 'stockpile_rehearsal'")
-                  if [ "$role" != 1 ]; then
-                    echo "The role stockpile_rehearsal does not exist yet (CNPG creates it once rehearsal_db_password is in the 1Password item ci); nothing granted." >&2
-                    exit 1
-                  fi
-                  psql "$conn" -XAtq -f /grants/rehearsal-grants.sql
+                  missing=0
+                  # role:grants file:where CNPG's password for it comes from
+                  for entry in \
+                    "stockpile_rehearsal:rehearsal-grants.sql:rehearsal_db_password in the 1Password item ci" \
+                    "stockpile_grafana:grafana-grants.sql:the generated Secret databases/stockpile-grafana-db"; do
+                    role=${entry%%:*}; rest=${entry#*:}; file=${rest%%:*}; from=${rest#*:}
+                    if [ "$(psql "$conn" -XAtqc "select count(*) from pg_roles where rolname = '$role'")" != 1 ]; then
+                      echo "The role $role does not exist yet (CNPG creates it from $from); nothing granted to it." >&2
+                      missing=1
+                      continue
+                    fi
+                    psql "$conn" -XAtq -f "/grants/$file"
+                  done
+                  exit $missing
               env:
                 - name: PGHOST
                   valueFrom:

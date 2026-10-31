@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: batcave
 resources:
   - ./externalsecret.yaml
+  - ./grafanadashboard.yaml
   - ./helmrelease.yaml
   - ./networkpolicy.yaml
   - ./ocirepository.yaml
@@ -15,6 +16,17 @@ configMapGenerator:
   - name: stockpile-rehearsal-grants
     files:
       - ./rehearsal-grants.sql
+      - ./grafana-grants.sql
     options:
+      annotations:
+        kustomize.toolkit.fluxcd.io/substitute: disabled
+  # The Grafana boards (grafanadashboard.yaml), built by dashboards/build.mjs.
+  # Taken as written: their ${...} are Grafana's variables, not Flux's.
+  - name: stockpile-dashboards
+    files:
+      - ./dashboards/system.json
+      - ./dashboards/store.json
+    options:
+      disableNameSuffixHash: true
       annotations:
         kustomize.toolkit.fluxcd.io/substitute: disabled

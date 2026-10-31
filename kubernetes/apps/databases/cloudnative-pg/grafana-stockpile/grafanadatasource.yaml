@@ -1,0 +1,45 @@
+---
+# Grafana (observability namespace, internal gateway only) reads the stockpile
+# database as stockpile_grafana: read-only, some columns only
+# (batcave/stockpile grafana-grants.sql), from a replica. Defined here rather
+# than in observability so its password can come from this namespace's
+# Secret; allowCrossNamespaceImport lets the operator use it. Used by the
+# Stockpile — Store board.
+#
+# The operator itself fills in the password at ${password}, so Flux must
+# leave that text alone.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/grafana.integreatly.org/grafanadatasource_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: stockpile-postgres
+  annotations:
+    kustomize.toolkit.fluxcd.io/substitute: disabled
+spec:
+  allowCrossNamespaceImport: true
+  instanceSelector:
+    matchLabels:
+      grafana.internal/instance: grafana
+  uid: stockpile-postgres
+  valuesFrom:
+    - targetPath: secureJsonData.password
+      valueFrom:
+        secretKeyRef:
+          name: stockpile-grafana-db
+          key: password
+  datasource:
+    name: stockpile
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: postgres-ro.databases.svc.cluster.local:5432
+    user: stockpile_grafana
+    jsonData:
+      database: stockpile
+      sslmode: require
+      postgresVersion: 1600
+      timescaledb: false
+      maxOpenConns: 4
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+    secureJsonData:
+      password: "${password}"

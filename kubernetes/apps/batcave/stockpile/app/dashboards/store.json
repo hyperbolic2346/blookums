@@ -1,0 +1,4609 @@
+{
+  "title": "Stockpile — Store",
+  "uid": "stockpile-store",
+  "description": "The shop's business: what sold and what it made, what is listed and what it would bring, what is on hand, and how the marketplace and drop-ship machinery is doing. Sales follow the time picker; 'now' panels don't. Profit is before marketplace and card fees, on the lines whose cost is known.",
+  "tags": [
+    "stockpile",
+    "batcave"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "5m",
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "links": [
+    {
+      "type": "dashboards",
+      "tags": [
+        "stockpile"
+      ],
+      "asDropdown": false,
+      "title": "Stockpile",
+      "includeVars": false,
+      "keepTime": true
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "type": "query",
+        "name": "shop",
+        "label": "Shop",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "stockpile-postgres"
+        },
+        "query": "SELECT slug AS __value, name AS __text FROM \"Tenant\" WHERE active ORDER BY \"createdAt\"",
+        "definition": "SELECT slug AS __value, name AS __text FROM \"Tenant\" WHERE active ORDER BY \"createdAt\"",
+        "refresh": 1,
+        "sort": 0,
+        "hide": 0
+      },
+      {
+        "type": "query",
+        "name": "tz",
+        "label": "Time zone",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "stockpile-postgres"
+        },
+        "query": "SELECT COALESCE((SELECT l.\"timeZone\" FROM \"Location\" l JOIN \"Tenant\" t ON t.id = l.\"tenantId\" WHERE t.slug = '$shop' AND l.\"timeZone\" IS NOT NULL ORDER BY l.\"createdAt\" LIMIT 1), 'America/New_York')",
+        "definition": "the shop's first store's time zone",
+        "refresh": 1,
+        "hide": 2
+      },
+      {
+        "type": "custom",
+        "name": "bucket",
+        "label": "Per",
+        "query": "day,week,month",
+        "current": {
+          "text": "day",
+          "value": "day"
+        },
+        "options": [],
+        "hide": 0
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Sold (time range)",
+      "id": 1,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Sales",
+      "description": "Register (net of returns, without tax) plus paid marketplace orders (items only).",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH sold AS ( SELECT s.\"completedAt\" AS at, s.id AS ticket, s.kind = 'RETURN' AS is_return, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' WHEN sl.\"specialOrderId\" IS NOT NULL THEN 'Special orders' ELSE 'Register' END AS source, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' ELSE COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Other') END AS kind, sl.description AS item, sg.sign * sl.quantity AS qty, sg.sign * (sl.total - sl.tax) AS sales, CASE WHEN sl.\"unitCost\" > 0 THEN CASE WHEN s.kind = 'RETURN' AND sl.damaged THEN 0 ELSE sg.sign * sl.\"unitCost\" * sl.quantity END END AS cost FROM \"Sale\" s CROSS JOIN LATERAL (SELECT CASE WHEN s.kind = 'RETURN' THEN -1 ELSE 1 END AS sign) sg JOIN \"SaleLine\" sl ON sl.\"saleId\" = s.id LEFT JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = sl.\"inventoryUnitId\" WHERE s.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND s.status = 'COMPLETED' AND $__timeFilter(s.\"completedAt\") UNION ALL SELECT o.\"orderedAt\", o.id, false, CASE o.channel WHEN 'gunbroker' THEN 'GunBroker' ELSE initcap(o.channel) END, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), COALESCE(l.title, NULLIF(concat_ws(' ', u.make, u.model), ''), 'Marketplace item'), q.qty, COALESCE(l.subtotal, COALESCE(l.\"unitPrice\", 0) * q.qty), CASE WHEN u.id IS NOT NULL THEN CASE WHEN u.cost > 0 THEN u.cost END ELSE COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = o.\"tenantId\" AND rl.\"productId\" = l.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = o.\"tenantId\" AND v.\"productId\" = l.\"productId\" AND v.cost > 0)) * q.qty END FROM \"SalesOrder\" o JOIN \"SalesOrderLine\" l ON l.\"orderId\" = o.id CROSS JOIN LATERAL (SELECT COALESCE(NULLIF(l.quantity, 0), 1) AS qty) q LEFT JOIN \"Product\" p ON p.id = l.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = l.\"inventoryUnitId\" WHERE o.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT o.sandbox AND o.payment = 'PAID' AND NOT o.\"channelCancelled\" AND o.status <> 'CANCELLED' AND $__timeFilter(o.\"orderedAt\") ) SELECT COALESCE(sum(sales), 0) AS \"Sales\" FROM sold"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 2,
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Profit (before fees)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH sold AS ( SELECT s.\"completedAt\" AS at, s.id AS ticket, s.kind = 'RETURN' AS is_return, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' WHEN sl.\"specialOrderId\" IS NOT NULL THEN 'Special orders' ELSE 'Register' END AS source, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' ELSE COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Other') END AS kind, sl.description AS item, sg.sign * sl.quantity AS qty, sg.sign * (sl.total - sl.tax) AS sales, CASE WHEN sl.\"unitCost\" > 0 THEN CASE WHEN s.kind = 'RETURN' AND sl.damaged THEN 0 ELSE sg.sign * sl.\"unitCost\" * sl.quantity END END AS cost FROM \"Sale\" s CROSS JOIN LATERAL (SELECT CASE WHEN s.kind = 'RETURN' THEN -1 ELSE 1 END AS sign) sg JOIN \"SaleLine\" sl ON sl.\"saleId\" = s.id LEFT JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = sl.\"inventoryUnitId\" WHERE s.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND s.status = 'COMPLETED' AND $__timeFilter(s.\"completedAt\") UNION ALL SELECT o.\"orderedAt\", o.id, false, CASE o.channel WHEN 'gunbroker' THEN 'GunBroker' ELSE initcap(o.channel) END, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), COALESCE(l.title, NULLIF(concat_ws(' ', u.make, u.model), ''), 'Marketplace item'), q.qty, COALESCE(l.subtotal, COALESCE(l.\"unitPrice\", 0) * q.qty), CASE WHEN u.id IS NOT NULL THEN CASE WHEN u.cost > 0 THEN u.cost END ELSE COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = o.\"tenantId\" AND rl.\"productId\" = l.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = o.\"tenantId\" AND v.\"productId\" = l.\"productId\" AND v.cost > 0)) * q.qty END FROM \"SalesOrder\" o JOIN \"SalesOrderLine\" l ON l.\"orderId\" = o.id CROSS JOIN LATERAL (SELECT COALESCE(NULLIF(l.quantity, 0), 1) AS qty) q LEFT JOIN \"Product\" p ON p.id = l.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = l.\"inventoryUnitId\" WHERE o.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT o.sandbox AND o.payment = 'PAID' AND NOT o.\"channelCancelled\" AND o.status <> 'CANCELLED' AND $__timeFilter(o.\"orderedAt\") ) SELECT COALESCE(sum(sales - cost), 0) AS \"Profit\" FROM sold WHERE cost IS NOT NULL"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 3,
+      "gridPos": {
+        "x": 4,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Margin",
+      "description": "Profit over the sales it was counted on (lines with a known cost).",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH sold AS ( SELECT s.\"completedAt\" AS at, s.id AS ticket, s.kind = 'RETURN' AS is_return, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' WHEN sl.\"specialOrderId\" IS NOT NULL THEN 'Special orders' ELSE 'Register' END AS source, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' ELSE COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Other') END AS kind, sl.description AS item, sg.sign * sl.quantity AS qty, sg.sign * (sl.total - sl.tax) AS sales, CASE WHEN sl.\"unitCost\" > 0 THEN CASE WHEN s.kind = 'RETURN' AND sl.damaged THEN 0 ELSE sg.sign * sl.\"unitCost\" * sl.quantity END END AS cost FROM \"Sale\" s CROSS JOIN LATERAL (SELECT CASE WHEN s.kind = 'RETURN' THEN -1 ELSE 1 END AS sign) sg JOIN \"SaleLine\" sl ON sl.\"saleId\" = s.id LEFT JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = sl.\"inventoryUnitId\" WHERE s.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND s.status = 'COMPLETED' AND $__timeFilter(s.\"completedAt\") UNION ALL SELECT o.\"orderedAt\", o.id, false, CASE o.channel WHEN 'gunbroker' THEN 'GunBroker' ELSE initcap(o.channel) END, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), COALESCE(l.title, NULLIF(concat_ws(' ', u.make, u.model), ''), 'Marketplace item'), q.qty, COALESCE(l.subtotal, COALESCE(l.\"unitPrice\", 0) * q.qty), CASE WHEN u.id IS NOT NULL THEN CASE WHEN u.cost > 0 THEN u.cost END ELSE COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = o.\"tenantId\" AND rl.\"productId\" = l.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = o.\"tenantId\" AND v.\"productId\" = l.\"productId\" AND v.cost > 0)) * q.qty END FROM \"SalesOrder\" o JOIN \"SalesOrderLine\" l ON l.\"orderId\" = o.id CROSS JOIN LATERAL (SELECT COALESCE(NULLIF(l.quantity, 0), 1) AS qty) q LEFT JOIN \"Product\" p ON p.id = l.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = l.\"inventoryUnitId\" WHERE o.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT o.sandbox AND o.payment = 'PAID' AND NOT o.\"channelCancelled\" AND o.status <> 'CANCELLED' AND $__timeFilter(o.\"orderedAt\") ) SELECT sum(sales - cost) / NULLIF(sum(sales), 0) AS \"Margin\" FROM sold WHERE cost IS NOT NULL"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "—",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 4,
+      "gridPos": {
+        "x": 8,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Tickets",
+      "description": "Register sales plus marketplace orders. Returns aren't counted.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH sold AS ( SELECT s.\"completedAt\" AS at, s.id AS ticket, s.kind = 'RETURN' AS is_return, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' WHEN sl.\"specialOrderId\" IS NOT NULL THEN 'Special orders' ELSE 'Register' END AS source, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' ELSE COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Other') END AS kind, sl.description AS item, sg.sign * sl.quantity AS qty, sg.sign * (sl.total - sl.tax) AS sales, CASE WHEN sl.\"unitCost\" > 0 THEN CASE WHEN s.kind = 'RETURN' AND sl.damaged THEN 0 ELSE sg.sign * sl.\"unitCost\" * sl.quantity END END AS cost FROM \"Sale\" s CROSS JOIN LATERAL (SELECT CASE WHEN s.kind = 'RETURN' THEN -1 ELSE 1 END AS sign) sg JOIN \"SaleLine\" sl ON sl.\"saleId\" = s.id LEFT JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = sl.\"inventoryUnitId\" WHERE s.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND s.status = 'COMPLETED' AND $__timeFilter(s.\"completedAt\") UNION ALL SELECT o.\"orderedAt\", o.id, false, CASE o.channel WHEN 'gunbroker' THEN 'GunBroker' ELSE initcap(o.channel) END, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), COALESCE(l.title, NULLIF(concat_ws(' ', u.make, u.model), ''), 'Marketplace item'), q.qty, COALESCE(l.subtotal, COALESCE(l.\"unitPrice\", 0) * q.qty), CASE WHEN u.id IS NOT NULL THEN CASE WHEN u.cost > 0 THEN u.cost END ELSE COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = o.\"tenantId\" AND rl.\"productId\" = l.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = o.\"tenantId\" AND v.\"productId\" = l.\"productId\" AND v.cost > 0)) * q.qty END FROM \"SalesOrder\" o JOIN \"SalesOrderLine\" l ON l.\"orderId\" = o.id CROSS JOIN LATERAL (SELECT COALESCE(NULLIF(l.quantity, 0), 1) AS qty) q LEFT JOIN \"Product\" p ON p.id = l.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = l.\"inventoryUnitId\" WHERE o.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT o.sandbox AND o.payment = 'PAID' AND NOT o.\"channelCancelled\" AND o.status <> 'CANCELLED' AND $__timeFilter(o.\"orderedAt\") ) SELECT count(DISTINCT ticket) FILTER (WHERE NOT is_return) AS \"Tickets\" FROM sold"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 5,
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Average ticket",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH sold AS ( SELECT s.\"completedAt\" AS at, s.id AS ticket, s.kind = 'RETURN' AS is_return, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' WHEN sl.\"specialOrderId\" IS NOT NULL THEN 'Special orders' ELSE 'Register' END AS source, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' ELSE COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Other') END AS kind, sl.description AS item, sg.sign * sl.quantity AS qty, sg.sign * (sl.total - sl.tax) AS sales, CASE WHEN sl.\"unitCost\" > 0 THEN CASE WHEN s.kind = 'RETURN' AND sl.damaged THEN 0 ELSE sg.sign * sl.\"unitCost\" * sl.quantity END END AS cost FROM \"Sale\" s CROSS JOIN LATERAL (SELECT CASE WHEN s.kind = 'RETURN' THEN -1 ELSE 1 END AS sign) sg JOIN \"SaleLine\" sl ON sl.\"saleId\" = s.id LEFT JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = sl.\"inventoryUnitId\" WHERE s.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND s.status = 'COMPLETED' AND $__timeFilter(s.\"completedAt\") UNION ALL SELECT o.\"orderedAt\", o.id, false, CASE o.channel WHEN 'gunbroker' THEN 'GunBroker' ELSE initcap(o.channel) END, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), COALESCE(l.title, NULLIF(concat_ws(' ', u.make, u.model), ''), 'Marketplace item'), q.qty, COALESCE(l.subtotal, COALESCE(l.\"unitPrice\", 0) * q.qty), CASE WHEN u.id IS NOT NULL THEN CASE WHEN u.cost > 0 THEN u.cost END ELSE COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = o.\"tenantId\" AND rl.\"productId\" = l.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = o.\"tenantId\" AND v.\"productId\" = l.\"productId\" AND v.cost > 0)) * q.qty END FROM \"SalesOrder\" o JOIN \"SalesOrderLine\" l ON l.\"orderId\" = o.id CROSS JOIN LATERAL (SELECT COALESCE(NULLIF(l.quantity, 0), 1) AS qty) q LEFT JOIN \"Product\" p ON p.id = l.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = l.\"inventoryUnitId\" WHERE o.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT o.sandbox AND o.payment = 'PAID' AND NOT o.\"channelCancelled\" AND o.status <> 'CANCELLED' AND $__timeFilter(o.\"orderedAt\") ) SELECT sum(sales) FILTER (WHERE NOT is_return) / NULLIF(count(DISTINCT ticket) FILTER (WHERE NOT is_return), 0) AS \"Average\" FROM sold"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "—",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 6,
+      "gridPos": {
+        "x": 16,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Cost known",
+      "description": "Share of sales whose cost is known — how much of the sales the profit covers.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH sold AS ( SELECT s.\"completedAt\" AS at, s.id AS ticket, s.kind = 'RETURN' AS is_return, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' WHEN sl.\"specialOrderId\" IS NOT NULL THEN 'Special orders' ELSE 'Register' END AS source, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' ELSE COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Other') END AS kind, sl.description AS item, sg.sign * sl.quantity AS qty, sg.sign * (sl.total - sl.tax) AS sales, CASE WHEN sl.\"unitCost\" > 0 THEN CASE WHEN s.kind = 'RETURN' AND sl.damaged THEN 0 ELSE sg.sign * sl.\"unitCost\" * sl.quantity END END AS cost FROM \"Sale\" s CROSS JOIN LATERAL (SELECT CASE WHEN s.kind = 'RETURN' THEN -1 ELSE 1 END AS sign) sg JOIN \"SaleLine\" sl ON sl.\"saleId\" = s.id LEFT JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = sl.\"inventoryUnitId\" WHERE s.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND s.status = 'COMPLETED' AND $__timeFilter(s.\"completedAt\") UNION ALL SELECT o.\"orderedAt\", o.id, false, CASE o.channel WHEN 'gunbroker' THEN 'GunBroker' ELSE initcap(o.channel) END, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), COALESCE(l.title, NULLIF(concat_ws(' ', u.make, u.model), ''), 'Marketplace item'), q.qty, COALESCE(l.subtotal, COALESCE(l.\"unitPrice\", 0) * q.qty), CASE WHEN u.id IS NOT NULL THEN CASE WHEN u.cost > 0 THEN u.cost END ELSE COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = o.\"tenantId\" AND rl.\"productId\" = l.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = o.\"tenantId\" AND v.\"productId\" = l.\"productId\" AND v.cost > 0)) * q.qty END FROM \"SalesOrder\" o JOIN \"SalesOrderLine\" l ON l.\"orderId\" = o.id CROSS JOIN LATERAL (SELECT COALESCE(NULLIF(l.quantity, 0), 1) AS qty) q LEFT JOIN \"Product\" p ON p.id = l.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = l.\"inventoryUnitId\" WHERE o.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT o.sandbox AND o.payment = 'PAID' AND NOT o.\"channelCancelled\" AND o.status <> 'CANCELLED' AND $__timeFilter(o.\"orderedAt\") ) SELECT sum(sales) FILTER (WHERE cost IS NOT NULL AND NOT is_return) / NULLIF(sum(sales) FILTER (WHERE NOT is_return), 0) AS \"Cost known\" FROM sold"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.7
+              },
+              {
+                "color": "green",
+                "value": 0.9
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "—",
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 7,
+      "gridPos": {
+        "x": 20,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Sales by where it sold",
+      "description": "Per $bucket in the shop's time zone.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "time_series",
+          "rawSql": "WITH sold AS ( SELECT s.\"completedAt\" AS at, s.id AS ticket, s.kind = 'RETURN' AS is_return, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' WHEN sl.\"specialOrderId\" IS NOT NULL THEN 'Special orders' ELSE 'Register' END AS source, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' ELSE COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Other') END AS kind, sl.description AS item, sg.sign * sl.quantity AS qty, sg.sign * (sl.total - sl.tax) AS sales, CASE WHEN sl.\"unitCost\" > 0 THEN CASE WHEN s.kind = 'RETURN' AND sl.damaged THEN 0 ELSE sg.sign * sl.\"unitCost\" * sl.quantity END END AS cost FROM \"Sale\" s CROSS JOIN LATERAL (SELECT CASE WHEN s.kind = 'RETURN' THEN -1 ELSE 1 END AS sign) sg JOIN \"SaleLine\" sl ON sl.\"saleId\" = s.id LEFT JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = sl.\"inventoryUnitId\" WHERE s.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND s.status = 'COMPLETED' AND $__timeFilter(s.\"completedAt\") UNION ALL SELECT o.\"orderedAt\", o.id, false, CASE o.channel WHEN 'gunbroker' THEN 'GunBroker' ELSE initcap(o.channel) END, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), COALESCE(l.title, NULLIF(concat_ws(' ', u.make, u.model), ''), 'Marketplace item'), q.qty, COALESCE(l.subtotal, COALESCE(l.\"unitPrice\", 0) * q.qty), CASE WHEN u.id IS NOT NULL THEN CASE WHEN u.cost > 0 THEN u.cost END ELSE COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = o.\"tenantId\" AND rl.\"productId\" = l.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = o.\"tenantId\" AND v.\"productId\" = l.\"productId\" AND v.cost > 0)) * q.qty END FROM \"SalesOrder\" o JOIN \"SalesOrderLine\" l ON l.\"orderId\" = o.id CROSS JOIN LATERAL (SELECT COALESCE(NULLIF(l.quantity, 0), 1) AS qty) q LEFT JOIN \"Product\" p ON p.id = l.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = l.\"inventoryUnitId\" WHERE o.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT o.sandbox AND o.payment = 'PAID' AND NOT o.\"channelCancelled\" AND o.status <> 'CANCELLED' AND $__timeFilter(o.\"orderedAt\") ) SELECT date_trunc('$bucket', (at AT TIME ZONE 'UTC') AT TIME ZONE '$tz') AT TIME ZONE '$tz' AS time, source AS metric, sum(sales) AS value FROM sold GROUP BY 1, 2 ORDER BY 1"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 0,
+            "barAlignment": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": []
+      },
+      "id": 8,
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 12,
+        "h": 9
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Profit by where it sold",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "time_series",
+          "rawSql": "WITH sold AS ( SELECT s.\"completedAt\" AS at, s.id AS ticket, s.kind = 'RETURN' AS is_return, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' WHEN sl.\"specialOrderId\" IS NOT NULL THEN 'Special orders' ELSE 'Register' END AS source, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' ELSE COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Other') END AS kind, sl.description AS item, sg.sign * sl.quantity AS qty, sg.sign * (sl.total - sl.tax) AS sales, CASE WHEN sl.\"unitCost\" > 0 THEN CASE WHEN s.kind = 'RETURN' AND sl.damaged THEN 0 ELSE sg.sign * sl.\"unitCost\" * sl.quantity END END AS cost FROM \"Sale\" s CROSS JOIN LATERAL (SELECT CASE WHEN s.kind = 'RETURN' THEN -1 ELSE 1 END AS sign) sg JOIN \"SaleLine\" sl ON sl.\"saleId\" = s.id LEFT JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = sl.\"inventoryUnitId\" WHERE s.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND s.status = 'COMPLETED' AND $__timeFilter(s.\"completedAt\") UNION ALL SELECT o.\"orderedAt\", o.id, false, CASE o.channel WHEN 'gunbroker' THEN 'GunBroker' ELSE initcap(o.channel) END, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), COALESCE(l.title, NULLIF(concat_ws(' ', u.make, u.model), ''), 'Marketplace item'), q.qty, COALESCE(l.subtotal, COALESCE(l.\"unitPrice\", 0) * q.qty), CASE WHEN u.id IS NOT NULL THEN CASE WHEN u.cost > 0 THEN u.cost END ELSE COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = o.\"tenantId\" AND rl.\"productId\" = l.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = o.\"tenantId\" AND v.\"productId\" = l.\"productId\" AND v.cost > 0)) * q.qty END FROM \"SalesOrder\" o JOIN \"SalesOrderLine\" l ON l.\"orderId\" = o.id CROSS JOIN LATERAL (SELECT COALESCE(NULLIF(l.quantity, 0), 1) AS qty) q LEFT JOIN \"Product\" p ON p.id = l.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = l.\"inventoryUnitId\" WHERE o.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT o.sandbox AND o.payment = 'PAID' AND NOT o.\"channelCancelled\" AND o.status <> 'CANCELLED' AND $__timeFilter(o.\"orderedAt\") ) SELECT date_trunc('$bucket', (at AT TIME ZONE 'UTC') AT TIME ZONE '$tz') AT TIME ZONE '$tz' AS time, source AS metric, sum(sales - cost) AS value FROM sold WHERE cost IS NOT NULL GROUP BY 1, 2 ORDER BY 1"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 0,
+            "barAlignment": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": []
+      },
+      "id": 9,
+      "gridPos": {
+        "x": 12,
+        "y": 5,
+        "w": 12,
+        "h": 9
+      }
+    },
+    {
+      "type": "table",
+      "title": "By kind",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH sold AS ( SELECT s.\"completedAt\" AS at, s.id AS ticket, s.kind = 'RETURN' AS is_return, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' WHEN sl.\"specialOrderId\" IS NOT NULL THEN 'Special orders' ELSE 'Register' END AS source, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' ELSE COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Other') END AS kind, sl.description AS item, sg.sign * sl.quantity AS qty, sg.sign * (sl.total - sl.tax) AS sales, CASE WHEN sl.\"unitCost\" > 0 THEN CASE WHEN s.kind = 'RETURN' AND sl.damaged THEN 0 ELSE sg.sign * sl.\"unitCost\" * sl.quantity END END AS cost FROM \"Sale\" s CROSS JOIN LATERAL (SELECT CASE WHEN s.kind = 'RETURN' THEN -1 ELSE 1 END AS sign) sg JOIN \"SaleLine\" sl ON sl.\"saleId\" = s.id LEFT JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = sl.\"inventoryUnitId\" WHERE s.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND s.status = 'COMPLETED' AND $__timeFilter(s.\"completedAt\") UNION ALL SELECT o.\"orderedAt\", o.id, false, CASE o.channel WHEN 'gunbroker' THEN 'GunBroker' ELSE initcap(o.channel) END, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), COALESCE(l.title, NULLIF(concat_ws(' ', u.make, u.model), ''), 'Marketplace item'), q.qty, COALESCE(l.subtotal, COALESCE(l.\"unitPrice\", 0) * q.qty), CASE WHEN u.id IS NOT NULL THEN CASE WHEN u.cost > 0 THEN u.cost END ELSE COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = o.\"tenantId\" AND rl.\"productId\" = l.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = o.\"tenantId\" AND v.\"productId\" = l.\"productId\" AND v.cost > 0)) * q.qty END FROM \"SalesOrder\" o JOIN \"SalesOrderLine\" l ON l.\"orderId\" = o.id CROSS JOIN LATERAL (SELECT COALESCE(NULLIF(l.quantity, 0), 1) AS qty) q LEFT JOIN \"Product\" p ON p.id = l.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = l.\"inventoryUnitId\" WHERE o.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT o.sandbox AND o.payment = 'PAID' AND NOT o.\"channelCancelled\" AND o.status <> 'CANCELLED' AND $__timeFilter(o.\"orderedAt\") ) SELECT kind AS \"Kind\", sum(qty) AS \"Sold\", sum(sales) AS \"Sales\", sum(sales - cost) FILTER (WHERE cost IS NOT NULL) AS \"Profit\", sum(sales - cost) FILTER (WHERE cost IS NOT NULL) / NULLIF(sum(sales) FILTER (WHERE cost IS NOT NULL), 0) AS \"Margin\" FROM sold GROUP BY 1 ORDER BY 3 DESC"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": true,
+          "reducer": [
+            "sum"
+          ],
+          "fields": [
+            "Sold",
+            "Sales",
+            "Profit"
+          ],
+          "countRows": false
+        },
+        "sortBy": []
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^(Sales|Profit)$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^(Margin)$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [],
+      "id": 10,
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 8,
+        "h": 9
+      }
+    },
+    {
+      "type": "table",
+      "title": "Where it sold",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH sold AS ( SELECT s.\"completedAt\" AS at, s.id AS ticket, s.kind = 'RETURN' AS is_return, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' WHEN sl.\"specialOrderId\" IS NOT NULL THEN 'Special orders' ELSE 'Register' END AS source, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' ELSE COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Other') END AS kind, sl.description AS item, sg.sign * sl.quantity AS qty, sg.sign * (sl.total - sl.tax) AS sales, CASE WHEN sl.\"unitCost\" > 0 THEN CASE WHEN s.kind = 'RETURN' AND sl.damaged THEN 0 ELSE sg.sign * sl.\"unitCost\" * sl.quantity END END AS cost FROM \"Sale\" s CROSS JOIN LATERAL (SELECT CASE WHEN s.kind = 'RETURN' THEN -1 ELSE 1 END AS sign) sg JOIN \"SaleLine\" sl ON sl.\"saleId\" = s.id LEFT JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = sl.\"inventoryUnitId\" WHERE s.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND s.status = 'COMPLETED' AND $__timeFilter(s.\"completedAt\") UNION ALL SELECT o.\"orderedAt\", o.id, false, CASE o.channel WHEN 'gunbroker' THEN 'GunBroker' ELSE initcap(o.channel) END, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), COALESCE(l.title, NULLIF(concat_ws(' ', u.make, u.model), ''), 'Marketplace item'), q.qty, COALESCE(l.subtotal, COALESCE(l.\"unitPrice\", 0) * q.qty), CASE WHEN u.id IS NOT NULL THEN CASE WHEN u.cost > 0 THEN u.cost END ELSE COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = o.\"tenantId\" AND rl.\"productId\" = l.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = o.\"tenantId\" AND v.\"productId\" = l.\"productId\" AND v.cost > 0)) * q.qty END FROM \"SalesOrder\" o JOIN \"SalesOrderLine\" l ON l.\"orderId\" = o.id CROSS JOIN LATERAL (SELECT COALESCE(NULLIF(l.quantity, 0), 1) AS qty) q LEFT JOIN \"Product\" p ON p.id = l.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = l.\"inventoryUnitId\" WHERE o.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT o.sandbox AND o.payment = 'PAID' AND NOT o.\"channelCancelled\" AND o.status <> 'CANCELLED' AND $__timeFilter(o.\"orderedAt\") ) SELECT source AS \"Where\", count(DISTINCT ticket) FILTER (WHERE NOT is_return) AS \"Tickets\", sum(qty) AS \"Items\", sum(sales) AS \"Sales\", sum(sales - cost) FILTER (WHERE cost IS NOT NULL) AS \"Profit\" FROM sold GROUP BY 1 ORDER BY 4 DESC"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": true,
+          "reducer": [
+            "sum"
+          ],
+          "fields": [
+            "Tickets",
+            "Items",
+            "Sales",
+            "Profit"
+          ],
+          "countRows": false
+        },
+        "sortBy": []
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^(Sales|Profit)$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [],
+      "id": 11,
+      "gridPos": {
+        "x": 8,
+        "y": 14,
+        "w": 7,
+        "h": 9
+      }
+    },
+    {
+      "type": "table",
+      "title": "Best sellers",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH sold AS ( SELECT s.\"completedAt\" AS at, s.id AS ticket, s.kind = 'RETURN' AS is_return, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' WHEN sl.\"specialOrderId\" IS NOT NULL THEN 'Special orders' ELSE 'Register' END AS source, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' ELSE COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Other') END AS kind, sl.description AS item, sg.sign * sl.quantity AS qty, sg.sign * (sl.total - sl.tax) AS sales, CASE WHEN sl.\"unitCost\" > 0 THEN CASE WHEN s.kind = 'RETURN' AND sl.damaged THEN 0 ELSE sg.sign * sl.\"unitCost\" * sl.quantity END END AS cost FROM \"Sale\" s CROSS JOIN LATERAL (SELECT CASE WHEN s.kind = 'RETURN' THEN -1 ELSE 1 END AS sign) sg JOIN \"SaleLine\" sl ON sl.\"saleId\" = s.id LEFT JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = sl.\"inventoryUnitId\" WHERE s.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND s.status = 'COMPLETED' AND $__timeFilter(s.\"completedAt\") UNION ALL SELECT o.\"orderedAt\", o.id, false, CASE o.channel WHEN 'gunbroker' THEN 'GunBroker' ELSE initcap(o.channel) END, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), COALESCE(l.title, NULLIF(concat_ws(' ', u.make, u.model), ''), 'Marketplace item'), q.qty, COALESCE(l.subtotal, COALESCE(l.\"unitPrice\", 0) * q.qty), CASE WHEN u.id IS NOT NULL THEN CASE WHEN u.cost > 0 THEN u.cost END ELSE COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = o.\"tenantId\" AND rl.\"productId\" = l.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = o.\"tenantId\" AND v.\"productId\" = l.\"productId\" AND v.cost > 0)) * q.qty END FROM \"SalesOrder\" o JOIN \"SalesOrderLine\" l ON l.\"orderId\" = o.id CROSS JOIN LATERAL (SELECT COALESCE(NULLIF(l.quantity, 0), 1) AS qty) q LEFT JOIN \"Product\" p ON p.id = l.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = l.\"inventoryUnitId\" WHERE o.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT o.sandbox AND o.payment = 'PAID' AND NOT o.\"channelCancelled\" AND o.status <> 'CANCELLED' AND $__timeFilter(o.\"orderedAt\") ) SELECT item AS \"Item\", sum(qty) AS \"Sold\", sum(sales) AS \"Sales\", sum(sales - cost) FILTER (WHERE cost IS NOT NULL) AS \"Profit\" FROM sold GROUP BY 1 HAVING sum(qty) > 0 ORDER BY 3 DESC LIMIT 25"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": [],
+          "countRows": false
+        },
+        "sortBy": []
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^(Sales|Profit)$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sold"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 60
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [],
+      "id": 12,
+      "gridPos": {
+        "x": 15,
+        "y": 14,
+        "w": 9,
+        "h": 9
+      }
+    },
+    {
+      "type": "table",
+      "title": "Everything sold",
+      "description": "Newest first, up to 500 lines. A return's lines are negative.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH sold AS ( SELECT s.\"completedAt\" AS at, s.id AS ticket, s.kind = 'RETURN' AS is_return, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' WHEN sl.\"specialOrderId\" IS NOT NULL THEN 'Special orders' ELSE 'Register' END AS source, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' ELSE COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Other') END AS kind, sl.description AS item, sg.sign * sl.quantity AS qty, sg.sign * (sl.total - sl.tax) AS sales, CASE WHEN sl.\"unitCost\" > 0 THEN CASE WHEN s.kind = 'RETURN' AND sl.damaged THEN 0 ELSE sg.sign * sl.\"unitCost\" * sl.quantity END END AS cost FROM \"Sale\" s CROSS JOIN LATERAL (SELECT CASE WHEN s.kind = 'RETURN' THEN -1 ELSE 1 END AS sign) sg JOIN \"SaleLine\" sl ON sl.\"saleId\" = s.id LEFT JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = sl.\"inventoryUnitId\" WHERE s.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND s.status = 'COMPLETED' AND $__timeFilter(s.\"completedAt\") UNION ALL SELECT o.\"orderedAt\", o.id, false, CASE o.channel WHEN 'gunbroker' THEN 'GunBroker' ELSE initcap(o.channel) END, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), COALESCE(l.title, NULLIF(concat_ws(' ', u.make, u.model), ''), 'Marketplace item'), q.qty, COALESCE(l.subtotal, COALESCE(l.\"unitPrice\", 0) * q.qty), CASE WHEN u.id IS NOT NULL THEN CASE WHEN u.cost > 0 THEN u.cost END ELSE COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = o.\"tenantId\" AND rl.\"productId\" = l.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = o.\"tenantId\" AND v.\"productId\" = l.\"productId\" AND v.cost > 0)) * q.qty END FROM \"SalesOrder\" o JOIN \"SalesOrderLine\" l ON l.\"orderId\" = o.id CROSS JOIN LATERAL (SELECT COALESCE(NULLIF(l.quantity, 0), 1) AS qty) q LEFT JOIN \"Product\" p ON p.id = l.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = l.\"inventoryUnitId\" WHERE o.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT o.sandbox AND o.payment = 'PAID' AND NOT o.\"channelCancelled\" AND o.status <> 'CANCELLED' AND $__timeFilter(o.\"orderedAt\") ) SELECT at AS \"When\", source AS \"Where\", kind AS \"Kind\", item AS \"Item\", qty AS \"Qty\", sales AS \"Sales\", cost AS \"Cost\", sales - cost AS \"Profit\" FROM sold ORDER BY at DESC LIMIT 500"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": [],
+          "countRows": false
+        },
+        "sortBy": []
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^(Sales|Cost|Profit)$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "When"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsLocal"
+              },
+              {
+                "id": "custom.width",
+                "value": 160
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Qty"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 50
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [],
+      "id": 13,
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 24,
+        "h": 10
+      }
+    },
+    {
+      "type": "row",
+      "title": "Listed on the marketplaces (now)",
+      "id": 14,
+      "gridPos": {
+        "x": 0,
+        "y": 33,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Live listings",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH listed AS ( SELECT cl.id, cl.channel, cl.title, cl.format, cl.\"bidCount\", cl.watchers, cl.\"endsAt\", cl.\"firstSeenAt\", cl.\"highBid\", GREATEST(COALESCE(cl.quantity, 1), 0) AS qty, COALESCE(CASE WHEN cl.format = 'FIXED' THEN cl.price END, cl.\"buyNowPrice\", GREATEST(cl.price, cl.\"highBid\")) AS ask, CASE WHEN cl.\"dropShipProductId\" IS NOT NULL OR cl.\"dropShip\" THEN 'Drop-ship' WHEN cl.\"inventoryUnitId\" IS NOT NULL THEN 'Serialized (on hand)' WHEN cl.\"stockLevelId\" IS NOT NULL OR cl.\"productId\" IS NOT NULL THEN 'Shop stock (on hand)' ELSE 'Not linked' END AS source, CASE WHEN cl.\"dropShipProductId\" IS NOT NULL OR cl.\"dropShip\" THEN NULLIF(cl.\"dropShipCost\", 0) WHEN cl.\"inventoryUnitId\" IS NOT NULL THEN (SELECT NULLIF(u.cost, 0) FROM \"NfaItem\" u WHERE u.id = cl.\"inventoryUnitId\" AND u.cost > 0) WHEN cl.\"productId\" IS NOT NULL THEN COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = cl.\"tenantId\" AND rl.\"productId\" = cl.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = cl.\"tenantId\" AND v.\"productId\" = cl.\"productId\" AND v.cost > 0)) END AS unit_cost FROM \"ChannelListing\" cl WHERE cl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND cl.status = 'ACTIVE' AND NOT cl.sandbox ) SELECT count(*) AS \"Listings\" FROM listed"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 15,
+      "gridPos": {
+        "x": 0,
+        "y": 34,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Units listed",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH listed AS ( SELECT cl.id, cl.channel, cl.title, cl.format, cl.\"bidCount\", cl.watchers, cl.\"endsAt\", cl.\"firstSeenAt\", cl.\"highBid\", GREATEST(COALESCE(cl.quantity, 1), 0) AS qty, COALESCE(CASE WHEN cl.format = 'FIXED' THEN cl.price END, cl.\"buyNowPrice\", GREATEST(cl.price, cl.\"highBid\")) AS ask, CASE WHEN cl.\"dropShipProductId\" IS NOT NULL OR cl.\"dropShip\" THEN 'Drop-ship' WHEN cl.\"inventoryUnitId\" IS NOT NULL THEN 'Serialized (on hand)' WHEN cl.\"stockLevelId\" IS NOT NULL OR cl.\"productId\" IS NOT NULL THEN 'Shop stock (on hand)' ELSE 'Not linked' END AS source, CASE WHEN cl.\"dropShipProductId\" IS NOT NULL OR cl.\"dropShip\" THEN NULLIF(cl.\"dropShipCost\", 0) WHEN cl.\"inventoryUnitId\" IS NOT NULL THEN (SELECT NULLIF(u.cost, 0) FROM \"NfaItem\" u WHERE u.id = cl.\"inventoryUnitId\" AND u.cost > 0) WHEN cl.\"productId\" IS NOT NULL THEN COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = cl.\"tenantId\" AND rl.\"productId\" = cl.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = cl.\"tenantId\" AND v.\"productId\" = cl.\"productId\" AND v.cost > 0)) END AS unit_cost FROM \"ChannelListing\" cl WHERE cl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND cl.status = 'ACTIVE' AND NOT cl.sandbox ) SELECT COALESCE(sum(qty), 0) AS \"Units\" FROM listed"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 16,
+      "gridPos": {
+        "x": 4,
+        "y": 34,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Listed value",
+      "description": "Every live listing at its price (an auction at its buy-now, else its high bid or start), times its quantity.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH listed AS ( SELECT cl.id, cl.channel, cl.title, cl.format, cl.\"bidCount\", cl.watchers, cl.\"endsAt\", cl.\"firstSeenAt\", cl.\"highBid\", GREATEST(COALESCE(cl.quantity, 1), 0) AS qty, COALESCE(CASE WHEN cl.format = 'FIXED' THEN cl.price END, cl.\"buyNowPrice\", GREATEST(cl.price, cl.\"highBid\")) AS ask, CASE WHEN cl.\"dropShipProductId\" IS NOT NULL OR cl.\"dropShip\" THEN 'Drop-ship' WHEN cl.\"inventoryUnitId\" IS NOT NULL THEN 'Serialized (on hand)' WHEN cl.\"stockLevelId\" IS NOT NULL OR cl.\"productId\" IS NOT NULL THEN 'Shop stock (on hand)' ELSE 'Not linked' END AS source, CASE WHEN cl.\"dropShipProductId\" IS NOT NULL OR cl.\"dropShip\" THEN NULLIF(cl.\"dropShipCost\", 0) WHEN cl.\"inventoryUnitId\" IS NOT NULL THEN (SELECT NULLIF(u.cost, 0) FROM \"NfaItem\" u WHERE u.id = cl.\"inventoryUnitId\" AND u.cost > 0) WHEN cl.\"productId\" IS NOT NULL THEN COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = cl.\"tenantId\" AND rl.\"productId\" = cl.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = cl.\"tenantId\" AND v.\"productId\" = cl.\"productId\" AND v.cost > 0)) END AS unit_cost FROM \"ChannelListing\" cl WHERE cl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND cl.status = 'ACTIVE' AND NOT cl.sandbox ) SELECT COALESCE(sum(ask * qty), 0) AS \"Value\" FROM listed"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 17,
+      "gridPos": {
+        "x": 8,
+        "y": 34,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Cost of what's listed",
+      "description": "Known costs only.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH listed AS ( SELECT cl.id, cl.channel, cl.title, cl.format, cl.\"bidCount\", cl.watchers, cl.\"endsAt\", cl.\"firstSeenAt\", cl.\"highBid\", GREATEST(COALESCE(cl.quantity, 1), 0) AS qty, COALESCE(CASE WHEN cl.format = 'FIXED' THEN cl.price END, cl.\"buyNowPrice\", GREATEST(cl.price, cl.\"highBid\")) AS ask, CASE WHEN cl.\"dropShipProductId\" IS NOT NULL OR cl.\"dropShip\" THEN 'Drop-ship' WHEN cl.\"inventoryUnitId\" IS NOT NULL THEN 'Serialized (on hand)' WHEN cl.\"stockLevelId\" IS NOT NULL OR cl.\"productId\" IS NOT NULL THEN 'Shop stock (on hand)' ELSE 'Not linked' END AS source, CASE WHEN cl.\"dropShipProductId\" IS NOT NULL OR cl.\"dropShip\" THEN NULLIF(cl.\"dropShipCost\", 0) WHEN cl.\"inventoryUnitId\" IS NOT NULL THEN (SELECT NULLIF(u.cost, 0) FROM \"NfaItem\" u WHERE u.id = cl.\"inventoryUnitId\" AND u.cost > 0) WHEN cl.\"productId\" IS NOT NULL THEN COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = cl.\"tenantId\" AND rl.\"productId\" = cl.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = cl.\"tenantId\" AND v.\"productId\" = cl.\"productId\" AND v.cost > 0)) END AS unit_cost FROM \"ChannelListing\" cl WHERE cl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND cl.status = 'ACTIVE' AND NOT cl.sandbox ) SELECT COALESCE(sum(unit_cost * qty), 0) AS \"Cost\" FROM listed"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 18,
+      "gridPos": {
+        "x": 12,
+        "y": 34,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "If it all sold: profit",
+      "description": "Before marketplace fees and shipping, on the listings whose cost is known.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH listed AS ( SELECT cl.id, cl.channel, cl.title, cl.format, cl.\"bidCount\", cl.watchers, cl.\"endsAt\", cl.\"firstSeenAt\", cl.\"highBid\", GREATEST(COALESCE(cl.quantity, 1), 0) AS qty, COALESCE(CASE WHEN cl.format = 'FIXED' THEN cl.price END, cl.\"buyNowPrice\", GREATEST(cl.price, cl.\"highBid\")) AS ask, CASE WHEN cl.\"dropShipProductId\" IS NOT NULL OR cl.\"dropShip\" THEN 'Drop-ship' WHEN cl.\"inventoryUnitId\" IS NOT NULL THEN 'Serialized (on hand)' WHEN cl.\"stockLevelId\" IS NOT NULL OR cl.\"productId\" IS NOT NULL THEN 'Shop stock (on hand)' ELSE 'Not linked' END AS source, CASE WHEN cl.\"dropShipProductId\" IS NOT NULL OR cl.\"dropShip\" THEN NULLIF(cl.\"dropShipCost\", 0) WHEN cl.\"inventoryUnitId\" IS NOT NULL THEN (SELECT NULLIF(u.cost, 0) FROM \"NfaItem\" u WHERE u.id = cl.\"inventoryUnitId\" AND u.cost > 0) WHEN cl.\"productId\" IS NOT NULL THEN COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = cl.\"tenantId\" AND rl.\"productId\" = cl.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = cl.\"tenantId\" AND v.\"productId\" = cl.\"productId\" AND v.cost > 0)) END AS unit_cost FROM \"ChannelListing\" cl WHERE cl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND cl.status = 'ACTIVE' AND NOT cl.sandbox ) SELECT COALESCE(sum((ask - unit_cost) * qty), 0) AS \"Profit\" FROM listed WHERE unit_cost IS NOT NULL AND ask IS NOT NULL"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 19,
+      "gridPos": {
+        "x": 16,
+        "y": 34,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Cost known",
+      "description": "Share of the listed value whose cost is known.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH listed AS ( SELECT cl.id, cl.channel, cl.title, cl.format, cl.\"bidCount\", cl.watchers, cl.\"endsAt\", cl.\"firstSeenAt\", cl.\"highBid\", GREATEST(COALESCE(cl.quantity, 1), 0) AS qty, COALESCE(CASE WHEN cl.format = 'FIXED' THEN cl.price END, cl.\"buyNowPrice\", GREATEST(cl.price, cl.\"highBid\")) AS ask, CASE WHEN cl.\"dropShipProductId\" IS NOT NULL OR cl.\"dropShip\" THEN 'Drop-ship' WHEN cl.\"inventoryUnitId\" IS NOT NULL THEN 'Serialized (on hand)' WHEN cl.\"stockLevelId\" IS NOT NULL OR cl.\"productId\" IS NOT NULL THEN 'Shop stock (on hand)' ELSE 'Not linked' END AS source, CASE WHEN cl.\"dropShipProductId\" IS NOT NULL OR cl.\"dropShip\" THEN NULLIF(cl.\"dropShipCost\", 0) WHEN cl.\"inventoryUnitId\" IS NOT NULL THEN (SELECT NULLIF(u.cost, 0) FROM \"NfaItem\" u WHERE u.id = cl.\"inventoryUnitId\" AND u.cost > 0) WHEN cl.\"productId\" IS NOT NULL THEN COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = cl.\"tenantId\" AND rl.\"productId\" = cl.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = cl.\"tenantId\" AND v.\"productId\" = cl.\"productId\" AND v.cost > 0)) END AS unit_cost FROM \"ChannelListing\" cl WHERE cl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND cl.status = 'ACTIVE' AND NOT cl.sandbox ) SELECT sum(ask * qty) FILTER (WHERE unit_cost IS NOT NULL) / NULLIF(sum(ask * qty), 0) AS \"Known\" FROM listed"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.7
+              },
+              {
+                "color": "green",
+                "value": 0.9
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "—",
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 20,
+      "gridPos": {
+        "x": 20,
+        "y": 34,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "table",
+      "title": "What's listed, by source",
+      "description": "Serialized and shop-stock listings sell what is on hand (also counted below under On hand); drop-ship listings sell a distributor's stock. Not linked: a listing Stockpile hasn't tied to anything.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH listed AS ( SELECT cl.id, cl.channel, cl.title, cl.format, cl.\"bidCount\", cl.watchers, cl.\"endsAt\", cl.\"firstSeenAt\", cl.\"highBid\", GREATEST(COALESCE(cl.quantity, 1), 0) AS qty, COALESCE(CASE WHEN cl.format = 'FIXED' THEN cl.price END, cl.\"buyNowPrice\", GREATEST(cl.price, cl.\"highBid\")) AS ask, CASE WHEN cl.\"dropShipProductId\" IS NOT NULL OR cl.\"dropShip\" THEN 'Drop-ship' WHEN cl.\"inventoryUnitId\" IS NOT NULL THEN 'Serialized (on hand)' WHEN cl.\"stockLevelId\" IS NOT NULL OR cl.\"productId\" IS NOT NULL THEN 'Shop stock (on hand)' ELSE 'Not linked' END AS source, CASE WHEN cl.\"dropShipProductId\" IS NOT NULL OR cl.\"dropShip\" THEN NULLIF(cl.\"dropShipCost\", 0) WHEN cl.\"inventoryUnitId\" IS NOT NULL THEN (SELECT NULLIF(u.cost, 0) FROM \"NfaItem\" u WHERE u.id = cl.\"inventoryUnitId\" AND u.cost > 0) WHEN cl.\"productId\" IS NOT NULL THEN COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = cl.\"tenantId\" AND rl.\"productId\" = cl.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = cl.\"tenantId\" AND v.\"productId\" = cl.\"productId\" AND v.cost > 0)) END AS unit_cost FROM \"ChannelListing\" cl WHERE cl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND cl.status = 'ACTIVE' AND NOT cl.sandbox ) SELECT CASE channel WHEN 'gunbroker' THEN 'GunBroker' ELSE initcap(channel) END AS \"Channel\", source AS \"Source\", count(*) AS \"Listings\", sum(qty) AS \"Units\", sum(ask * qty) AS \"Value\", sum(unit_cost * qty) AS \"Cost\", sum((ask - unit_cost) * qty) AS \"Profit if sold\", sum((ask - unit_cost) * qty) / NULLIF(sum(ask * qty) FILTER (WHERE unit_cost IS NOT NULL), 0) AS \"Margin\", round(avg(EXTRACT(EPOCH FROM (now() AT TIME ZONE 'UTC') - \"firstSeenAt\") / 86400)) AS \"Avg days up\" FROM listed GROUP BY 1, 2 ORDER BY 5 DESC NULLS LAST"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": true,
+          "reducer": [
+            "sum"
+          ],
+          "fields": [
+            "Listings",
+            "Units",
+            "Value",
+            "Cost",
+            "Profit if sold"
+          ],
+          "countRows": false
+        },
+        "sortBy": []
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^(Value|Cost|Profit if sold)$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^(Margin)$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [],
+      "id": 21,
+      "gridPos": {
+        "x": 0,
+        "y": 38,
+        "w": 14,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Stockpile's own listings",
+      "description": "Live listings Stockpile created, over time (worker metrics). drop-ship true = selling a distributor's stock.",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "sum by (dropship) (max without (pod, instance) (stockpile_listings_active{shop=\"$shop\", sandbox=\"false\"}))",
+          "legendFormat": "drop-ship {{dropship}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "barAlignment": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "drop-ship true"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Drop-ship"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "drop-ship false"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Our stock"
+              }
+            ]
+          }
+        ]
+      },
+      "id": 22,
+      "gridPos": {
+        "x": 14,
+        "y": 38,
+        "w": 10,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Listings added and ended unsold",
+      "description": "Per $bucket: listings first seen, listings that ended without selling, and items sold on the marketplaces.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "time_series",
+          "rawSql": "SELECT date_trunc('$bucket', (cl.\"firstSeenAt\" AT TIME ZONE 'UTC') AT TIME ZONE '$tz') AT TIME ZONE '$tz' AS time, 'Added' AS metric, count(*) AS value FROM \"ChannelListing\" cl WHERE cl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT cl.sandbox AND $__timeFilter(cl.\"firstSeenAt\") GROUP BY 1, 2 ORDER BY 1"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "time_series",
+          "rawSql": "SELECT date_trunc('$bucket', (cl.\"endedAt\" AT TIME ZONE 'UTC') AT TIME ZONE '$tz') AT TIME ZONE '$tz' AS time, 'Ended unsold' AS metric, count(*) AS value FROM \"ChannelListing\" cl WHERE cl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT cl.sandbox AND cl.status = 'ENDED' AND $__timeFilter(cl.\"endedAt\") GROUP BY 1, 2 ORDER BY 1"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "time_series",
+          "rawSql": "SELECT date_trunc('$bucket', (o.\"orderedAt\" AT TIME ZONE 'UTC') AT TIME ZONE '$tz') AT TIME ZONE '$tz' AS time, 'Sold' AS metric, sum(COALESCE(NULLIF(l.quantity, 0), 1)) AS value FROM \"SalesOrder\" o JOIN \"SalesOrderLine\" l ON l.\"orderId\" = o.id WHERE o.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT o.sandbox AND o.status <> 'CANCELLED' AND NOT o.\"channelCancelled\" AND $__timeFilter(o.\"orderedAt\") GROUP BY 1, 2 ORDER BY 1"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 0,
+            "barAlignment": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": []
+      },
+      "id": 23,
+      "gridPos": {
+        "x": 0,
+        "y": 45,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "table",
+      "title": "Ending soonest",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH listed AS ( SELECT cl.id, cl.channel, cl.title, cl.format, cl.\"bidCount\", cl.watchers, cl.\"endsAt\", cl.\"firstSeenAt\", cl.\"highBid\", GREATEST(COALESCE(cl.quantity, 1), 0) AS qty, COALESCE(CASE WHEN cl.format = 'FIXED' THEN cl.price END, cl.\"buyNowPrice\", GREATEST(cl.price, cl.\"highBid\")) AS ask, CASE WHEN cl.\"dropShipProductId\" IS NOT NULL OR cl.\"dropShip\" THEN 'Drop-ship' WHEN cl.\"inventoryUnitId\" IS NOT NULL THEN 'Serialized (on hand)' WHEN cl.\"stockLevelId\" IS NOT NULL OR cl.\"productId\" IS NOT NULL THEN 'Shop stock (on hand)' ELSE 'Not linked' END AS source, CASE WHEN cl.\"dropShipProductId\" IS NOT NULL OR cl.\"dropShip\" THEN NULLIF(cl.\"dropShipCost\", 0) WHEN cl.\"inventoryUnitId\" IS NOT NULL THEN (SELECT NULLIF(u.cost, 0) FROM \"NfaItem\" u WHERE u.id = cl.\"inventoryUnitId\" AND u.cost > 0) WHEN cl.\"productId\" IS NOT NULL THEN COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = cl.\"tenantId\" AND rl.\"productId\" = cl.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = cl.\"tenantId\" AND v.\"productId\" = cl.\"productId\" AND v.cost > 0)) END AS unit_cost FROM \"ChannelListing\" cl WHERE cl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND cl.status = 'ACTIVE' AND NOT cl.sandbox ) SELECT title AS \"Listing\", format::text AS \"Format\", ask AS \"Price\", \"highBid\" AS \"High bid\", \"bidCount\" AS \"Bids\", watchers AS \"Watching\", \"endsAt\" AS \"Ends\" FROM listed WHERE \"endsAt\" > (now() AT TIME ZONE 'UTC') ORDER BY \"endsAt\" LIMIT 25"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": [],
+          "countRows": false
+        },
+        "sortBy": []
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^(Price|High bid)$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Ends"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeFromNow"
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [],
+      "id": 24,
+      "gridPos": {
+        "x": 12,
+        "y": 45,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "table",
+      "title": "Most watched",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH listed AS ( SELECT cl.id, cl.channel, cl.title, cl.format, cl.\"bidCount\", cl.watchers, cl.\"endsAt\", cl.\"firstSeenAt\", cl.\"highBid\", GREATEST(COALESCE(cl.quantity, 1), 0) AS qty, COALESCE(CASE WHEN cl.format = 'FIXED' THEN cl.price END, cl.\"buyNowPrice\", GREATEST(cl.price, cl.\"highBid\")) AS ask, CASE WHEN cl.\"dropShipProductId\" IS NOT NULL OR cl.\"dropShip\" THEN 'Drop-ship' WHEN cl.\"inventoryUnitId\" IS NOT NULL THEN 'Serialized (on hand)' WHEN cl.\"stockLevelId\" IS NOT NULL OR cl.\"productId\" IS NOT NULL THEN 'Shop stock (on hand)' ELSE 'Not linked' END AS source, CASE WHEN cl.\"dropShipProductId\" IS NOT NULL OR cl.\"dropShip\" THEN NULLIF(cl.\"dropShipCost\", 0) WHEN cl.\"inventoryUnitId\" IS NOT NULL THEN (SELECT NULLIF(u.cost, 0) FROM \"NfaItem\" u WHERE u.id = cl.\"inventoryUnitId\" AND u.cost > 0) WHEN cl.\"productId\" IS NOT NULL THEN COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = cl.\"tenantId\" AND rl.\"productId\" = cl.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = cl.\"tenantId\" AND v.\"productId\" = cl.\"productId\" AND v.cost > 0)) END AS unit_cost FROM \"ChannelListing\" cl WHERE cl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND cl.status = 'ACTIVE' AND NOT cl.sandbox ) SELECT title AS \"Listing\", ask AS \"Price\", unit_cost AS \"Cost\", watchers AS \"Watching\", \"bidCount\" AS \"Bids\", round(EXTRACT(EPOCH FROM (now() AT TIME ZONE 'UTC') - \"firstSeenAt\") / 86400) AS \"Days up\" FROM listed WHERE watchers > 0 ORDER BY watchers DESC, ask DESC LIMIT 25"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": [],
+          "countRows": false
+        },
+        "sortBy": []
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^(Price|Cost)$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [],
+      "id": 25,
+      "gridPos": {
+        "x": 0,
+        "y": 53,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "table",
+      "title": "Up longest without selling",
+      "description": "Candidates for a price cut. Days since Stockpile first saw the listing (a relist starts over).",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH listed AS ( SELECT cl.id, cl.channel, cl.title, cl.format, cl.\"bidCount\", cl.watchers, cl.\"endsAt\", cl.\"firstSeenAt\", cl.\"highBid\", GREATEST(COALESCE(cl.quantity, 1), 0) AS qty, COALESCE(CASE WHEN cl.format = 'FIXED' THEN cl.price END, cl.\"buyNowPrice\", GREATEST(cl.price, cl.\"highBid\")) AS ask, CASE WHEN cl.\"dropShipProductId\" IS NOT NULL OR cl.\"dropShip\" THEN 'Drop-ship' WHEN cl.\"inventoryUnitId\" IS NOT NULL THEN 'Serialized (on hand)' WHEN cl.\"stockLevelId\" IS NOT NULL OR cl.\"productId\" IS NOT NULL THEN 'Shop stock (on hand)' ELSE 'Not linked' END AS source, CASE WHEN cl.\"dropShipProductId\" IS NOT NULL OR cl.\"dropShip\" THEN NULLIF(cl.\"dropShipCost\", 0) WHEN cl.\"inventoryUnitId\" IS NOT NULL THEN (SELECT NULLIF(u.cost, 0) FROM \"NfaItem\" u WHERE u.id = cl.\"inventoryUnitId\" AND u.cost > 0) WHEN cl.\"productId\" IS NOT NULL THEN COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = cl.\"tenantId\" AND rl.\"productId\" = cl.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = cl.\"tenantId\" AND v.\"productId\" = cl.\"productId\" AND v.cost > 0)) END AS unit_cost FROM \"ChannelListing\" cl WHERE cl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND cl.status = 'ACTIVE' AND NOT cl.sandbox ) SELECT title AS \"Listing\", source AS \"Source\", ask AS \"Price\", unit_cost AS \"Cost\", COALESCE(watchers, 0) AS \"Watching\", round(EXTRACT(EPOCH FROM (now() AT TIME ZONE 'UTC') - \"firstSeenAt\") / 86400) AS \"Days up\" FROM listed ORDER BY \"firstSeenAt\" LIMIT 25"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": [],
+          "countRows": false
+        },
+        "sortBy": []
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^(Price|Cost)$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Days up"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 30
+                    },
+                    {
+                      "color": "red",
+                      "value": 90
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [],
+      "id": 26,
+      "gridPos": {
+        "x": 12,
+        "y": 53,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "row",
+      "title": "On hand (now)",
+      "id": 27,
+      "gridPos": {
+        "x": 0,
+        "y": 61,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Retail value on hand",
+      "description": "Shop-owned: serialized units at their asking price plus counted stock at its shelf price. Consigned items are separate.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH onhand AS ( SELECT 'Serialized' AS what, u.ownership::text AS ownership, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Guns') AS kind, 1 AS qty, u.\"askingPrice\" AS price, NULLIF(u.cost, 0) AS unit_cost, COALESCE(u.\"receivedDate\"::timestamp, u.\"createdAt\") AS since FROM \"NfaItem\" u WHERE u.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND u.status IN ('IN_STOCK', 'RESERVED') UNION ALL SELECT 'Stock', 'SHOP', COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), sl.\"onHand\", tp.\"shelfPrice\", COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = sl.\"tenantId\" AND rl.\"productId\" = sl.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = sl.\"tenantId\" AND v.\"productId\" = sl.\"productId\" AND v.cost > 0)), NULL FROM \"StockLevel\" sl JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"TenantProduct\" tp ON tp.\"tenantId\" = sl.\"tenantId\" AND tp.\"productId\" = sl.\"productId\" WHERE sl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND sl.\"onHand\" > 0 ) SELECT COALESCE(sum(price * qty), 0) AS \"Value\" FROM onhand WHERE ownership = 'SHOP'"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 28,
+      "gridPos": {
+        "x": 0,
+        "y": 62,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Cost on hand",
+      "description": "What the shop-owned stock cost, where known.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH onhand AS ( SELECT 'Serialized' AS what, u.ownership::text AS ownership, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Guns') AS kind, 1 AS qty, u.\"askingPrice\" AS price, NULLIF(u.cost, 0) AS unit_cost, COALESCE(u.\"receivedDate\"::timestamp, u.\"createdAt\") AS since FROM \"NfaItem\" u WHERE u.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND u.status IN ('IN_STOCK', 'RESERVED') UNION ALL SELECT 'Stock', 'SHOP', COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), sl.\"onHand\", tp.\"shelfPrice\", COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = sl.\"tenantId\" AND rl.\"productId\" = sl.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = sl.\"tenantId\" AND v.\"productId\" = sl.\"productId\" AND v.cost > 0)), NULL FROM \"StockLevel\" sl JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"TenantProduct\" tp ON tp.\"tenantId\" = sl.\"tenantId\" AND tp.\"productId\" = sl.\"productId\" WHERE sl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND sl.\"onHand\" > 0 ) SELECT COALESCE(sum(unit_cost * qty), 0) AS \"Cost\" FROM onhand WHERE ownership = 'SHOP'"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 29,
+      "gridPos": {
+        "x": 4,
+        "y": 62,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "If it all sold: profit",
+      "description": "Shop-owned items with both a price and a cost.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH onhand AS ( SELECT 'Serialized' AS what, u.ownership::text AS ownership, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Guns') AS kind, 1 AS qty, u.\"askingPrice\" AS price, NULLIF(u.cost, 0) AS unit_cost, COALESCE(u.\"receivedDate\"::timestamp, u.\"createdAt\") AS since FROM \"NfaItem\" u WHERE u.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND u.status IN ('IN_STOCK', 'RESERVED') UNION ALL SELECT 'Stock', 'SHOP', COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), sl.\"onHand\", tp.\"shelfPrice\", COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = sl.\"tenantId\" AND rl.\"productId\" = sl.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = sl.\"tenantId\" AND v.\"productId\" = sl.\"productId\" AND v.cost > 0)), NULL FROM \"StockLevel\" sl JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"TenantProduct\" tp ON tp.\"tenantId\" = sl.\"tenantId\" AND tp.\"productId\" = sl.\"productId\" WHERE sl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND sl.\"onHand\" > 0 ) SELECT COALESCE(sum((price - unit_cost) * qty), 0) AS \"Profit\" FROM onhand WHERE ownership = 'SHOP' AND price IS NOT NULL AND unit_cost IS NOT NULL"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 30,
+      "gridPos": {
+        "x": 8,
+        "y": 62,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Priced and costed",
+      "description": "Share of shop-owned units with both a price and a cost (what the profit above covers).",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH onhand AS ( SELECT 'Serialized' AS what, u.ownership::text AS ownership, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Guns') AS kind, 1 AS qty, u.\"askingPrice\" AS price, NULLIF(u.cost, 0) AS unit_cost, COALESCE(u.\"receivedDate\"::timestamp, u.\"createdAt\") AS since FROM \"NfaItem\" u WHERE u.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND u.status IN ('IN_STOCK', 'RESERVED') UNION ALL SELECT 'Stock', 'SHOP', COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), sl.\"onHand\", tp.\"shelfPrice\", COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = sl.\"tenantId\" AND rl.\"productId\" = sl.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = sl.\"tenantId\" AND v.\"productId\" = sl.\"productId\" AND v.cost > 0)), NULL FROM \"StockLevel\" sl JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"TenantProduct\" tp ON tp.\"tenantId\" = sl.\"tenantId\" AND tp.\"productId\" = sl.\"productId\" WHERE sl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND sl.\"onHand\" > 0 ) SELECT sum(qty) FILTER (WHERE price IS NOT NULL AND unit_cost IS NOT NULL)::float / NULLIF(sum(qty), 0) AS \"Known\" FROM onhand WHERE ownership = 'SHOP'"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.7
+              },
+              {
+                "color": "green",
+                "value": 0.9
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "—",
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 31,
+      "gridPos": {
+        "x": 12,
+        "y": 62,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Units on hand",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH onhand AS ( SELECT 'Serialized' AS what, u.ownership::text AS ownership, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Guns') AS kind, 1 AS qty, u.\"askingPrice\" AS price, NULLIF(u.cost, 0) AS unit_cost, COALESCE(u.\"receivedDate\"::timestamp, u.\"createdAt\") AS since FROM \"NfaItem\" u WHERE u.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND u.status IN ('IN_STOCK', 'RESERVED') UNION ALL SELECT 'Stock', 'SHOP', COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), sl.\"onHand\", tp.\"shelfPrice\", COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = sl.\"tenantId\" AND rl.\"productId\" = sl.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = sl.\"tenantId\" AND v.\"productId\" = sl.\"productId\" AND v.cost > 0)), NULL FROM \"StockLevel\" sl JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"TenantProduct\" tp ON tp.\"tenantId\" = sl.\"tenantId\" AND tp.\"productId\" = sl.\"productId\" WHERE sl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND sl.\"onHand\" > 0 ) SELECT COALESCE(sum(qty), 0) AS \"Units\" FROM onhand WHERE ownership = 'SHOP'"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 32,
+      "gridPos": {
+        "x": 16,
+        "y": 62,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Consigned on hand",
+      "description": "Consignors' items here, at their asking prices (the shop earns only its cut).",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH onhand AS ( SELECT 'Serialized' AS what, u.ownership::text AS ownership, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Guns') AS kind, 1 AS qty, u.\"askingPrice\" AS price, NULLIF(u.cost, 0) AS unit_cost, COALESCE(u.\"receivedDate\"::timestamp, u.\"createdAt\") AS since FROM \"NfaItem\" u WHERE u.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND u.status IN ('IN_STOCK', 'RESERVED') UNION ALL SELECT 'Stock', 'SHOP', COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), sl.\"onHand\", tp.\"shelfPrice\", COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = sl.\"tenantId\" AND rl.\"productId\" = sl.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = sl.\"tenantId\" AND v.\"productId\" = sl.\"productId\" AND v.cost > 0)), NULL FROM \"StockLevel\" sl JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"TenantProduct\" tp ON tp.\"tenantId\" = sl.\"tenantId\" AND tp.\"productId\" = sl.\"productId\" WHERE sl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND sl.\"onHand\" > 0 ) SELECT COALESCE(sum(price * qty), 0) AS \"Asking\" FROM onhand WHERE ownership = 'CONSIGNOR'"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 33,
+      "gridPos": {
+        "x": 20,
+        "y": 62,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "table",
+      "title": "On hand by kind",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH onhand AS ( SELECT 'Serialized' AS what, u.ownership::text AS ownership, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Guns') AS kind, 1 AS qty, u.\"askingPrice\" AS price, NULLIF(u.cost, 0) AS unit_cost, COALESCE(u.\"receivedDate\"::timestamp, u.\"createdAt\") AS since FROM \"NfaItem\" u WHERE u.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND u.status IN ('IN_STOCK', 'RESERVED') UNION ALL SELECT 'Stock', 'SHOP', COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), sl.\"onHand\", tp.\"shelfPrice\", COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = sl.\"tenantId\" AND rl.\"productId\" = sl.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = sl.\"tenantId\" AND v.\"productId\" = sl.\"productId\" AND v.cost > 0)), NULL FROM \"StockLevel\" sl JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"TenantProduct\" tp ON tp.\"tenantId\" = sl.\"tenantId\" AND tp.\"productId\" = sl.\"productId\" WHERE sl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND sl.\"onHand\" > 0 ) SELECT kind AS \"Kind\", what AS \"Tracked as\", sum(qty) AS \"Units\", sum(price * qty) AS \"Retail value\", sum(unit_cost * qty) AS \"Cost\", sum((price - unit_cost) * qty) AS \"Profit if sold\", sum(qty) FILTER (WHERE price IS NULL) AS \"No price\", sum(qty) FILTER (WHERE unit_cost IS NULL) AS \"No cost\" FROM onhand WHERE ownership = 'SHOP' GROUP BY 1, 2 ORDER BY 4 DESC NULLS LAST"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": true,
+          "reducer": [
+            "sum"
+          ],
+          "fields": [
+            "Units",
+            "Retail value",
+            "Cost",
+            "Profit if sold",
+            "No price",
+            "No cost"
+          ],
+          "countRows": false
+        },
+        "sortBy": []
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^(Retail value|Cost|Profit if sold)$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "No price"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "No cost"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [],
+      "id": 34,
+      "gridPos": {
+        "x": 0,
+        "y": 66,
+        "w": 14,
+        "h": 8
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Serialized units by age",
+      "description": "Shop-owned guns and NFA items in stock, by days since received: the money sitting in each age band.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "WITH onhand AS ( SELECT 'Serialized' AS what, u.ownership::text AS ownership, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Guns') AS kind, 1 AS qty, u.\"askingPrice\" AS price, NULLIF(u.cost, 0) AS unit_cost, COALESCE(u.\"receivedDate\"::timestamp, u.\"createdAt\") AS since FROM \"NfaItem\" u WHERE u.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND u.status IN ('IN_STOCK', 'RESERVED') UNION ALL SELECT 'Stock', 'SHOP', COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), sl.\"onHand\", tp.\"shelfPrice\", COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = sl.\"tenantId\" AND rl.\"productId\" = sl.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = sl.\"tenantId\" AND v.\"productId\" = sl.\"productId\" AND v.cost > 0)), NULL FROM \"StockLevel\" sl JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"TenantProduct\" tp ON tp.\"tenantId\" = sl.\"tenantId\" AND tp.\"productId\" = sl.\"productId\" WHERE sl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND sl.\"onHand\" > 0 ) SELECT CASE WHEN since > (now() AT TIME ZONE 'UTC') - interval '30 days' THEN '0–30 days' WHEN since > (now() AT TIME ZONE 'UTC') - interval '90 days' THEN '31–90 days' WHEN since > (now() AT TIME ZONE 'UTC') - interval '180 days' THEN '91–180 days' WHEN since > (now() AT TIME ZONE 'UTC') - interval '365 days' THEN '181–365 days' ELSE 'Over a year' END AS bucket, min(since) AS oldest, sum(unit_cost) AS \"Cost tied up\" FROM onhand WHERE what = 'Serialized' AND ownership = 'SHOP' GROUP BY 1 ORDER BY 2 DESC"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^Cost tied up$/",
+          "values": true
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "left",
+        "sizing": "auto",
+        "minVizHeight": 10,
+        "maxVizHeight": 24
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 0,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 5000
+              },
+              {
+                "color": "red",
+                "value": 20000
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "id": 35,
+      "gridPos": {
+        "x": 14,
+        "y": 66,
+        "w": 10,
+        "h": 8
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Online store: items shown",
+      "description": "Products on the shop's own online store.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT count(*) FILTER (WHERE shown) AS \"Shown\" FROM \"StorefrontListing\" WHERE \"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop')"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 36,
+      "gridPos": {
+        "x": 0,
+        "y": 74,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Online store: shown and in stock",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT count(*) FILTER (WHERE shown AND \"inStock\") AS \"In stock\" FROM \"StorefrontListing\" WHERE \"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop')"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 37,
+      "gridPos": {
+        "x": 6,
+        "y": 74,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Online store: value in stock",
+      "description": "One of each shown, in-stock item at its online price.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT COALESCE(sum(price) FILTER (WHERE shown AND \"inStock\"), 0) AS \"Value\" FROM \"StorefrontListing\" WHERE \"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop')"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 38,
+      "gridPos": {
+        "x": 12,
+        "y": 74,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Online store: added (range)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT count(*) AS \"Added\" FROM \"StorefrontListing\" WHERE \"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND $__timeFilter(\"firstListedAt\")"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 39,
+      "gridPos": {
+        "x": 18,
+        "y": 74,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "row",
+      "title": "Marketplace health (GunBroker)",
+      "id": 40,
+      "gridPos": {
+        "x": 0,
+        "y": 78,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Needs attention",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "sum(max without (pod, instance) (stockpile_orders{shop=\"$shop\", sandbox=\"false\", status=\"NEEDS_ATTENTION\"})) or vector(0)",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 41,
+      "gridPos": {
+        "x": 0,
+        "y": 79,
+        "w": 3,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Oldest unstarted order",
+      "description": "The oldest paid NEW order nobody has started (no source chosen). Drop-ship alerts at 1 h.",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "max(max without (pod, instance) (stockpile_orders_oldest_new_age_seconds{shop=\"$shop\", sandbox=\"false\"}))",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 3600
+              },
+              {
+                "color": "red",
+                "value": 86400
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 42,
+      "gridPos": {
+        "x": 3,
+        "y": 79,
+        "w": 3,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Listings read",
+      "description": "Since the listing sync last ran (alerts at 30 min): it keeps quantity listings from overselling.",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "max(time() - max without (pod, instance) (stockpile_marketplace_listing_sync_last_attempt_timestamp_seconds{shop=\"$shop\", sandbox=\"false\"}))",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1800
+              },
+              {
+                "color": "red",
+                "value": 3600
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "No account",
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 43,
+      "gridPos": {
+        "x": 6,
+        "y": 79,
+        "w": 3,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Orders polled",
+      "description": "Since the last complete orders poll (alerts at 1 h): new sales come in this way.",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "max(time() - max without (pod, instance) (stockpile_marketplace_orders_last_success_timestamp_seconds{shop=\"$shop\", sandbox=\"false\"}))",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1800
+              },
+              {
+                "color": "red",
+                "value": 3600
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "No account",
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 44,
+      "gridPos": {
+        "x": 9,
+        "y": 79,
+        "w": 3,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Syncs",
+      "description": "The last listing sync and orders poll both succeeded.",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "min(max without (pod, instance) (stockpile_marketplace_listing_sync_last_status{shop=\"$shop\", sandbox=\"false\"})) * min(max without (pod, instance) (stockpile_marketplace_orders_last_status{shop=\"$shop\", sandbox=\"false\"}))",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Failing",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "OK",
+                  "color": "green"
+                }
+              }
+            }
+          ],
+          "noValue": "No account",
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 45,
+      "gridPos": {
+        "x": 12,
+        "y": 79,
+        "w": 3,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Account",
+      "description": "Paused after a refused login or User-Agent; the owner lifts it.",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "max(max without (pod, instance) (stockpile_marketplace_paused{shop=\"$shop\", sandbox=\"false\"}))",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Running",
+                  "color": "green"
+                },
+                "1": {
+                  "text": "Paused",
+                  "color": "red"
+                }
+              }
+            }
+          ],
+          "noValue": "No account",
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 46,
+      "gridPos": {
+        "x": 15,
+        "y": 79,
+        "w": 3,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Publish problems",
+      "description": "Publishes that failed in the last 24 h, plus ones sent with no clear answer.",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "sum(max without (pod, instance) (stockpile_listing_problems{shop=\"$shop\", sandbox=\"false\", problem=~\"publish_failed_24h|publish_uncertain\"})) or vector(0)",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 47,
+      "gridPos": {
+        "x": 18,
+        "y": 79,
+        "w": 3,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Listings needing a person",
+      "description": "Stockpile listings on Needs attention: stock drift, or a flag only a person clears.",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "sum(max without (pod, instance) (stockpile_listing_problems{shop=\"$shop\", sandbox=\"false\", problem=\"needs_person\"})) or vector(0)",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 48,
+      "gridPos": {
+        "x": 21,
+        "y": 79,
+        "w": 3,
+        "h": 4
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Orders by status",
+      "description": "Open marketplace orders: the work in progress.",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "sum by (status) (max without (pod, instance) (stockpile_orders{shop=\"$shop\", sandbox=\"false\", status!~\"COMPLETE|CANCELLED\"}))",
+          "legendFormat": "{{status}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "barAlignment": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": []
+      },
+      "id": 49,
+      "gridPos": {
+        "x": 0,
+        "y": 83,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Listing problems",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "sum by (problem) (max without (pod, instance) (stockpile_listing_problems{shop=\"$shop\", sandbox=\"false\"}))",
+          "legendFormat": "{{problem}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "barAlignment": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": []
+      },
+      "id": 50,
+      "gridPos": {
+        "x": 8,
+        "y": 83,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Ended unsold (last hour) vs live",
+      "description": "Stockpile's own listings that ended unsold in the hour, as a share of those live. A spike = a mass ending (cost feed, stock or policy).",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "sum(max without (pod, instance) (stockpile_listings_ended_1h{shop=\"$shop\", sandbox=\"false\"})) / clamp_min(sum(max without (pod, instance) (stockpile_listings_active{shop=\"$shop\", sandbox=\"false\"})), 1)",
+          "legendFormat": "share ended"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "barAlignment": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": []
+      },
+      "id": 51,
+      "gridPos": {
+        "x": 16,
+        "y": 83,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "table",
+      "title": "Orders this period",
+      "description": "Marketplace orders placed in the time range, by where they stand now. Paid to shipped: the average time from payment (or order) to marked shipped.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT CASE o.channel WHEN 'gunbroker' THEN 'GunBroker' ELSE initcap(o.channel) END AS \"Channel\", o.status::text AS \"Status\", count(*) AS \"Orders\", count(*) FILTER (WHERE o.\"fflRequired\") AS \"Need an FFL\", sum(o.\"itemsTotal\") AS \"Items\", sum(o.\"shippingTotal\") AS \"Shipping\", avg(EXTRACT(EPOCH FROM o.\"shippedAt\" - COALESCE(o.\"paymentReceivedAt\", o.\"orderedAt\"))) FILTER (WHERE o.\"shippedAt\" IS NOT NULL) AS \"Paid to shipped\" FROM \"SalesOrder\" o WHERE o.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT o.sandbox AND $__timeFilter(o.\"orderedAt\") GROUP BY 1, 2 ORDER BY 3 DESC"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": true,
+          "reducer": [
+            "sum"
+          ],
+          "fields": [
+            "Orders",
+            "Need an FFL",
+            "Items",
+            "Shipping"
+          ],
+          "countRows": false
+        },
+        "sortBy": []
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^(Items|Shipping)$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^(Paid to shipped)$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [],
+      "id": 52,
+      "gridPos": {
+        "x": 0,
+        "y": 91,
+        "w": 24,
+        "h": 7
+      }
+    },
+    {
+      "type": "row",
+      "title": "Drop-ship",
+      "id": 53,
+      "gridPos": {
+        "x": 0,
+        "y": 98,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "bargauge",
+      "title": "Catalog funnel",
+      "description": "Distributor products judged, eligible to list, picked (whitelisted) and blocked.",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "max by (stage) (stockpile_dropship_products{shop=\"$shop\"})",
+          "legendFormat": "{{stage}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "left",
+        "sizing": "auto",
+        "minVizHeight": 10,
+        "maxVizHeight": 24
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "id": 54,
+      "gridPos": {
+        "x": 0,
+        "y": 99,
+        "w": 6,
+        "h": 7
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Why products can't list",
+      "description": "Ineligible products by reason (one with several counts under each). Up to 10 minutes old.",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "topk(10, max by (reason) (stockpile_dropship_ineligible{shop=\"$shop\"}))",
+          "legendFormat": "{{reason}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "left",
+        "sizing": "auto",
+        "minVizHeight": 10,
+        "maxVizHeight": 24
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "id": 55,
+      "gridPos": {
+        "x": 6,
+        "y": 99,
+        "w": 6,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Eligibility flips (24h)",
+      "description": "Products that gained or lost eligibility in the last day. Lost > 500 alerts (a feed going bad).",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "max by (direction) (stockpile_dropship_flips_24h{shop=\"$shop\"})",
+          "legendFormat": "{{direction}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "barAlignment": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": []
+      },
+      "id": 56,
+      "gridPos": {
+        "x": 12,
+        "y": 99,
+        "w": 6,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Median listing margin",
+      "description": "Median price − distributor cost over live drop-ship listings, before fees and shipping. Halving overnight suggests a cost-feed error.",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "max(stockpile_dropship_listing_margin_cents{shop=\"$shop\", agg=\"p50\"}) / 100",
+          "legendFormat": "p50"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "barAlignment": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": []
+      },
+      "id": 57,
+      "gridPos": {
+        "x": 18,
+        "y": 99,
+        "w": 6,
+        "h": 7
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Picked but ineligible",
+      "description": "Whitelisted products that can't list now: curation earning nothing.",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "max(stockpile_dropship_picked_ineligible{shop=\"$shop\"}) or vector(0)",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 58,
+      "gridPos": {
+        "x": 0,
+        "y": 106,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "To order by hand",
+      "description": "Guns and NFA items a person must order on the distributor's site.",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "max(stockpile_dropship_by_hand_pending{shop=\"$shop\"}) or vector(0)",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 59,
+      "gridPos": {
+        "x": 4,
+        "y": 106,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Oldest by-hand order",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "max(stockpile_dropship_oldest_by_hand_age_seconds{shop=\"$shop\"})",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 7200
+              },
+              {
+                "color": "red",
+                "value": 86400
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 60,
+      "gridPos": {
+        "x": 8,
+        "y": 106,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Oldest unshipped (distributor)",
+      "description": "The oldest distributor order placed with no tracking yet.",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "max(stockpile_dropship_oldest_unshipped_age_seconds{shop=\"$shop\"})",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 86400
+              },
+              {
+                "color": "red",
+                "value": 172800
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 61,
+      "gridPos": {
+        "x": 12,
+        "y": 106,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Held by the order limits",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "max(stockpile_dropship_orders_held_by_limits{shop=\"$shop\"}) or vector(0)",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 62,
+      "gridPos": {
+        "x": 16,
+        "y": 106,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Distributor spend (last hour)",
+      "description": "Cost of the last hour's live sends (the limits hold at $500).",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "max(stockpile_dropship_committed_spend_cents_1h{shop=\"$shop\"}) / 100 or vector(0)",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 250
+              },
+              {
+                "color": "red",
+                "value": 500
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "0",
+          "color": {
+            "mode": "thresholds"
+          },
+          "links": []
+        },
+        "overrides": []
+      },
+      "id": 63,
+      "gridPos": {
+        "x": 20,
+        "y": 106,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "table",
+      "title": "Distributor orders this period",
+      "description": "Drop-ship orders sent to (or made by hand at) a distributor in the time range.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "stockpile-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "stockpile-postgres"
+          },
+          "editorMode": "code",
+          "rawQuery": true,
+          "format": "table",
+          "rawSql": "SELECT d.\"pluginId\" AS \"Distributor\", d.mode AS \"Mode\", d.status AS \"Status\", count(*) AS \"Orders\", sum(d.cost) AS \"Cost\" FROM \"DistributorOrder\" d WHERE d.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND $__timeFilter(d.\"createdAt\") GROUP BY 1, 2, 3 ORDER BY 4 DESC"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": true,
+          "reducer": [
+            "sum"
+          ],
+          "fields": [
+            "Orders",
+            "Cost"
+          ],
+          "countRows": false
+        },
+        "sortBy": []
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^(Cost)$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [],
+      "id": 64,
+      "gridPos": {
+        "x": 0,
+        "y": 110,
+        "w": 24,
+        "h": 6
+      }
+    }
+  ]
+}
