@@ -202,7 +202,7 @@ spec:
           main:
             image:
               repository: ghcr.io/nerdbucketinc/stockpile-web
-              tag: main-2055d97-b1206 # {"$imagepolicy": "flux-system:stockpile-web-staging:tag"}
+              tag: main-5a0eb39-b1207 # {"$imagepolicy": "flux-system:stockpile-web-staging:tag"}
             env:
               PUBLIC_API_URL: "https://stockpile-staging.${SECRET_DOMAIN}"
               PORT: "3000"
