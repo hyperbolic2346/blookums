@@ -247,6 +247,9 @@ template:
         restartPolicy: Always
         command: ["sh", "/rehearsal/rehearsal.sh", "api", "8000"]
         env:
+          # The candidate is the staff api; required from stockpile#752.
+          - name: API_MODE
+            value: staff
           - name: SUPER_ADMIN_EMAILS
             value: mike@batcaveballistics.com
         securityContext: *app
@@ -295,6 +298,8 @@ template:
         restartPolicy: Always
         command: ["sh", "/rehearsal/rehearsal.sh", "api", "8001"]
         env:
+          - name: API_MODE
+            value: staff
           - name: SUPER_ADMIN_EMAILS
             value: mike@batcaveballistics.com
         securityContext: *app

@@ -104,6 +104,8 @@ spec:
               - >-
                 { grep -rqs -e STAGING_LOGIN_TOKEN dist && grep -rqs -e STAGING_SCHEDULES dist || { echo 'Refusing to start: this image has no staging mode (STAGING_LOGIN_TOKEN / STAGING_SCHEDULES); it needs a Stockpile main build that ships it.' >&2; exit 1; }; } && node -e "if (process.env.OUTBOUND_MODE !== 'readonly' || process.env.STOCKPILE_ENV !== 'staging') { console.error('Refusing to start: staging needs OUTBOUND_MODE=readonly and STOCKPILE_ENV=staging (stockpile#331).'); process.exit(1); }" && exec node dist/main.js
             env:
+              # The staff api; required in production from stockpile#752.
+              API_MODE: "staff"
               API_PORT: "8000"
               AUTH_CALLBACK_URL: "https://stockpile-staging.${SECRET_DOMAIN}/api/auth/google/callback"
               AUTH_SECURE_COOKIES: "true"
