@@ -235,6 +235,12 @@ const writeBoard = (file, json) => writeFileSync(join(dirname(fileURLToPath(impo
   const ROUTES = `envoy_cluster_name=~".*/\${env}_stockpile-[a-z-]+_[0-9]+"`;
   const svc = (e) => `label_replace(${e}, "service", "$1", "envoy_cluster_name", ".*_(stockpile-[a-z-]+)_[0-9]+")`;
   const DB = `datname="\${env:text}"`;
+  // Envoy can't split a route by path, and the print helper's jobs/next long
+  // poll holds every request ~25 s (stockpile helper-v1.controller.ts), so
+  // percentiles over everything measure the helper. FAST keeps the buckets up
+  // to 10 s and makes 10 s the top: latency of the requests that finished.
+  const FAST = (e) => `label_replace(${e}, "le", "+Inf", "le", "10000")`;
+  const UNDER_10S = `le=~"0.5|1|5|10|25|50|100|250|500|1000|2500|5000|10000"`;
 
   const b = board({
     title: "Stockpile — System",
@@ -267,14 +273,14 @@ const writeBoard = (file, json) => writeFileSync(join(dirname(fileURLToPath(impo
   });
 
   b.row("Health");
-  b.add(stat("Firing alerts", [promInstant(`count(ALERTS{alertstate="firing", alertname=~"Stockpile.*"}) or vector(0)`)], { thresholds: steps(["green", null], ["red", 1]), desc: "Stockpile's alert rules (blookums prometheusrule.yaml) firing now. Production only." }), 3, 4);
-  b.add(stat("Pods not ready", [promInstant(`sum(kube_pod_status_ready{${PODS}, condition="false"}) or vector(0)`)], { thresholds: BAD_IF_ANY }), 3, 4);
-  b.add(stat("Restarts (24h)", [promInstant(`sum(increase(kube_pod_container_status_restarts_total{${PODS}}[24h])) or vector(0)`)], { thresholds: WARN_IF_ANY, decimals: 0 }), 3, 4);
-  b.add(stat("Workers healthy", [promInstant(`min(stockpile_worker_healthy{${NS}})`)], { mappings: [{ type: "value", options: { 0: { text: "Unhealthy", color: "red" }, 1: { text: "Healthy", color: "green" } } }], thresholds: steps(["red", null], ["green", 1]), noValue: "No data", desc: "Every worker's /healthz verdict (stockpile_worker_healthy)." }), 3, 4);
-  b.add(stat("Worker heartbeat", [promInstant(`max(stockpile_worker_heartbeat_age_seconds{${NS}})`)], { unit: "s", thresholds: steps(["green", null], ["orange", 120], ["red", 300]), noValue: "No data", desc: "Since the oldest worker's self-checks last all passed." }), 3, 4);
+  b.add(stat("Alerts", [promInstant(`count(ALERTS{alertstate="firing", alertname=~"Stockpile.*"}) or vector(0)`)], { thresholds: steps(["green", null], ["red", 1]), desc: "Stockpile's alert rules (blookums prometheusrule.yaml) firing now. Production only." }), 3, 4);
+  b.add(stat("Not ready", [promInstant(`sum(kube_pod_status_ready{${PODS}, condition="false"}) or vector(0)`)], { thresholds: BAD_IF_ANY }), 3, 4);
+  b.add(stat("Restarts 24h", [promInstant(`sum(increase(kube_pod_container_status_restarts_total{${PODS}}[24h])) or vector(0)`)], { thresholds: WARN_IF_ANY, decimals: 0 }), 3, 4);
+  b.add(stat("Workers", [promInstant(`min(stockpile_worker_healthy{${NS}})`)], { mappings: [{ type: "value", options: { 0: { text: "Unhealthy", color: "red" }, 1: { text: "Healthy", color: "green" } } }], thresholds: steps(["red", null], ["green", 1]), noValue: "No data", desc: "Workers healthy: every worker's /healthz verdict (stockpile_worker_healthy)." }), 3, 4);
+  b.add(stat("Heartbeat", [promInstant(`max(stockpile_worker_heartbeat_age_seconds{${NS}})`)], { unit: "s", thresholds: steps(["green", null], ["orange", 120], ["red", 300]), noValue: "No data", desc: "Worker heartbeat: since the oldest worker's self-checks last all passed." }), 3, 4);
   b.add(stat("5xx (1h)", [promInstant(`sum(increase(envoy_cluster_upstream_rq_xx{${ROUTES}, envoy_response_code_class="5"}[1h])) or vector(0)`)], { thresholds: steps(["green", null], ["orange", 1], ["red", 20]), decimals: 0, desc: "Server errors through the gateway, last hour." }), 3, 4);
-  b.add(stat("Requests (24h)", [promInstant(`sum(increase(envoy_cluster_upstream_rq_total{${ROUTES}}[24h]))`)], { decimals: 0 }), 3, 4);
-  b.add(stat("p95 latency (1h)", [promInstant(`histogram_quantile(0.95, sum by (le) (rate(envoy_cluster_upstream_rq_time_bucket{${ROUTES}}[1h])))`)], { unit: "ms", thresholds: steps(["green", null], ["orange", 1000], ["red", 3000]), desc: "Gateway to Stockpile and back, all services." }), 3, 4);
+  b.add(stat("Requests 24h", [promInstant(`sum(increase(envoy_cluster_upstream_rq_total{${ROUTES}}[24h]))`)], { decimals: 0 }), 3, 4);
+  b.add(stat("p95 (< 10 s)", [promInstant(`histogram_quantile(0.95, sum by (le) (${FAST(`rate(envoy_cluster_upstream_rq_time_bucket{${ROUTES}, ${UNDER_10S}}[1h])`)}))`)], { unit: "ms", thresholds: steps(["green", null], ["orange", 1000], ["red", 3000]), desc: "p95 latency over the last hour, gateway to Stockpile and back, of requests that finished within 10 s. The print helper's long polls (held ~25 s) would swamp it otherwise; requests held longer are on 'Held 10 s or more'." }), 3, 4);
 
   b.add(table("Deployments", [
     promTable(`max by (deployment) (kube_deployment_status_replicas_available{${NS}, deployment=~"stockpile-.+"})`),
@@ -323,7 +329,7 @@ const writeBoard = (file, json) => writeFileSync(join(dirname(fileURLToPath(impo
       mapOverride("Role", [{ type: "value", options: { 0: { text: "primary", color: "blue" }, 1: { text: "replica", color: "text" } } }]),
       unitOverride(["Lag"], "s", 1),
     ],
-  }), 8, 4);
+  }), 8, 5);
 
   b.row("Traffic (through the gateway)");
   b.add(timeseries("Requests by service", [prom(`sum by (service) (${svc(`rate(envoy_cluster_upstream_rq_total{${ROUTES}}[$__rate_interval])`)})`, "{{service}}")], { unit: "reqps", desc: "Requests the Cilium gateway sent to each Stockpile service." }), 8, 8);
@@ -342,15 +348,19 @@ const writeBoard = (file, json) => writeFileSync(join(dirname(fileURLToPath(impo
     prom(`sum by (service) (${svc(`rate(envoy_cluster_upstream_rq_xx{${ROUTES}, envoy_response_code_class="4"}[$__rate_interval])`)}) / sum by (service) (${svc(`rate(envoy_cluster_upstream_rq_total{${ROUTES}}[$__rate_interval])`)})`, "{{service}} 4xx"),
   ], { unit: "percentunit", desc: "Share of requests answered 5xx (and 4xx). A few 4xx are normal: expired sessions, bots." }), 8, 8);
   b.add(timeseries("Latency by service (p50 / p95 / p99)", [
-    prom(`histogram_quantile(0.5, sum by (le, service) (${svc(`rate(envoy_cluster_upstream_rq_time_bucket{${ROUTES}}[$__rate_interval])`)}))`, "{{service}} p50"),
-    prom(`histogram_quantile(0.95, sum by (le, service) (${svc(`rate(envoy_cluster_upstream_rq_time_bucket{${ROUTES}}[$__rate_interval])`)}))`, "{{service}} p95"),
-    prom(`histogram_quantile(0.99, sum by (le, service) (${svc(`rate(envoy_cluster_upstream_rq_time_bucket{${ROUTES}}[$__rate_interval])`)}))`, "{{service}} p99"),
-  ], { unit: "ms", fill: 0 }), 12, 8);
+    prom(`histogram_quantile(0.5, sum by (le, service) (${FAST(svc(`rate(envoy_cluster_upstream_rq_time_bucket{${ROUTES}, ${UNDER_10S}}[$__rate_interval])`))}))`, "{{service}} p50"),
+    prom(`histogram_quantile(0.95, sum by (le, service) (${FAST(svc(`rate(envoy_cluster_upstream_rq_time_bucket{${ROUTES}, ${UNDER_10S}}[$__rate_interval])`))}))`, "{{service}} p95"),
+    prom(`histogram_quantile(0.99, sum by (le, service) (${FAST(svc(`rate(envoy_cluster_upstream_rq_time_bucket{${ROUTES}, ${UNDER_10S}}[$__rate_interval])`))}))`, "{{service}} p99"),
+  ], { unit: "ms", fill: 0, desc: "Of requests that finished within 10 s (the print helper's ~25 s long polls left out)." }), 12, 8);
+  b.add(timeseries("Held 10 s or more", [prom(`sum by (service) (${svc(`rate(envoy_cluster_upstream_rq_time_count{${ROUTES}}[$__rate_interval])`)}) * 60 - sum by (service) (${svc(`rate(envoy_cluster_upstream_rq_time_bucket{${ROUTES}, le="10000"}[$__rate_interval])`)}) * 60`, "{{service}}")], {
+    unit: "reqpm",
+    desc: "Requests per minute that took 10 s or more. Each paired print helper long-polls ~2.4 a minute on the api; more than that is real slowness.",
+  }), 12, 8);
   b.add(timeseries("In flight, timeouts and resets", [
     prom(`sum by (service) (${svc(`envoy_cluster_upstream_rq_active{${ROUTES}}`)})`, "{{service}} in flight"),
     prom(`sum by (service) (${svc(`rate(envoy_cluster_upstream_rq_timeout{${ROUTES}}[$__rate_interval])`)}) * 60`, "{{service}} timeouts/min"),
     prom(`sum by (service) (${svc(`rate(envoy_cluster_upstream_rq_rx_reset{${ROUTES}}[$__rate_interval])`)}) * 60`, "{{service}} resets/min"),
-  ], { fill: 0, desc: "Requests open at the gateway, and upstream timeouts / connection resets per minute (a pod restarting mid-request shows here)." }), 12, 8);
+  ], { fill: 0, desc: "Requests open at the gateway (each print helper holds one), and upstream timeouts / connection resets per minute (a pod restarting mid-request shows here)." }), 12, 8);
 
   b.row("Resources");
   b.add(timeseries("CPU by pod", [prom(`sum by (pod) (rate(container_cpu_usage_seconds_total{${PODS}, container!=""}[$__rate_interval]))`, "{{pod}}")], { unit: "cores" }), 8, 8);
@@ -440,7 +450,15 @@ const writeBoard = (file, json) => writeFileSync(join(dirname(fileURLToPath(impo
   const SHOP = `(SELECT id FROM "Tenant" WHERE slug = '$shop')`;
   // Prisma keeps UTC in timestamp-without-zone columns: a local day is
   // (col AT TIME ZONE 'UTC') AT TIME ZONE tz, and "now" is NOW, not now().
-  const LOCAL = (col) => `date_trunc('$bucket', (${col} AT TIME ZONE 'UTC') AT TIME ZONE '$tz') AT TIME ZONE '$tz'`;
+  const LOCAL = (col) => `date_trunc('$bucket', (${col} AT TIME ZONE 'UTC') AT TIME ZONE '$tz')`;
+  // A bar series over every $bucket of the time range (local), 0 where
+  // nothing happened: with a gap Grafana draws a lone bar the width of the
+  // chart. agg yields (d = LOCAL(...), metric, v); prefix is a WITH ... list.
+  const filled = (prefix, agg) => `${prefix ? `${prefix},` : "WITH"}
+    cal AS (SELECT generate_series(date_trunc('$bucket', $__timeFrom()::timestamptz AT TIME ZONE '$tz'), $__timeTo()::timestamptz AT TIME ZONE '$tz', ('1 ' || '$bucket')::interval) AS d),
+    agg AS (${agg})
+    SELECT cal.d AT TIME ZONE '$tz' AS time, m.metric, COALESCE(agg.v, 0) AS value
+    FROM cal CROSS JOIN (SELECT DISTINCT metric FROM agg) m LEFT JOIN agg ON agg.d = cal.d AND agg.metric = m.metric ORDER BY 1`;
   const NOW = `(now() AT TIME ZONE 'UTC')`;
   const NFA_TYPES = `('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE')`;
   // A product's cost as the Sales report knows it now (stockpile
@@ -581,8 +599,8 @@ const writeBoard = (file, json) => writeFileSync(join(dirname(fileURLToPath(impo
   b.add(stat("Average ticket", [sql(`${SOLD} SELECT sum(sales) FILTER (WHERE NOT is_return) / NULLIF(count(DISTINCT ticket) FILTER (WHERE NOT is_return), 0) AS "Average" FROM sold`)], { unit: "currencyUSD", decimals: 2, noValue: "—" }), 4, 4);
   b.add(stat("Cost known", [sql(`${SOLD} SELECT sum(sales) FILTER (WHERE cost IS NOT NULL AND NOT is_return) / NULLIF(sum(sales) FILTER (WHERE NOT is_return), 0) AS "Cost known" FROM sold`)], { unit: "percentunit", decimals: 0, noValue: "—", thresholds: steps(["red", null], ["orange", 0.7], ["green", 0.9]), colorMode: "value", desc: "Share of sales whose cost is known — how much of the sales the profit covers." }), 4, 4);
 
-  b.add(timeseries("Sales by where it sold", [sql(`${SOLD} SELECT ${LOCAL("at")} AS time, source AS metric, sum(sales) AS value FROM sold GROUP BY 1, 2 ORDER BY 1`, "time_series")], { ...money, bars: true, stack: true, legend: "table", legendCalcs: ["sum"], desc: "Per $bucket in the shop's time zone." }), 12, 9);
-  b.add(timeseries("Profit by where it sold", [sql(`${SOLD} SELECT ${LOCAL("at")} AS time, source AS metric, sum(sales - cost) AS value FROM sold WHERE cost IS NOT NULL GROUP BY 1, 2 ORDER BY 1`, "time_series")], { ...money, bars: true, stack: true, legend: "table", legendCalcs: ["sum"] }), 12, 9);
+  b.add(timeseries("Sales by where it sold", [sql(filled(SOLD, `SELECT ${LOCAL("at")} AS d, source AS metric, sum(sales) AS v FROM sold GROUP BY 1, 2`), "time_series")], { ...money, bars: true, stack: true, legend: "table", legendCalcs: ["sum"], desc: "Per $bucket in the shop's time zone." }), 12, 9);
+  b.add(timeseries("Profit by where it sold", [sql(filled(SOLD, `SELECT ${LOCAL("at")} AS d, source AS metric, sum(sales - cost) AS v FROM sold WHERE cost IS NOT NULL GROUP BY 1, 2`), "time_series")], { ...money, bars: true, stack: true, legend: "table", legendCalcs: ["sum"] }), 12, 9);
 
   b.add(table("By kind", [sql(`${SOLD} SELECT kind AS "Kind", sum(qty) AS "Sold", sum(sales) AS "Sales", sum(sales - cost) FILTER (WHERE cost IS NOT NULL) AS "Profit",
       sum(sales - cost) FILTER (WHERE cost IS NOT NULL) / NULLIF(sum(sales) FILTER (WHERE cost IS NOT NULL), 0) AS "Margin"
@@ -634,12 +652,12 @@ const writeBoard = (file, json) => writeFileSync(join(dirname(fileURLToPath(impo
   }), 10, 7);
 
   b.add(timeseries("Listings added and ended unsold", [
-    sql(`SELECT ${LOCAL('cl."firstSeenAt"')} AS time, 'Added' AS metric, count(*) AS value FROM "ChannelListing" cl
-      WHERE cl."tenantId" = ${SHOP} AND NOT cl.sandbox AND $__timeFilter(cl."firstSeenAt") GROUP BY 1, 2 ORDER BY 1`, "time_series"),
-    sql(`SELECT ${LOCAL('cl."endedAt"')} AS time, 'Ended unsold' AS metric, count(*) AS value FROM "ChannelListing" cl
-      WHERE cl."tenantId" = ${SHOP} AND NOT cl.sandbox AND cl.status = 'ENDED' AND $__timeFilter(cl."endedAt") GROUP BY 1, 2 ORDER BY 1`, "time_series"),
-    sql(`SELECT ${LOCAL('o."orderedAt"')} AS time, 'Sold' AS metric, sum(COALESCE(NULLIF(l.quantity, 0), 1)) AS value FROM "SalesOrder" o JOIN "SalesOrderLine" l ON l."orderId" = o.id
-      WHERE o."tenantId" = ${SHOP} AND NOT o.sandbox AND o.status <> 'CANCELLED' AND NOT o."channelCancelled" AND $__timeFilter(o."orderedAt") GROUP BY 1, 2 ORDER BY 1`, "time_series"),
+    sql(filled("", `SELECT ${LOCAL('cl."firstSeenAt"')} AS d, 'Added' AS metric, count(*) AS v FROM "ChannelListing" cl
+      WHERE cl."tenantId" = ${SHOP} AND NOT cl.sandbox AND $__timeFilter(cl."firstSeenAt") GROUP BY 1, 2`), "time_series"),
+    sql(filled("", `SELECT ${LOCAL('cl."endedAt"')} AS d, 'Ended unsold' AS metric, count(*) AS v FROM "ChannelListing" cl
+      WHERE cl."tenantId" = ${SHOP} AND NOT cl.sandbox AND cl.status = 'ENDED' AND $__timeFilter(cl."endedAt") GROUP BY 1, 2`), "time_series"),
+    sql(filled("", `SELECT ${LOCAL('o."orderedAt"')} AS d, 'Sold' AS metric, sum(COALESCE(NULLIF(l.quantity, 0), 1)) AS v FROM "SalesOrder" o JOIN "SalesOrderLine" l ON l."orderId" = o.id
+      WHERE o."tenantId" = ${SHOP} AND NOT o.sandbox AND o.status <> 'CANCELLED' AND NOT o."channelCancelled" AND $__timeFilter(o."orderedAt") GROUP BY 1, 2`), "time_series"),
   ], { bars: true, legend: "table", legendCalcs: ["sum"], desc: "Per $bucket: listings first seen, listings that ended without selling, and items sold on the marketplaces." }), 12, 8);
   b.add(table("Ending soonest", [sql(`${LISTED} SELECT title AS "Listing", format::text AS "Format", ask AS "Price", "highBid" AS "High bid", "bidCount" AS "Bids", watchers AS "Watching", "endsAt" AS "Ends"
     FROM listed WHERE "endsAt" > ${NOW} ORDER BY "endsAt" LIMIT 25`)], {
@@ -688,14 +706,14 @@ const writeBoard = (file, json) => writeFileSync(join(dirname(fileURLToPath(impo
 
   // ------------------------------------------------------------ Marketplace health
   b.row("Marketplace health (GunBroker)");
-  b.add(stat("Needs attention", [promInstant(`sum(max without (pod, instance) (stockpile_orders{${PSHOP}, sandbox="false", status="NEEDS_ATTENTION"})) or vector(0)`)], { thresholds: BAD_IF_ANY, decimals: 0 }), 3, 4);
-  b.add(stat("Oldest unstarted order", [promInstant(`max(max without (pod, instance) (stockpile_orders_oldest_new_age_seconds{${PSHOP}, sandbox="false"}))`)], { unit: "s", thresholds: steps(["green", null], ["orange", 3600], ["red", 86400]), desc: "The oldest paid NEW order nobody has started (no source chosen). Drop-ship alerts at 1 h." }), 3, 4);
-  b.add(stat("Listings read", [promInstant(`max(time() - max without (pod, instance) (stockpile_marketplace_listing_sync_last_attempt_timestamp_seconds{${PSHOP}, sandbox="false"}))`)], { unit: "s", thresholds: steps(["green", null], ["orange", 1800], ["red", 3600]), noValue: "No account", desc: "Since the listing sync last ran (alerts at 30 min): it keeps quantity listings from overselling." }), 3, 4);
-  b.add(stat("Orders polled", [promInstant(`max(time() - max without (pod, instance) (stockpile_marketplace_orders_last_success_timestamp_seconds{${PSHOP}, sandbox="false"}))`)], { unit: "s", thresholds: steps(["green", null], ["orange", 1800], ["red", 3600]), noValue: "No account", desc: "Since the last complete orders poll (alerts at 1 h): new sales come in this way." }), 3, 4);
+  b.add(stat("Attention", [promInstant(`sum(max without (pod, instance) (stockpile_orders{${PSHOP}, sandbox="false", status="NEEDS_ATTENTION"})) or vector(0)`)], { thresholds: BAD_IF_ANY, decimals: 0, desc: "Marketplace orders on Needs attention." }), 3, 4);
+  b.add(stat("Unstarted", [promInstant(`max(max without (pod, instance) (stockpile_orders_oldest_new_age_seconds{${PSHOP}, sandbox="false"}))`)], { unit: "s", thresholds: steps(["green", null], ["orange", 3600], ["red", 86400]), desc: "Oldest unstarted order: the oldest paid NEW order nobody has started (no source chosen). Drop-ship alerts at 1 h." }), 3, 4);
+  b.add(stat("Listings", [promInstant(`max(time() - max without (pod, instance) (stockpile_marketplace_listing_sync_last_attempt_timestamp_seconds{${PSHOP}, sandbox="false"}))`)], { unit: "s", thresholds: steps(["green", null], ["orange", 1800], ["red", 3600]), noValue: "No account", desc: "Since the listing sync last read the listings (alerts at 30 min): it keeps quantity listings from overselling." }), 3, 4);
+  b.add(stat("Orders", [promInstant(`max(time() - max without (pod, instance) (stockpile_marketplace_orders_last_success_timestamp_seconds{${PSHOP}, sandbox="false"}))`)], { unit: "s", thresholds: steps(["green", null], ["orange", 1800], ["red", 3600]), noValue: "No account", desc: "Orders polled: since the last complete orders poll (alerts at 1 h): new sales come in this way." }), 3, 4);
   b.add(stat("Syncs", [promInstant(`min(max without (pod, instance) (stockpile_marketplace_listing_sync_last_status{${PSHOP}, sandbox="false"})) * min(max without (pod, instance) (stockpile_marketplace_orders_last_status{${PSHOP}, sandbox="false"}))`)], { mappings: OK_MAP, thresholds: steps(["red", null], ["green", 1]), noValue: "No account", desc: "The last listing sync and orders poll both succeeded." }), 3, 4);
   b.add(stat("Account", [promInstant(`max(max without (pod, instance) (stockpile_marketplace_paused{${PSHOP}, sandbox="false"}))`)], { mappings: PAUSED_MAP, thresholds: steps(["green", null], ["red", 1]), noValue: "No account", desc: "Paused after a refused login or User-Agent; the owner lifts it." }), 3, 4);
-  b.add(stat("Publish problems", [promInstant(`sum(max without (pod, instance) (stockpile_listing_problems{${PSHOP}, sandbox="false", problem=~"publish_failed_24h|publish_uncertain"})) or vector(0)`)], { thresholds: WARN_IF_ANY, decimals: 0, desc: "Publishes that failed in the last 24 h, plus ones sent with no clear answer." }), 3, 4);
-  b.add(stat("Listings needing a person", [promInstant(`sum(max without (pod, instance) (stockpile_listing_problems{${PSHOP}, sandbox="false", problem="needs_person"})) or vector(0)`)], { thresholds: WARN_IF_ANY, decimals: 0, desc: "Stockpile listings on Needs attention: stock drift, or a flag only a person clears." }), 3, 4);
+  b.add(stat("Publishing", [promInstant(`sum(max without (pod, instance) (stockpile_listing_problems{${PSHOP}, sandbox="false", problem=~"publish_failed_24h|publish_uncertain"})) or vector(0)`)], { thresholds: WARN_IF_ANY, decimals: 0, desc: "Publish problems: publishes that failed in the last 24 h, plus ones sent with no clear answer." }), 3, 4);
+  b.add(stat("Needs you", [promInstant(`sum(max without (pod, instance) (stockpile_listing_problems{${PSHOP}, sandbox="false", problem="needs_person"})) or vector(0)`)], { thresholds: WARN_IF_ANY, decimals: 0, desc: "Listings needing a person — Stockpile listings on Needs attention: stock drift, or a flag only a person clears." }), 3, 4);
 
   b.add(timeseries("Orders by status", [prom(`sum by (status) (max without (pod, instance) (stockpile_orders{${PSHOP}, sandbox="false", status!~"COMPLETE|CANCELLED"}))`, "{{status}}")], { stack: true, desc: "Open marketplace orders: the work in progress." }), 8, 8);
   b.add(timeseries("Listing problems", [prom(`sum by (problem) (max without (pod, instance) (stockpile_listing_problems{${PSHOP}, sandbox="false"}))`, "{{problem}}")], {}), 8, 8);

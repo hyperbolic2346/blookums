@@ -75,7 +75,7 @@
     },
     {
       "type": "stat",
-      "title": "Firing alerts",
+      "title": "Alerts",
       "description": "Stockpile's alert rules (blookums prometheusrule.yaml) firing now. Production only.",
       "datasource": {
         "type": "prometheus"
@@ -140,7 +140,7 @@
     },
     {
       "type": "stat",
-      "title": "Pods not ready",
+      "title": "Not ready",
       "datasource": {
         "type": "prometheus"
       },
@@ -204,7 +204,7 @@
     },
     {
       "type": "stat",
-      "title": "Restarts (24h)",
+      "title": "Restarts 24h",
       "datasource": {
         "type": "prometheus"
       },
@@ -269,8 +269,8 @@
     },
     {
       "type": "stat",
-      "title": "Workers healthy",
-      "description": "Every worker's /healthz verdict (stockpile_worker_healthy).",
+      "title": "Workers",
+      "description": "Workers healthy: every worker's /healthz verdict (stockpile_worker_healthy).",
       "datasource": {
         "type": "prometheus"
       },
@@ -348,8 +348,8 @@
     },
     {
       "type": "stat",
-      "title": "Worker heartbeat",
-      "description": "Since the oldest worker's self-checks last all passed.",
+      "title": "Heartbeat",
+      "description": "Worker heartbeat: since the oldest worker's self-checks last all passed.",
       "datasource": {
         "type": "prometheus"
       },
@@ -487,7 +487,7 @@
     },
     {
       "type": "stat",
-      "title": "Requests (24h)",
+      "title": "Requests 24h",
       "datasource": {
         "type": "prometheus"
       },
@@ -549,8 +549,8 @@
     },
     {
       "type": "stat",
-      "title": "p95 latency (1h)",
-      "description": "Gateway to Stockpile and back, all services.",
+      "title": "p95 (< 10 s)",
+      "description": "p95 latency over the last hour, gateway to Stockpile and back, of requests that finished within 10 s. The print helper's long polls (held ~25 s) would swamp it otherwise; requests held longer are on 'Held 10 s or more'.",
       "datasource": {
         "type": "prometheus"
       },
@@ -560,7 +560,7 @@
           "datasource": {
             "type": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(envoy_cluster_upstream_rq_time_bucket{envoy_cluster_name=~\".*/${env}_stockpile-[a-z-]+_[0-9]+\"}[1h])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (label_replace(rate(envoy_cluster_upstream_rq_time_bucket{envoy_cluster_name=~\".*/${env}_stockpile-[a-z-]+_[0-9]+\", le=~\"0.5|1|5|10|25|50|100|250|500|1000|2500|5000|10000\"}[1h]), \"le\", \"+Inf\", \"le\", \"10000\")))",
           "instant": true,
           "range": false
         }
@@ -1279,7 +1279,7 @@
         "x": 0,
         "y": 21,
         "w": 8,
-        "h": 4
+        "h": 5
       }
     },
     {
@@ -1288,7 +1288,7 @@
       "id": 16,
       "gridPos": {
         "x": 0,
-        "y": 25,
+        "y": 26,
         "w": 24,
         "h": 1
       },
@@ -1360,7 +1360,7 @@
       "id": 17,
       "gridPos": {
         "x": 0,
-        "y": 26,
+        "y": 27,
         "w": 8,
         "h": 8
       }
@@ -1490,7 +1490,7 @@
       "id": 18,
       "gridPos": {
         "x": 8,
-        "y": 26,
+        "y": 27,
         "w": 8,
         "h": 8
       }
@@ -1568,7 +1568,7 @@
       "id": 19,
       "gridPos": {
         "x": 16,
-        "y": 26,
+        "y": 27,
         "w": 8,
         "h": 8
       }
@@ -1576,6 +1576,7 @@
     {
       "type": "timeseries",
       "title": "Latency by service (p50 / p95 / p99)",
+      "description": "Of requests that finished within 10 s (the print helper's ~25 s long polls left out).",
       "datasource": {
         "type": "prometheus"
       },
@@ -1585,7 +1586,7 @@
           "datasource": {
             "type": "prometheus"
           },
-          "expr": "histogram_quantile(0.5, sum by (le, service) (label_replace(rate(envoy_cluster_upstream_rq_time_bucket{envoy_cluster_name=~\".*/${env}_stockpile-[a-z-]+_[0-9]+\"}[$__rate_interval]), \"service\", \"$1\", \"envoy_cluster_name\", \".*_(stockpile-[a-z-]+)_[0-9]+\")))",
+          "expr": "histogram_quantile(0.5, sum by (le, service) (label_replace(label_replace(rate(envoy_cluster_upstream_rq_time_bucket{envoy_cluster_name=~\".*/${env}_stockpile-[a-z-]+_[0-9]+\", le=~\"0.5|1|5|10|25|50|100|250|500|1000|2500|5000|10000\"}[$__rate_interval]), \"service\", \"$1\", \"envoy_cluster_name\", \".*_(stockpile-[a-z-]+)_[0-9]+\"), \"le\", \"+Inf\", \"le\", \"10000\")))",
           "legendFormat": "{{service}} p50"
         },
         {
@@ -1593,7 +1594,7 @@
           "datasource": {
             "type": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le, service) (label_replace(rate(envoy_cluster_upstream_rq_time_bucket{envoy_cluster_name=~\".*/${env}_stockpile-[a-z-]+_[0-9]+\"}[$__rate_interval]), \"service\", \"$1\", \"envoy_cluster_name\", \".*_(stockpile-[a-z-]+)_[0-9]+\")))",
+          "expr": "histogram_quantile(0.95, sum by (le, service) (label_replace(label_replace(rate(envoy_cluster_upstream_rq_time_bucket{envoy_cluster_name=~\".*/${env}_stockpile-[a-z-]+_[0-9]+\", le=~\"0.5|1|5|10|25|50|100|250|500|1000|2500|5000|10000\"}[$__rate_interval]), \"service\", \"$1\", \"envoy_cluster_name\", \".*_(stockpile-[a-z-]+)_[0-9]+\"), \"le\", \"+Inf\", \"le\", \"10000\")))",
           "legendFormat": "{{service}} p95"
         },
         {
@@ -1601,7 +1602,7 @@
           "datasource": {
             "type": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum by (le, service) (label_replace(rate(envoy_cluster_upstream_rq_time_bucket{envoy_cluster_name=~\".*/${env}_stockpile-[a-z-]+_[0-9]+\"}[$__rate_interval]), \"service\", \"$1\", \"envoy_cluster_name\", \".*_(stockpile-[a-z-]+)_[0-9]+\")))",
+          "expr": "histogram_quantile(0.99, sum by (le, service) (label_replace(label_replace(rate(envoy_cluster_upstream_rq_time_bucket{envoy_cluster_name=~\".*/${env}_stockpile-[a-z-]+_[0-9]+\", le=~\"0.5|1|5|10|25|50|100|250|500|1000|2500|5000|10000\"}[$__rate_interval]), \"service\", \"$1\", \"envoy_cluster_name\", \".*_(stockpile-[a-z-]+)_[0-9]+\"), \"le\", \"+Inf\", \"le\", \"10000\")))",
           "legendFormat": "{{service}} p99"
         }
       ],
@@ -1653,7 +1654,77 @@
       "id": 20,
       "gridPos": {
         "x": 0,
-        "y": 34,
+        "y": 35,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Held 10 s or more",
+      "description": "Requests per minute that took 10 s or more. Each paired print helper long-polls ~2.4 a minute on the api; more than that is real slowness.",
+      "datasource": {
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus"
+          },
+          "expr": "sum by (service) (label_replace(rate(envoy_cluster_upstream_rq_time_count{envoy_cluster_name=~\".*/${env}_stockpile-[a-z-]+_[0-9]+\"}[$__rate_interval]), \"service\", \"$1\", \"envoy_cluster_name\", \".*_(stockpile-[a-z-]+)_[0-9]+\")) * 60 - sum by (service) (label_replace(rate(envoy_cluster_upstream_rq_time_bucket{envoy_cluster_name=~\".*/${env}_stockpile-[a-z-]+_[0-9]+\", le=\"10000\"}[$__rate_interval]), \"service\", \"$1\", \"envoy_cluster_name\", \".*_(stockpile-[a-z-]+)_[0-9]+\")) * 60",
+          "legendFormat": "{{service}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqpm",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "barAlignment": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": []
+      },
+      "id": 21,
+      "gridPos": {
+        "x": 12,
+        "y": 35,
         "w": 12,
         "h": 8
       }
@@ -1661,7 +1732,7 @@
     {
       "type": "timeseries",
       "title": "In flight, timeouts and resets",
-      "description": "Requests open at the gateway, and upstream timeouts / connection resets per minute (a pod restarting mid-request shows here).",
+      "description": "Requests open at the gateway (each print helper holds one), and upstream timeouts / connection resets per minute (a pod restarting mid-request shows here).",
       "datasource": {
         "type": "prometheus"
       },
@@ -1736,10 +1807,10 @@
         },
         "overrides": []
       },
-      "id": 21,
+      "id": 22,
       "gridPos": {
-        "x": 12,
-        "y": 34,
+        "x": 0,
+        "y": 43,
         "w": 12,
         "h": 8
       }
@@ -1747,10 +1818,10 @@
     {
       "type": "row",
       "title": "Resources",
-      "id": 22,
+      "id": 23,
       "gridPos": {
         "x": 0,
-        "y": 42,
+        "y": 51,
         "w": 24,
         "h": 1
       },
@@ -1818,10 +1889,10 @@
         },
         "overrides": []
       },
-      "id": 23,
+      "id": 24,
       "gridPos": {
         "x": 0,
-        "y": 43,
+        "y": 52,
         "w": 8,
         "h": 8
       }
@@ -1887,10 +1958,10 @@
         },
         "overrides": []
       },
-      "id": 24,
+      "id": 25,
       "gridPos": {
         "x": 8,
-        "y": 43,
+        "y": 52,
         "w": 8,
         "h": 8
       }
@@ -1959,10 +2030,10 @@
         },
         "overrides": []
       },
-      "id": 25,
+      "id": 26,
       "gridPos": {
         "x": 16,
-        "y": 43,
+        "y": 52,
         "w": 8,
         "h": 8
       }
@@ -2029,10 +2100,10 @@
         },
         "overrides": []
       },
-      "id": 26,
+      "id": 27,
       "gridPos": {
         "x": 0,
-        "y": 51,
+        "y": 60,
         "w": 12,
         "h": 7
       }
@@ -2107,10 +2178,10 @@
         },
         "overrides": []
       },
-      "id": 27,
+      "id": 28,
       "gridPos": {
         "x": 12,
-        "y": 51,
+        "y": 60,
         "w": 12,
         "h": 7
       }
@@ -2118,10 +2189,10 @@
     {
       "type": "row",
       "title": "Database",
-      "id": 28,
+      "id": 29,
       "gridPos": {
         "x": 0,
-        "y": 58,
+        "y": 67,
         "w": 24,
         "h": 1
       },
@@ -2181,10 +2252,10 @@
         },
         "overrides": []
       },
-      "id": 29,
+      "id": 30,
       "gridPos": {
         "x": 0,
-        "y": 59,
+        "y": 68,
         "w": 4,
         "h": 4
       }
@@ -2245,10 +2316,10 @@
         },
         "overrides": []
       },
-      "id": 30,
+      "id": 31,
       "gridPos": {
         "x": 4,
-        "y": 59,
+        "y": 68,
         "w": 5,
         "h": 4
       }
@@ -2313,10 +2384,10 @@
         },
         "overrides": []
       },
-      "id": 31,
+      "id": 32,
       "gridPos": {
         "x": 9,
-        "y": 59,
+        "y": 68,
         "w": 5,
         "h": 4
       }
@@ -2382,10 +2453,10 @@
         },
         "overrides": []
       },
-      "id": 32,
+      "id": 33,
       "gridPos": {
         "x": 14,
-        "y": 59,
+        "y": 68,
         "w": 5,
         "h": 4
       }
@@ -2447,10 +2518,10 @@
         },
         "overrides": []
       },
-      "id": 33,
+      "id": 34,
       "gridPos": {
         "x": 19,
-        "y": 59,
+        "y": 68,
         "w": 5,
         "h": 4
       }
@@ -2525,10 +2596,10 @@
         },
         "overrides": []
       },
-      "id": 34,
+      "id": 35,
       "gridPos": {
         "x": 0,
-        "y": 63,
+        "y": 72,
         "w": 8,
         "h": 7
       }
@@ -2610,10 +2681,10 @@
         },
         "overrides": []
       },
-      "id": 35,
+      "id": 36,
       "gridPos": {
         "x": 8,
-        "y": 63,
+        "y": 72,
         "w": 8,
         "h": 7
       }
@@ -2679,10 +2750,10 @@
         },
         "overrides": []
       },
-      "id": 36,
+      "id": 37,
       "gridPos": {
         "x": 16,
-        "y": 63,
+        "y": 72,
         "w": 8,
         "h": 7
       }
@@ -2690,10 +2761,10 @@
     {
       "type": "row",
       "title": "Background work (production)",
-      "id": 37,
+      "id": 38,
       "gridPos": {
         "x": 0,
-        "y": 70,
+        "y": 79,
         "w": 24,
         "h": 1
       },
@@ -2762,10 +2833,10 @@
         },
         "overrides": []
       },
-      "id": 38,
+      "id": 39,
       "gridPos": {
         "x": 0,
-        "y": 71,
+        "y": 80,
         "w": 8,
         "h": 8
       }
@@ -2832,10 +2903,10 @@
         },
         "overrides": []
       },
-      "id": 39,
+      "id": 40,
       "gridPos": {
         "x": 8,
-        "y": 71,
+        "y": 80,
         "w": 8,
         "h": 8
       }
@@ -2901,10 +2972,10 @@
         },
         "overrides": []
       },
-      "id": 40,
+      "id": 41,
       "gridPos": {
         "x": 16,
-        "y": 71,
+        "y": 80,
         "w": 8,
         "h": 8
       }
@@ -3077,10 +3148,10 @@
           }
         }
       ],
-      "id": 41,
+      "id": 42,
       "gridPos": {
         "x": 0,
-        "y": 79,
+        "y": 88,
         "w": 12,
         "h": 8
       }
@@ -3210,10 +3281,10 @@
           }
         }
       ],
-      "id": 42,
+      "id": 43,
       "gridPos": {
         "x": 12,
-        "y": 79,
+        "y": 88,
         "w": 12,
         "h": 8
       }
@@ -3370,10 +3441,10 @@
           }
         }
       ],
-      "id": 43,
+      "id": 44,
       "gridPos": {
         "x": 0,
-        "y": 87,
+        "y": 96,
         "w": 12,
         "h": 8
       }
@@ -3562,10 +3633,10 @@
           }
         }
       ],
-      "id": 44,
+      "id": 45,
       "gridPos": {
         "x": 12,
-        "y": 87,
+        "y": 96,
         "w": 12,
         "h": 8
       }
@@ -3636,10 +3707,10 @@
         },
         "overrides": []
       },
-      "id": 45,
+      "id": 46,
       "gridPos": {
         "x": 0,
-        "y": 95,
+        "y": 104,
         "w": 24,
         "h": 6
       }

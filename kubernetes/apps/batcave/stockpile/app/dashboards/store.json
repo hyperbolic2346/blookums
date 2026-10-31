@@ -509,7 +509,7 @@
           "editorMode": "code",
           "rawQuery": true,
           "format": "time_series",
-          "rawSql": "WITH sold AS ( SELECT s.\"completedAt\" AS at, s.id AS ticket, s.kind = 'RETURN' AS is_return, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' WHEN sl.\"specialOrderId\" IS NOT NULL THEN 'Special orders' ELSE 'Register' END AS source, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' ELSE COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Other') END AS kind, sl.description AS item, sg.sign * sl.quantity AS qty, sg.sign * (sl.total - sl.tax) AS sales, CASE WHEN sl.\"unitCost\" > 0 THEN CASE WHEN s.kind = 'RETURN' AND sl.damaged THEN 0 ELSE sg.sign * sl.\"unitCost\" * sl.quantity END END AS cost FROM \"Sale\" s CROSS JOIN LATERAL (SELECT CASE WHEN s.kind = 'RETURN' THEN -1 ELSE 1 END AS sign) sg JOIN \"SaleLine\" sl ON sl.\"saleId\" = s.id LEFT JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = sl.\"inventoryUnitId\" WHERE s.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND s.status = 'COMPLETED' AND $__timeFilter(s.\"completedAt\") UNION ALL SELECT o.\"orderedAt\", o.id, false, CASE o.channel WHEN 'gunbroker' THEN 'GunBroker' ELSE initcap(o.channel) END, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), COALESCE(l.title, NULLIF(concat_ws(' ', u.make, u.model), ''), 'Marketplace item'), q.qty, COALESCE(l.subtotal, COALESCE(l.\"unitPrice\", 0) * q.qty), CASE WHEN u.id IS NOT NULL THEN CASE WHEN u.cost > 0 THEN u.cost END ELSE COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = o.\"tenantId\" AND rl.\"productId\" = l.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = o.\"tenantId\" AND v.\"productId\" = l.\"productId\" AND v.cost > 0)) * q.qty END FROM \"SalesOrder\" o JOIN \"SalesOrderLine\" l ON l.\"orderId\" = o.id CROSS JOIN LATERAL (SELECT COALESCE(NULLIF(l.quantity, 0), 1) AS qty) q LEFT JOIN \"Product\" p ON p.id = l.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = l.\"inventoryUnitId\" WHERE o.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT o.sandbox AND o.payment = 'PAID' AND NOT o.\"channelCancelled\" AND o.status <> 'CANCELLED' AND $__timeFilter(o.\"orderedAt\") ) SELECT date_trunc('$bucket', (at AT TIME ZONE 'UTC') AT TIME ZONE '$tz') AT TIME ZONE '$tz' AS time, source AS metric, sum(sales) AS value FROM sold GROUP BY 1, 2 ORDER BY 1"
+          "rawSql": "WITH sold AS ( SELECT s.\"completedAt\" AS at, s.id AS ticket, s.kind = 'RETURN' AS is_return, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' WHEN sl.\"specialOrderId\" IS NOT NULL THEN 'Special orders' ELSE 'Register' END AS source, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' ELSE COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Other') END AS kind, sl.description AS item, sg.sign * sl.quantity AS qty, sg.sign * (sl.total - sl.tax) AS sales, CASE WHEN sl.\"unitCost\" > 0 THEN CASE WHEN s.kind = 'RETURN' AND sl.damaged THEN 0 ELSE sg.sign * sl.\"unitCost\" * sl.quantity END END AS cost FROM \"Sale\" s CROSS JOIN LATERAL (SELECT CASE WHEN s.kind = 'RETURN' THEN -1 ELSE 1 END AS sign) sg JOIN \"SaleLine\" sl ON sl.\"saleId\" = s.id LEFT JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = sl.\"inventoryUnitId\" WHERE s.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND s.status = 'COMPLETED' AND $__timeFilter(s.\"completedAt\") UNION ALL SELECT o.\"orderedAt\", o.id, false, CASE o.channel WHEN 'gunbroker' THEN 'GunBroker' ELSE initcap(o.channel) END, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), COALESCE(l.title, NULLIF(concat_ws(' ', u.make, u.model), ''), 'Marketplace item'), q.qty, COALESCE(l.subtotal, COALESCE(l.\"unitPrice\", 0) * q.qty), CASE WHEN u.id IS NOT NULL THEN CASE WHEN u.cost > 0 THEN u.cost END ELSE COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = o.\"tenantId\" AND rl.\"productId\" = l.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = o.\"tenantId\" AND v.\"productId\" = l.\"productId\" AND v.cost > 0)) * q.qty END FROM \"SalesOrder\" o JOIN \"SalesOrderLine\" l ON l.\"orderId\" = o.id CROSS JOIN LATERAL (SELECT COALESCE(NULLIF(l.quantity, 0), 1) AS qty) q LEFT JOIN \"Product\" p ON p.id = l.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = l.\"inventoryUnitId\" WHERE o.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT o.sandbox AND o.payment = 'PAID' AND NOT o.\"channelCancelled\" AND o.status <> 'CANCELLED' AND $__timeFilter(o.\"orderedAt\") ), cal AS (SELECT generate_series(date_trunc('$bucket', $__timeFrom()::timestamptz AT TIME ZONE '$tz'), $__timeTo()::timestamptz AT TIME ZONE '$tz', ('1 ' || '$bucket')::interval) AS d), agg AS (SELECT date_trunc('$bucket', (at AT TIME ZONE 'UTC') AT TIME ZONE '$tz') AS d, source AS metric, sum(sales) AS v FROM sold GROUP BY 1, 2) SELECT cal.d AT TIME ZONE '$tz' AS time, m.metric, COALESCE(agg.v, 0) AS value FROM cal CROSS JOIN (SELECT DISTINCT metric FROM agg) m LEFT JOIN agg ON agg.d = cal.d AND agg.metric = m.metric ORDER BY 1"
         }
       ],
       "options": {
@@ -585,7 +585,7 @@
           "editorMode": "code",
           "rawQuery": true,
           "format": "time_series",
-          "rawSql": "WITH sold AS ( SELECT s.\"completedAt\" AS at, s.id AS ticket, s.kind = 'RETURN' AS is_return, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' WHEN sl.\"specialOrderId\" IS NOT NULL THEN 'Special orders' ELSE 'Register' END AS source, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' ELSE COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Other') END AS kind, sl.description AS item, sg.sign * sl.quantity AS qty, sg.sign * (sl.total - sl.tax) AS sales, CASE WHEN sl.\"unitCost\" > 0 THEN CASE WHEN s.kind = 'RETURN' AND sl.damaged THEN 0 ELSE sg.sign * sl.\"unitCost\" * sl.quantity END END AS cost FROM \"Sale\" s CROSS JOIN LATERAL (SELECT CASE WHEN s.kind = 'RETURN' THEN -1 ELSE 1 END AS sign) sg JOIN \"SaleLine\" sl ON sl.\"saleId\" = s.id LEFT JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = sl.\"inventoryUnitId\" WHERE s.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND s.status = 'COMPLETED' AND $__timeFilter(s.\"completedAt\") UNION ALL SELECT o.\"orderedAt\", o.id, false, CASE o.channel WHEN 'gunbroker' THEN 'GunBroker' ELSE initcap(o.channel) END, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), COALESCE(l.title, NULLIF(concat_ws(' ', u.make, u.model), ''), 'Marketplace item'), q.qty, COALESCE(l.subtotal, COALESCE(l.\"unitPrice\", 0) * q.qty), CASE WHEN u.id IS NOT NULL THEN CASE WHEN u.cost > 0 THEN u.cost END ELSE COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = o.\"tenantId\" AND rl.\"productId\" = l.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = o.\"tenantId\" AND v.\"productId\" = l.\"productId\" AND v.cost > 0)) * q.qty END FROM \"SalesOrder\" o JOIN \"SalesOrderLine\" l ON l.\"orderId\" = o.id CROSS JOIN LATERAL (SELECT COALESCE(NULLIF(l.quantity, 0), 1) AS qty) q LEFT JOIN \"Product\" p ON p.id = l.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = l.\"inventoryUnitId\" WHERE o.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT o.sandbox AND o.payment = 'PAID' AND NOT o.\"channelCancelled\" AND o.status <> 'CANCELLED' AND $__timeFilter(o.\"orderedAt\") ) SELECT date_trunc('$bucket', (at AT TIME ZONE 'UTC') AT TIME ZONE '$tz') AT TIME ZONE '$tz' AS time, source AS metric, sum(sales - cost) AS value FROM sold WHERE cost IS NOT NULL GROUP BY 1, 2 ORDER BY 1"
+          "rawSql": "WITH sold AS ( SELECT s.\"completedAt\" AS at, s.id AS ticket, s.kind = 'RETURN' AS is_return, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' WHEN sl.\"specialOrderId\" IS NOT NULL THEN 'Special orders' ELSE 'Register' END AS source, CASE WHEN sl.\"nfaTransactionId\" IS NOT NULL OR sl.\"nfaFee\" THEN 'NFA' ELSE COALESCE(CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, 'Other') END AS kind, sl.description AS item, sg.sign * sl.quantity AS qty, sg.sign * (sl.total - sl.tax) AS sales, CASE WHEN sl.\"unitCost\" > 0 THEN CASE WHEN s.kind = 'RETURN' AND sl.damaged THEN 0 ELSE sg.sign * sl.\"unitCost\" * sl.quantity END END AS cost FROM \"Sale\" s CROSS JOIN LATERAL (SELECT CASE WHEN s.kind = 'RETURN' THEN -1 ELSE 1 END AS sign) sg JOIN \"SaleLine\" sl ON sl.\"saleId\" = s.id LEFT JOIN \"Product\" p ON p.id = sl.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = sl.\"inventoryUnitId\" WHERE s.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND s.status = 'COMPLETED' AND $__timeFilter(s.\"completedAt\") UNION ALL SELECT o.\"orderedAt\", o.id, false, CASE o.channel WHEN 'gunbroker' THEN 'GunBroker' ELSE initcap(o.channel) END, COALESCE(CASE WHEN u.\"itemType\"::text IN ('SUPPRESSOR','SBR','SBS','AOW','MACHINE_GUN','DESTRUCTIVE_DEVICE') THEN 'NFA' WHEN u.id IS NOT NULL THEN 'Guns' END, CASE p.class::text WHEN 'HANDGUN' THEN 'Guns' WHEN 'LONG_GUN' THEN 'Guns' WHEN 'NFA' THEN 'NFA' WHEN 'AMMUNITION' THEN 'Ammo' WHEN 'OPTIC' THEN 'Optics' WHEN 'MAGAZINE' THEN 'Magazines' WHEN 'ACCESSORY' THEN 'Accessories' WHEN 'OTHER' THEN 'Other' END, 'Other'), COALESCE(l.title, NULLIF(concat_ws(' ', u.make, u.model), ''), 'Marketplace item'), q.qty, COALESCE(l.subtotal, COALESCE(l.\"unitPrice\", 0) * q.qty), CASE WHEN u.id IS NOT NULL THEN CASE WHEN u.cost > 0 THEN u.cost END ELSE COALESCE( (SELECT rl.\"unitCost\" FROM \"ReceivingLine\" rl JOIN \"ReceivingBatch\" rb ON rb.id = rl.\"batchId\" WHERE rl.\"tenantId\" = o.\"tenantId\" AND rl.\"productId\" = l.\"productId\" AND rl.\"unitCost\" > 0 ORDER BY rb.\"receivedDate\" DESC, rl.\"updatedAt\" DESC LIMIT 1), (SELECT min(v.cost) FROM \"TenantVendorPrice\" v WHERE v.\"tenantId\" = o.\"tenantId\" AND v.\"productId\" = l.\"productId\" AND v.cost > 0)) * q.qty END FROM \"SalesOrder\" o JOIN \"SalesOrderLine\" l ON l.\"orderId\" = o.id CROSS JOIN LATERAL (SELECT COALESCE(NULLIF(l.quantity, 0), 1) AS qty) q LEFT JOIN \"Product\" p ON p.id = l.\"productId\" LEFT JOIN \"NfaItem\" u ON u.id = l.\"inventoryUnitId\" WHERE o.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT o.sandbox AND o.payment = 'PAID' AND NOT o.\"channelCancelled\" AND o.status <> 'CANCELLED' AND $__timeFilter(o.\"orderedAt\") ), cal AS (SELECT generate_series(date_trunc('$bucket', $__timeFrom()::timestamptz AT TIME ZONE '$tz'), $__timeTo()::timestamptz AT TIME ZONE '$tz', ('1 ' || '$bucket')::interval) AS d), agg AS (SELECT date_trunc('$bucket', (at AT TIME ZONE 'UTC') AT TIME ZONE '$tz') AS d, source AS metric, sum(sales - cost) AS v FROM sold WHERE cost IS NOT NULL GROUP BY 1, 2) SELECT cal.d AT TIME ZONE '$tz' AS time, m.metric, COALESCE(agg.v, 0) AS value FROM cal CROSS JOIN (SELECT DISTINCT metric FROM agg) m LEFT JOIN agg ON agg.d = cal.d AND agg.metric = m.metric ORDER BY 1"
         }
       ],
       "options": {
@@ -1668,7 +1668,7 @@
           "editorMode": "code",
           "rawQuery": true,
           "format": "time_series",
-          "rawSql": "SELECT date_trunc('$bucket', (cl.\"firstSeenAt\" AT TIME ZONE 'UTC') AT TIME ZONE '$tz') AT TIME ZONE '$tz' AS time, 'Added' AS metric, count(*) AS value FROM \"ChannelListing\" cl WHERE cl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT cl.sandbox AND $__timeFilter(cl.\"firstSeenAt\") GROUP BY 1, 2 ORDER BY 1"
+          "rawSql": "WITH cal AS (SELECT generate_series(date_trunc('$bucket', $__timeFrom()::timestamptz AT TIME ZONE '$tz'), $__timeTo()::timestamptz AT TIME ZONE '$tz', ('1 ' || '$bucket')::interval) AS d), agg AS (SELECT date_trunc('$bucket', (cl.\"firstSeenAt\" AT TIME ZONE 'UTC') AT TIME ZONE '$tz') AS d, 'Added' AS metric, count(*) AS v FROM \"ChannelListing\" cl WHERE cl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT cl.sandbox AND $__timeFilter(cl.\"firstSeenAt\") GROUP BY 1, 2) SELECT cal.d AT TIME ZONE '$tz' AS time, m.metric, COALESCE(agg.v, 0) AS value FROM cal CROSS JOIN (SELECT DISTINCT metric FROM agg) m LEFT JOIN agg ON agg.d = cal.d AND agg.metric = m.metric ORDER BY 1"
         },
         {
           "refId": "B",
@@ -1679,7 +1679,7 @@
           "editorMode": "code",
           "rawQuery": true,
           "format": "time_series",
-          "rawSql": "SELECT date_trunc('$bucket', (cl.\"endedAt\" AT TIME ZONE 'UTC') AT TIME ZONE '$tz') AT TIME ZONE '$tz' AS time, 'Ended unsold' AS metric, count(*) AS value FROM \"ChannelListing\" cl WHERE cl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT cl.sandbox AND cl.status = 'ENDED' AND $__timeFilter(cl.\"endedAt\") GROUP BY 1, 2 ORDER BY 1"
+          "rawSql": "WITH cal AS (SELECT generate_series(date_trunc('$bucket', $__timeFrom()::timestamptz AT TIME ZONE '$tz'), $__timeTo()::timestamptz AT TIME ZONE '$tz', ('1 ' || '$bucket')::interval) AS d), agg AS (SELECT date_trunc('$bucket', (cl.\"endedAt\" AT TIME ZONE 'UTC') AT TIME ZONE '$tz') AS d, 'Ended unsold' AS metric, count(*) AS v FROM \"ChannelListing\" cl WHERE cl.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT cl.sandbox AND cl.status = 'ENDED' AND $__timeFilter(cl.\"endedAt\") GROUP BY 1, 2) SELECT cal.d AT TIME ZONE '$tz' AS time, m.metric, COALESCE(agg.v, 0) AS value FROM cal CROSS JOIN (SELECT DISTINCT metric FROM agg) m LEFT JOIN agg ON agg.d = cal.d AND agg.metric = m.metric ORDER BY 1"
         },
         {
           "refId": "C",
@@ -1690,7 +1690,7 @@
           "editorMode": "code",
           "rawQuery": true,
           "format": "time_series",
-          "rawSql": "SELECT date_trunc('$bucket', (o.\"orderedAt\" AT TIME ZONE 'UTC') AT TIME ZONE '$tz') AT TIME ZONE '$tz' AS time, 'Sold' AS metric, sum(COALESCE(NULLIF(l.quantity, 0), 1)) AS value FROM \"SalesOrder\" o JOIN \"SalesOrderLine\" l ON l.\"orderId\" = o.id WHERE o.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT o.sandbox AND o.status <> 'CANCELLED' AND NOT o.\"channelCancelled\" AND $__timeFilter(o.\"orderedAt\") GROUP BY 1, 2 ORDER BY 1"
+          "rawSql": "WITH cal AS (SELECT generate_series(date_trunc('$bucket', $__timeFrom()::timestamptz AT TIME ZONE '$tz'), $__timeTo()::timestamptz AT TIME ZONE '$tz', ('1 ' || '$bucket')::interval) AS d), agg AS (SELECT date_trunc('$bucket', (o.\"orderedAt\" AT TIME ZONE 'UTC') AT TIME ZONE '$tz') AS d, 'Sold' AS metric, sum(COALESCE(NULLIF(l.quantity, 0), 1)) AS v FROM \"SalesOrder\" o JOIN \"SalesOrderLine\" l ON l.\"orderId\" = o.id WHERE o.\"tenantId\" = (SELECT id FROM \"Tenant\" WHERE slug = '$shop') AND NOT o.sandbox AND o.status <> 'CANCELLED' AND NOT o.\"channelCancelled\" AND $__timeFilter(o.\"orderedAt\") GROUP BY 1, 2) SELECT cal.d AT TIME ZONE '$tz' AS time, m.metric, COALESCE(agg.v, 0) AS value FROM cal CROSS JOIN (SELECT DISTINCT metric FROM agg) m LEFT JOIN agg ON agg.d = cal.d AND agg.metric = m.metric ORDER BY 1"
         }
       ],
       "options": {
@@ -2963,7 +2963,8 @@
     },
     {
       "type": "stat",
-      "title": "Needs attention",
+      "title": "Attention",
+      "description": "Marketplace orders on Needs attention.",
       "datasource": {
         "type": "prometheus"
       },
@@ -3028,8 +3029,8 @@
     },
     {
       "type": "stat",
-      "title": "Oldest unstarted order",
-      "description": "The oldest paid NEW order nobody has started (no source chosen). Drop-ship alerts at 1 h.",
+      "title": "Unstarted",
+      "description": "Oldest unstarted order: the oldest paid NEW order nobody has started (no source chosen). Drop-ship alerts at 1 h.",
       "datasource": {
         "type": "prometheus"
       },
@@ -3097,8 +3098,8 @@
     },
     {
       "type": "stat",
-      "title": "Listings read",
-      "description": "Since the listing sync last ran (alerts at 30 min): it keeps quantity listings from overselling.",
+      "title": "Listings",
+      "description": "Since the listing sync last read the listings (alerts at 30 min): it keeps quantity listings from overselling.",
       "datasource": {
         "type": "prometheus"
       },
@@ -3166,8 +3167,8 @@
     },
     {
       "type": "stat",
-      "title": "Orders polled",
-      "description": "Since the last complete orders poll (alerts at 1 h): new sales come in this way.",
+      "title": "Orders",
+      "description": "Orders polled: since the last complete orders poll (alerts at 1 h): new sales come in this way.",
       "datasource": {
         "type": "prometheus"
       },
@@ -3393,8 +3394,8 @@
     },
     {
       "type": "stat",
-      "title": "Publish problems",
-      "description": "Publishes that failed in the last 24 h, plus ones sent with no clear answer.",
+      "title": "Publishing",
+      "description": "Publish problems: publishes that failed in the last 24 h, plus ones sent with no clear answer.",
       "datasource": {
         "type": "prometheus"
       },
@@ -3459,8 +3460,8 @@
     },
     {
       "type": "stat",
-      "title": "Listings needing a person",
-      "description": "Stockpile listings on Needs attention: stock drift, or a flag only a person clears.",
+      "title": "Needs you",
+      "description": "Listings needing a person — Stockpile listings on Needs attention: stock drift, or a flag only a person clears.",
       "datasource": {
         "type": "prometheus"
       },
