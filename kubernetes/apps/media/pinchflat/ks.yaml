@@ -29,8 +29,8 @@ spec:
         kind: ConfigMap
     substitute:
       APP: pinchflat
-      APP_UID: "1000"
-      APP_GID: "545"
+      APP_UID: "568"
+      APP_GID: "568"
       VOLSYNC_CLAIM: pinchflat-config
       VOLSYNC_SNAPSHOTCLASS: csi-ceph-block
       VOLSYNC_CAPACITY: 5Gi

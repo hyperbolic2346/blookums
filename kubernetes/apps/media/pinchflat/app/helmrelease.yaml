@@ -27,16 +27,27 @@ spec:
   values:
     defaultPodOptions:
       securityContext:
-        # Match ownership of existing files on the youtubedl NFS share (1000:545)
-        runAsUser: 1000
-        runAsGroup: 545
-        fsGroup: 545
+        # Match media stack defaults so Plex/Jellyfin/Sonarr/SAB can manage files (568:568)
+        runAsUser: 568
+        runAsGroup: 568
+        fsGroup: 568
         fsGroupChangePolicy: OnRootMismatch
+        supplementalGroups:
+          - 1001
 
     controllers:
       main:
         annotations:
           reloader.stakater.com/auto: "true"
+        initContainers:
+          fix-config-permissions:
+            image:
+              repository: busybox
+              tag: 1.36.1@sha256:67a8ef886e2ca4055f00e7cd13aedb9b24148c1451a6832d16fcc997a157eedc
+            command: ["sh", "-c", "chown -R 568:568 /config"]
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
         containers:
           main:
             image:
@@ -45,6 +56,11 @@ spec:
             env:
               TZ: ${TIMEZONE}
               UMASK: "002"
+            command: ["/bin/sh", "-c"]
+            args:
+              - |
+                umask 002
+                exec /app/bin/docker_start
             probes:
               liveness: &probes
                 enabled: true
