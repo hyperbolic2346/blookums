@@ -43,8 +43,8 @@ spec:
           fix-config-permissions:
             image:
               repository: busybox
-              tag: latest
-            command: ["sh", "-c", "chown -R 568:568 /config || true"]
+              tag: 1.36.1@sha256:67a8ef886e2ca4055f00e7cd13aedb9b24148c1451a6832d16fcc997a157eedc
+            command: ["sh", "-c", "chown -R 568:568 /config"]
             securityContext:
               runAsUser: 0
               runAsGroup: 0
@@ -56,6 +56,11 @@ spec:
             env:
               TZ: ${TIMEZONE}
               UMASK: "002"
+            command: ["/bin/sh", "-c"]
+            args:
+              - |
+                umask 002
+                exec /app/bin/docker_start
             probes:
               liveness: &probes
                 enabled: true
