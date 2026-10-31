@@ -84,7 +84,7 @@ spec:
             # The api-image steps name the image in full, each with its own
             # marker, so image automation moves them with the api.
             - name: precheck
-              image: ghcr.io/nerdbucketinc/stockpile-api:main-b85fc8d-b1199 # {"$imagepolicy": "flux-system:stockpile-api-staging"}
+              image: ghcr.io/nerdbucketinc/stockpile-api:main-c8f08f2-b1200 # {"$imagepolicy": "flux-system:stockpile-api-staging"}
               command: ["sh", "/refresh/refresh.sh", "precheck"]
               envFrom:
                 - configMapRef:
@@ -149,7 +149,7 @@ spec:
               resources: *pgResources
               volumeMounts: *mounts
             - name: migrate
-              image: ghcr.io/nerdbucketinc/stockpile-api:main-b85fc8d-b1199 # {"$imagepolicy": "flux-system:stockpile-api-staging"}
+              image: ghcr.io/nerdbucketinc/stockpile-api:main-c8f08f2-b1200 # {"$imagepolicy": "flux-system:stockpile-api-staging"}
               command: ["sh", "/refresh/refresh.sh", "migrate"]
               envFrom: &appEnv
                 - configMapRef:
@@ -162,7 +162,7 @@ spec:
               resources: *appResources
               volumeMounts: *mounts
             - name: scrub
-              image: ghcr.io/nerdbucketinc/stockpile-api:main-b85fc8d-b1199 # {"$imagepolicy": "flux-system:stockpile-api-staging"}
+              image: ghcr.io/nerdbucketinc/stockpile-api:main-c8f08f2-b1200 # {"$imagepolicy": "flux-system:stockpile-api-staging"}
               command: ["sh", "/refresh/refresh.sh", "scrub"]
               envFrom: *appEnv
               env:
