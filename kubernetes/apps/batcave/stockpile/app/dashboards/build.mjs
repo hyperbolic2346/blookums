@@ -329,13 +329,14 @@ const writeBoard = (file, json) => writeFileSync(join(dirname(fileURLToPath(impo
       mapOverride("Role", [{ type: "value", options: { 0: { text: "primary", color: "blue" }, 1: { text: "replica", color: "text" } } }]),
       unitOverride(["Lag"], "s", 1),
     ],
-  }), 8, 5);
+  }), 8, 6);
 
   b.row("Traffic (through the gateway)");
   b.add(timeseries("Requests by service", [prom(`sum by (service) (${svc(`rate(envoy_cluster_upstream_rq_total{${ROUTES}}[$__rate_interval])`)})`, "{{service}}")], { unit: "reqps", desc: "Requests the Cilium gateway sent to each Stockpile service." }), 8, 8);
   b.add(timeseries("Responses by status", [prom(`sum by (envoy_response_code_class) (rate(envoy_cluster_upstream_rq_xx{${ROUTES}}[$__rate_interval]))`, "{{envoy_response_code_class}}xx")], {
     unit: "reqps",
-    stack: true,
+    // Not stacked: an empty 5xx series would ride the top of the stack and
+    // paint the chart red.
     overrides: [
       { matcher: { id: "byName", options: "2xx" }, properties: [{ id: "color", value: { mode: "fixed", fixedColor: "green" } }] },
       { matcher: { id: "byName", options: "3xx" }, properties: [{ id: "color", value: { mode: "fixed", fixedColor: "blue" } }] },
