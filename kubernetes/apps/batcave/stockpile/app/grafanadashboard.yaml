@@ -1,0 +1,39 @@
+---
+# Stockpile's Grafana boards, folder "Stockpile" (https://grafana.${SECRET_DOMAIN},
+# internal gateway only). JSON from dashboards/build.mjs, through the
+# stockpile-dashboards ConfigMap (kustomization.yaml):
+#   Stockpile — System  pods, versions, gateway traffic, resources, the
+#                       database, the workers' queues and syncs (Prometheus)
+#   Stockpile — Store   what sold, what is listed and on hand and what it is
+#                       worth, marketplace and drop-ship health (Postgres
+#                       datasource stockpile-postgres, read-only and column by
+#                       column: grafana-grants.sql; and Prometheus)
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/grafana.integreatly.org/grafanadashboard_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: stockpile-system
+spec:
+  allowCrossNamespaceImport: true
+  instanceSelector:
+    matchLabels:
+      grafana.internal/instance: grafana
+  folder: Stockpile
+  configMapRef:
+    name: stockpile-dashboards
+    key: system.json
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/grafana.integreatly.org/grafanadashboard_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: stockpile-store
+spec:
+  allowCrossNamespaceImport: true
+  instanceSelector:
+    matchLabels:
+      grafana.internal/instance: grafana
+  folder: Stockpile
+  configMapRef:
+    name: stockpile-dashboards
+    key: store.json

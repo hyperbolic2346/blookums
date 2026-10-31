@@ -89,3 +89,25 @@ spec:
   interval: 30m
   retryInterval: 1m
   timeout: 5m
+---
+# Grafana's login to the stockpile database (grafana-stockpile/): its
+# generated password and the datasource. Apart from the cluster, not waited on.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cloudnative-pg-grafana-stockpile
+  namespace: databases
+spec:
+  dependsOn:
+    - name: external-secrets-stores
+      namespace: kube-system
+  path: ./kubernetes/apps/databases/cloudnative-pg/grafana-stockpile
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  wait: false
+  interval: 30m
+  retryInterval: 1m
+  timeout: 5m

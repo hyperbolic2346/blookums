@@ -51,6 +51,10 @@ spec:
     pg_hba:
       - host stockpile stockpile_rehearsal 10.42.0.0/16 scram-sha-256
       - host all stockpile_rehearsal all reject
+      # Grafana's read-only view of the stockpile database (Stockpile — Store
+      # board; role stockpile_grafana below). Same shape.
+      - host stockpile stockpile_grafana 10.42.0.0/16 scram-sha-256
+      - host all stockpile_grafana all reject
       # Telemetry (apps/telemetry): its owner role and Grafana's read-only role may reach
       # the telemetry database only, from pods. Same shape as above.
       - host telemetry telemetry 10.42.0.0/16 scram-sha-256
@@ -83,6 +87,20 @@ spec:
         connectionLimit: 2
         passwordSecret:
           name: stockpile-rehearsal-db
+      # Login for Grafana's stockpile-postgres datasource (../grafana-stockpile).
+      # No role memberships: it may read only the columns the stockpile
+      # database's owner grants it (amounts, counts, states, timestamps —
+      # never a buyer's or customer's details; CronJob
+      # batcave/stockpile-rehearsal-grants, grafana-grants.sql). Its password
+      # is generated in-cluster, nothing in 1Password.
+      - name: stockpile_grafana
+        ensure: present
+        comment: Grafana, read-only, some columns of the stockpile database
+        login: true
+        inherit: false
+        connectionLimit: 4
+        passwordSecret:
+          name: stockpile-grafana-db
       # Stockpile shadow staging (apps/stockpile-staging, stockpile#331).
       # Passwords: 1Password item "stockpile-staging", through the
       # ExternalSecret in ../stockpile-staging. Its database is the Database
