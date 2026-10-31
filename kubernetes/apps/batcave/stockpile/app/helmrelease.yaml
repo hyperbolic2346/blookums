@@ -72,6 +72,9 @@ spec:
             image: *apiImage
             command: ["node", "dist/main.js"]
             env:
+              # The staff api. From stockpile#752 a production api refuses to
+              # boot without API_MODE ("staff" or "public"); older images ignore it.
+              API_MODE: "staff"
               API_PORT: "8000"
               REDIS_URL: "redis://stockpile-redis.batcave.svc.cluster.local:6379"
               AUTH_CALLBACK_URL: "https://stockpile.${SECRET_DOMAIN}/api/auth/google/callback"
