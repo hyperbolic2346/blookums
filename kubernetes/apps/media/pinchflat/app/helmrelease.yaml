@@ -43,7 +43,7 @@ spec:
           fix-config-permissions:
             image:
               repository: busybox
-              tag: 1.36.1@sha256:67a8ef886e2ca4055f00e7cd13aedb9b24148c1451a6832d16fcc997a157eedc
+              tag: 1.36.1@sha256:b7f3d86d6e84fc17718c48bcde1450807faa2d56704205c697b4bd5df7b9e29f
             command: ["sh", "-c", "chown -R 568:568 /config"]
             securityContext:
               runAsUser: 0
