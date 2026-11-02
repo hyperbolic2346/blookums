@@ -281,6 +281,10 @@ spec:
               # Meta ad pixel. Keep automatic advanced matching off in Events
               # Manager: the shop's privacy page promises it sends no email.
               META_PIXEL_ID: "999698702448657"
+              # TikTok ad pixel. Keep automatic advanced matching and enhanced
+              # data postback off in Events Manager: the privacy page promises
+              # it sends no email, and the order page shows customer details.
+              TIKTOK_PIXEL_ID: "DBKDQ5RC77U24SKT89BG"
             envFrom:
               # Browser-side keys for Stripe and PayPal. Optional, as above.
               - secretRef:
