@@ -157,6 +157,14 @@ spec:
         containers:
           main:
             image: *backendImage
+            # Keeps serving after being told to stop, until the gateway has
+            # moved traffic off this copy. Without it a request can reach a
+            # copy that has already stopped: a 503 during a rollout. Stays well
+            # under the pod's 30 second shutdown limit.
+            lifecycle: &gracefulStop
+              preStop:
+                exec:
+                  command: ["sleep", "10"]
             env:
               !!merge <<: *backendEnv
               # Web requests only; subscribers and jobs run in the worker.
@@ -253,6 +261,7 @@ spec:
             image:
               repository: ghcr.io/nerdbucketinc/maison-flacon-storefront
               tag: main-8bc28a3-b60 # {"$imagepolicy": "flux-system:maison-flacon-storefront:tag"}
+            lifecycle: *gracefulStop
             env:
               # Server-side rendering talks to the backend in-cluster...
               MEDUSA_BACKEND_URL_INTERNAL: "http://maison-flacon-backend.maison-flacon.svc.cluster.local:9000"
