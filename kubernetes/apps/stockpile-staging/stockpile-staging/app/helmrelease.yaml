@@ -8,14 +8,23 @@
 #     which every container here loads. The api and the worker refuse to
 #     start without it (their commands check it first), and the app refuses
 #     to boot in staging without it. Email goes to the Mailpit capture below.
-#   - Reach: the app and its mail page are on the internal gateway only.
+#   - Reach: the app, its mail page and the online store are on the internal
+#     gateway only.
 #   - Egress: the api and worker reach only DNS, the database, their Redis,
-#     Mailpit and Google's token endpoint (sign-in); no other internet
+#     Mailpit, Google's token endpoint (sign-in), and the sandbox checkouts'
+#     Authorize.net sandbox and EasyPost; no other internet
 #     (networkpolicy.yaml), on top of the app's guard.
 #   - Credentials: staging's own 1Password item, role, key, Redis and
 #     hostname. The copy's stored plugin credentials are sealed under
 #     production's key, which staging never has; the scrub deletes them.
-#   - Repeating jobs: none of staging's own (STAGING_SCHEDULES empty).
+#   - Repeating jobs: the defaults, plus what a website checkout needs
+#     (STAGING_SCHEDULES, config.yaml).
+#   - Online store (stockpile docs/storefront.md): built to the shape production
+#     will use. The storefront pod talks only to the public api; the public api
+#     runs as its own restricted role, takes no staff setting, has no route of
+#     its own, and talks only to Postgres. The checkout's outside calls are the
+#     worker's and the staff api's. What the nightly copy can't carry is put back
+#     on every api start (03-storefront-role, 04-sandbox-setup).
 #
 # Pods stay off wally (small image disk) and the control plane.
 apiVersion: helm.toolkit.fluxcd.io/v2
@@ -91,6 +100,39 @@ spec:
             env:
               SUPER_ADMIN_EMAILS: "mike@batcaveballistics.com"
             envFrom: *envFrom
+          # The online store's public role, right after migrate, on every start
+          # (a refresh's copy comes with no grants; grants grow with features).
+          # As the tables' owner: no superuser login in this namespace, so
+          # --no-role-settings, and the role's statement_timeout is on its own
+          # DATABASE_URL (externalsecret.yaml).
+          03-storefront-role:
+            image: *apiImage
+            command:
+              - node
+              - dist/tools/apply-storefront-role.js
+              - --role
+              - stockpile_staging_public
+              - --database
+              - stockpile_staging
+              - --no-role-settings
+            envFrom: *envFrom
+          # What the copy can't carry: the storefront module, the site's host
+          # connected, the ship-to answer, and the sandbox gateway's and test
+          # carrier's keys, sealed under staging's key (stockpile docs/staging.md).
+          # The worker's minute sweep builds the listing from there. The keys are
+          # mounted here and nowhere else.
+          04-sandbox-setup:
+            image: *apiImage
+            command: ["node", "dist/tools/staging-sandbox-setup.js", "--confirm-staging-sandbox"]
+            env:
+              STAGING_SHOP_HOST: "stockpile-staging-shop.${SECRET_DOMAIN}"
+            envFrom:
+              - configMapRef:
+                  name: stockpile-staging-env
+              - secretRef:
+                  name: stockpile-staging-secret
+              - secretRef:
+                  name: stockpile-staging-sandbox-secret
         containers:
           main:
             image: *apiImage
@@ -161,6 +203,11 @@ spec:
               - >-
                 { grep -rqs -e STAGING_LOGIN_TOKEN dist && grep -rqs -e STAGING_SCHEDULES dist || { echo 'Refusing to start: this image has no staging mode (STAGING_LOGIN_TOKEN / STAGING_SCHEDULES); it needs a Stockpile main build that ships it.' >&2; exit 1; }; } && node -e "if (process.env.OUTBOUND_MODE !== 'readonly' || process.env.STOCKPILE_ENV !== 'staging') { console.error('Refusing to start: staging needs OUTBOUND_MODE=readonly and STOCKPILE_ENV=staging (stockpile#331).'); process.exit(1); }" && exec node dist/worker/main.js
             # WORKER_FAMILIES unset: this one worker runs every job family.
+            env:
+              # The checkout's payment links are made here, on the staff api's
+              # address (stockpile apiPublicBase). Unset, a link would point at
+              # localhost.
+              AUTH_CALLBACK_URL: "https://stockpile-staging.${SECRET_DOMAIN}/api/auth/google/callback"
             envFrom: *envFrom
             probes:
               liveness:
@@ -220,6 +267,124 @@ spec:
                   timeoutSeconds: 2
                   failureThreshold: 3
               readiness: *webProbe
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 192Mi
+      # The online store's public api (stockpile API_MODE=public): the same image,
+      # only /api/storefront and the health checks, reachable only from the
+      # storefront pods (networkpolicy.yaml), no HTTPRoute. It refuses to boot
+      # with any setting it doesn't read, so no envFrom of staging's whole map or
+      # the staff Secret; enableServiceLinks off for the same reason. Readiness
+      # refuses a role that can read too much or misses a grant (a LIMIT 0 of
+      # every granted table). The refresh stops it before the swap: a session on
+      # the database refuses the rename.
+      storefront-api:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        strategy: RollingUpdate
+        rollingUpdate:
+          surge: 1
+          unavailable: 0
+        pod:
+          enableServiceLinks: false
+          automountServiceAccountToken: false
+          terminationGracePeriodSeconds: 30
+        containers:
+          main:
+            image: *apiImage
+            # The same start check as the api's and the worker's.
+            command:
+              - sh
+              - -c
+              - >-
+                { grep -rqs -e STAGING_LOGIN_TOKEN dist && grep -rqs -e STAGING_SCHEDULES dist || { echo 'Refusing to start: this image has no staging mode (STAGING_LOGIN_TOKEN / STAGING_SCHEDULES); it needs a Stockpile main build that ships it.' >&2; exit 1; }; } && node -e "if (process.env.OUTBOUND_MODE !== 'readonly' || process.env.STOCKPILE_ENV !== 'staging' || process.env.API_MODE !== 'public') { console.error('Refusing to start: the public api needs OUTBOUND_MODE=readonly, STOCKPILE_ENV=staging and API_MODE=public (stockpile#331, #742).'); process.exit(1); }" && exec node dist/main.js
+            env:
+              API_MODE: "public"
+              API_PORT: "8000"
+              OUTBOUND_MODE:
+                valueFrom:
+                  configMapKeyRef:
+                    name: stockpile-staging-env
+                    key: OUTBOUND_MODE
+              STOCKPILE_ENV:
+                valueFrom:
+                  configMapKeyRef:
+                    name: stockpile-staging-env
+                    key: STOCKPILE_ENV
+            envFrom:
+              - secretRef:
+                  name: stockpile-staging-public-secret
+            securityContext: &publicSecure
+              runAsNonRoot: true
+              runAsUser: 1000
+              runAsGroup: 1000
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+            probes:
+              liveness: *apiProbe
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/health/ready
+                    port: 8000
+                  initialDelaySeconds: 5
+                  periodSeconds: 5
+                  # Once a minute this walks every column the role can see.
+                  timeoutSeconds: 5
+                  failureThreshold: 3
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 25m
+                memory: 192Mi
+              limits:
+                memory: 512Mi
+      # The online store itself: the web image's second app, its shop found by
+      # the host alone. Talks only to the public api; holds no secret or login.
+      storefront:
+        strategy: RollingUpdate
+        rollingUpdate:
+          surge: 1
+          unavailable: 0
+        pod:
+          enableServiceLinks: false
+          automountServiceAccountToken: false
+        containers:
+          main:
+            # Its own marker, so image automation moves it with the web pod.
+            image:
+              repository: ghcr.io/nerdbucketinc/stockpile-web
+              tag: main-c65526d-b1235 # {"$imagepolicy": "flux-system:stockpile-web-staging:tag"}
+            command: ["node", "/repo/apps/storefront/build"]
+            workingDir: /repo/apps/storefront
+            env:
+              STOREFRONT_API_URL: "http://stockpile-staging-storefront-api.stockpile-staging.svc.cluster.local:8000"
+              PORT: "3000"
+              # So a form posted from https://<host> matches its own origin.
+              PROTOCOL_HEADER: x-forwarded-proto
+            securityContext: *publicSecure
+            probes:
+              liveness: &storefrontProbe
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: 3000
+                  initialDelaySeconds: 5
+                  periodSeconds: 30
+                  timeoutSeconds: 2
+                  failureThreshold: 3
+              readiness: *storefrontProbe
               startup:
                 enabled: false
             resources:
@@ -303,6 +468,17 @@ spec:
         ports:
           http:
             port: 3000
+      # Cluster-internal: the storefront pods' way in, never a gateway's.
+      storefront-api:
+        controller: storefront-api
+        ports:
+          http:
+            port: 8000
+      storefront:
+        controller: storefront
+        ports:
+          http:
+            port: 3000
       redis:
         controller: redis
         ports:
@@ -340,6 +516,20 @@ spec:
                   value: /
             backendRefs:
               - identifier: web
+                port: 3000
+      # The online store: internal gateway (home network) only. Every path to
+      # the storefront pods; the public api has no route. Its one domain is the
+      # gateway's wildcard certificate, unlike production's one per shop.
+      # Connected by 04-sandbox-setup (STAGING_SHOP_HOST above).
+      storefront:
+        hostnames: ["stockpile-staging-shop.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: internal
+            namespace: kube-system
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: storefront
                 port: 3000
       # The capture inbox's page: internal gateway (home network) only,
       # behind Mailpit's own basic auth as well.

@@ -71,6 +71,11 @@ spec:
       - host all stockpile_staging all reject
       - host stockpile_staging,stockpile_staging_next,stockpile_staging_old,postgres stockpile_staging_refresh 10.42.0.0/16 scram-sha-256
       - host all stockpile_staging_refresh all reject
+      # Staging's online store's public api (role below): its one database,
+      # from pods; refused everywhere else (PUBLIC holds CONNECT on most of
+      # this cluster's databases).
+      - host stockpile_staging stockpile_staging_public 10.42.0.0/16 scram-sha-256
+      - host all stockpile_staging_public all reject
   managed:
     roles:
       # Login for Stockpile's migration rehearsal (ci namespace, PodTemplate
@@ -112,6 +117,12 @@ spec:
       #       it in. CREATEDB and membership in stockpile_staging are what
       #       that needs (REASSIGN OWNED, ALTER DATABASE RENAME, DROP).
       #       No membership in any production role.
+      #   stockpile_staging_public   the online store's public api on staging:
+      #       only the columns stockpile's applier grants it there, on every
+      #       api start. Its own role, not production's storefront_public: a role
+      #       is cluster-wide, so sharing that name would put a login that also
+      #       opens production in staging's item. No memberships, and readiness
+      #       refuses the pod if it ever gets one.
       - name: stockpile_staging
         ensure: present
         comment: Stockpile shadow staging app (stockpile-staging namespace)
@@ -130,6 +141,14 @@ spec:
           - stockpile_staging
         passwordSecret:
           name: stockpile-staging-refresh-db
+      - name: stockpile_staging_public
+        ensure: present
+        comment: Stockpile shadow staging online store, restricted (stockpile-staging namespace)
+        login: true
+        inherit: false
+        connectionLimit: 8
+        passwordSecret:
+          name: stockpile-staging-public-db
   backup:
     retentionPolicy: 14d
     barmanObjectStore:

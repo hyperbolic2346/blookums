@@ -19,14 +19,17 @@
 #   scrub    the staging image's own scrub tool on the scratch copy:
 #            personal data replaced, production's sealed secrets deleted,
 #            test users made.
-#   stop     staging's api and worker scaled to 0.
-#   swap     the scratch copy handed to the app's role and renamed into
-#            place in ONE transaction (stockpile_staging -> _old, _next ->
-#            stockpile_staging); _old dropped after. If ANY step before it
-#            failed, it drops stockpile_staging_next instead.
+#   stop     staging's api, worker and the online store's public api scaled
+#            to 0 (a session on the database refuses the rename).
+#   swap     the scratch copy handed to the app's role, its CONNECT given to
+#            the public api's role (the restore closed it to PUBLIC), and
+#            renamed into place in ONE transaction (stockpile_staging -> _old,
+#            _next -> stockpile_staging); _old dropped after. If ANY step before
+#            it failed, it drops stockpile_staging_next instead.
 #   start    staging's settings checked (OUTBOUND_MODE=readonly), a fresh
 #            Redis if the copy changed, then the api (its init chain
-#            migrates, a no-op now, and seeds) and the worker.
+#            migrates, a no-op now, seeds, grants the public role and puts the
+#            sandbox shop back) and the worker, then the public api.
 #
 # Failures: `precheck` and `dump` stop the Job outright (no copy exists
 # yet; `dump` deletes its partial file). From `restore` on, a step that
@@ -53,6 +56,7 @@ RELEASE=stockpile-staging
 DB=stockpile_staging
 NEXT=stockpile_staging_next
 OLD=stockpile_staging_old
+PUBLIC_ROLE=stockpile_staging_public
 FAILED=$WORK/failed
 
 redact() {
@@ -133,6 +137,9 @@ precheck() {
     fail "this image has no staging mode (STAGING_LOGIN_TOKEN / STAGING_SCHEDULES): it needs a Stockpile main build that ships it. Nothing read from production."
   [ -f dist/tools/staging-scrub.js ] ||
     fail "this image has no dist/tools/staging-scrub.js: it needs a Stockpile main build that ships it. Nothing read from production."
+  # The api's init chain needs it after the swap, or staging wouldn't come back.
+  [ -f dist/tools/staging-sandbox-setup.js ] ||
+    fail "this image has no dist/tools/staging-sandbox-setup.js: it needs a Stockpile main build that ships it. Nothing read from production."
   # The tool must load, and refuse: run WITHOUT --confirm-staging-scrub and
   # with a made-up SCRUB_DATABASE_URL that resolves nowhere, it exits 2 (its
   # refusal code) before connecting. Anything else (a load error is 1, a
@@ -261,14 +268,14 @@ scrub() {
 # ------------------------------------------------------------------ stop
 stop() {
   skip_if_failed
-  sel="app.kubernetes.io/instance=$RELEASE,app.kubernetes.io/controller in (api,worker)"
+  sel="app.kubernetes.io/instance=$RELEASE,app.kubernetes.io/controller in (api,worker,storefront-api)"
   touch "$WORK/stopped"
-  kubectl -n "$NS" scale deployment "$RELEASE-api" "$RELEASE-worker" --replicas=0 ||
-    soft_fail "could not scale the api and worker down; nothing swapped."
+  kubectl -n "$NS" scale deployment "$RELEASE-api" "$RELEASE-worker" "$RELEASE-storefront-api" --replicas=0 ||
+    soft_fail "could not scale the api, worker and public api down; nothing swapped."
   kubectl -n "$NS" wait pod --for=delete --timeout=300s -l "$sel" || true
   left=$(kubectl -n "$NS" get pod -o name -l "$sel" | wc -l)
-  [ "$left" -eq 0 ] || soft_fail "the api or worker didn't stop within 5 minutes; nothing swapped."
-  echo "api and worker stopped"
+  [ "$left" -eq 0 ] || soft_fail "the api, worker or public api didn't stop within 5 minutes; nothing swapped."
+  echo "api, worker and public api stopped"
 }
 
 # ------------------------------------------------------------------ swap
@@ -282,6 +289,10 @@ swap() {
   # Everything in the copy (and the database itself) to the app's role.
   q "$NEXT" -c "reassign owned by $REFRESH_USER to $DB" 2> "$WORK/q.err" ||
     soft_fail "could not hand $NEXT to $DB: $(first_error "$WORK/q.err"); nothing swapped."
+  # restore closed the copy to PUBLIC, which took the public api's role's way
+  # in. pg_hba refuses that role this name until the rename.
+  q postgres -c "grant connect on database $NEXT to $PUBLIC_ROLE" 2> "$WORK/q.err" ||
+    soft_fail "could not give $PUBLIC_ROLE CONNECT on $NEXT: $(first_error "$WORK/q.err"); nothing swapped."
   # One transaction: both names move, or neither does. A session still on
   # stockpile_staging (say, a pod Helm brought back) makes it refuse.
   q postgres -1 \
@@ -317,6 +328,9 @@ start() {
   kubectl -n "$NS" scale deployment "$RELEASE-api" "$RELEASE-worker" --replicas=1
   kubectl -n "$NS" rollout status deployment "$RELEASE-api" --timeout=900s
   kubectl -n "$NS" rollout status deployment "$RELEASE-worker" --timeout=900s
+  # After the api: its init chain is what grants the public role on this copy.
+  kubectl -n "$NS" scale deployment "$RELEASE-storefront-api" --replicas=1
+  kubectl -n "$NS" rollout status deployment "$RELEASE-storefront-api" --timeout=900s
   if [ -s "$FAILED" ]; then
     fail "staging is back up on YESTERDAY's copy: $(head -n 1 "$FAILED")"
   fi

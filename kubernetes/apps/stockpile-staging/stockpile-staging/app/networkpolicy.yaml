@@ -9,10 +9,14 @@
 #             how HTTPRoute traffic reaches the api, web and mail page
 #
 # Egress, unlike production: the api and the worker reach only DNS, the
-# database primary, this release's Redis and Mailpit, and (the api) Google's
-# OAuth token endpoint for sign-in. Everything else on the internet is
-# refused here, on top of the app's own guard (OUTBOUND_MODE=readonly): if
-# the guard ever let a write through, it would have nowhere to go. Real
+# database primary, this release's Redis and Mailpit, (the api) Google's
+# OAuth token endpoint for sign-in, and the sandbox checkouts' Authorize.net
+# sandbox, EasyPost and EasyPost's label bucket (the worker quotes and checks
+# payments; the staff api opens the card page and buys labels). Everything else
+# on the internet is refused here, on top of the app's own guard
+# (OUTBOUND_MODE=readonly), which still refuses Authorize.net's production host
+# and a production EasyPost key: if the guard ever let a write through, it would
+# have nowhere to go. Real
 # GunBroker or distributor READS would need their hosts added to the api's
 # and worker's toFQDNs; the fake GunBroker (stockpile#332) will be an
 # in-namespace endpoint instead. The web pod holds no secret and no
@@ -93,6 +97,18 @@ spec:
         - ports:
             - port: "443"
               protocol: TCP
+    # The sandbox checkouts: exactly the hosts the guard lets these writes reach
+    # (stockpile outbound-policy.ts), in the same spellings as its label bucket.
+    - toFQDNs:
+        - matchName: apitest.authorize.net
+        - matchName: api.easypost.com
+        - matchName: easypost-files.s3.amazonaws.com
+        - matchPattern: easypost-files.s3.*.amazonaws.com
+        - matchPattern: easypost-files.s3-*.amazonaws.com
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
 apiVersion: cilium.io/v2
@@ -139,6 +155,10 @@ spec:
               protocol: UDP
             - port: "53"
               protocol: TCP
+          # Cilium's DNS proxy learns the toFQDNs addresses below from these.
+          rules:
+            dns:
+              - matchPattern: "*"
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: databases
@@ -173,6 +193,103 @@ spec:
     #     - ports:
     #         - port: "8080"
     #           protocol: TCP
+    # The sandbox checkouts: exactly the hosts the guard lets these writes reach
+    # (stockpile outbound-policy.ts), in the same spellings as its label bucket.
+    - toFQDNs:
+        - matchName: apitest.authorize.net
+        - matchName: api.easypost.com
+        - matchName: easypost-files.s3.amazonaws.com
+        - matchPattern: easypost-files.s3.*.amazonaws.com
+        - matchPattern: easypost-files.s3-*.amazonaws.com
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+---
+# The online store's public api: accepts only the storefront pods (and the
+# kubelet's probes), and talks only to Postgres. DNS is how it finds Postgres.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: stockpile-staging-storefront-api
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: stockpile-staging
+      app.kubernetes.io/controller: storefront-api
+  ingress:
+    - fromEntities:
+        - host
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/instance: stockpile-staging
+            app.kubernetes.io/controller: storefront
+      toPorts:
+        - ports:
+            - port: "8000"
+              protocol: TCP
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: databases
+            cnpg.io/cluster: postgres
+            cnpg.io/instanceRole: primary
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+---
+# The online store: reached through the gateway, and talks only to the public
+# api. It holds no secret and no database login.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: stockpile-staging-storefront
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: stockpile-staging
+      app.kubernetes.io/controller: storefront
+  ingress:
+    - fromEntities:
+        - host
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "3000"
+              protocol: TCP
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/instance: stockpile-staging
+            app.kubernetes.io/controller: storefront-api
+      toPorts:
+        - ports:
+            - port: "8000"
+              protocol: TCP
 ---
 # Redis is this release's api and worker's only.
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
