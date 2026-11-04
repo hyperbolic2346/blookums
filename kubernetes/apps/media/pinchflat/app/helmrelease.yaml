@@ -27,10 +27,12 @@ spec:
   values:
     defaultPodOptions:
       securityContext:
-        # Match media stack defaults so Plex/Jellyfin/Sonarr/SAB can manage files (568:568)
-        runAsUser: 568
-        runAsGroup: 568
-        fsGroup: 568
+        # Runs as 1000:545 because the NFS share (10.0.1.14:/mnt/fileserv/Library/Videos/YouTube)
+        # is owned 1000:545. Moving to the media-stack 568:568 (#810) needs that share
+        # chowned to 568:568 on the fileserver first, or the pod exits "/downloads not writeable".
+        runAsUser: 1000
+        runAsGroup: 545
+        fsGroup: 545
         fsGroupChangePolicy: OnRootMismatch
         supplementalGroups:
           - 1001
@@ -44,7 +46,7 @@ spec:
             image:
               repository: busybox
               tag: 1.38.0@sha256:f97baa533a26513c453a362be331a43eb60214302f449c16571b23cea141dce4
-            command: ["sh", "-c", "chown -R 568:568 /config"]
+            command: ["sh", "-c", "chown -R 1000:545 /config"]
             securityContext:
               runAsUser: 0
               runAsGroup: 0
