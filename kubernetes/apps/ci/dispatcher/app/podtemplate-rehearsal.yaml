@@ -28,6 +28,15 @@
 #   previous-ready  /api/health/ready must answer 200
 #   previous-reads  the deployed release's Prisma client reads every table
 #                   and knows every enum value now in the copy
+#   public-role     candidate: the storefront role's grants, as the copy's
+#                   owner (dist/tools/apply-storefront-role.js)
+#   public          candidate as API_MODE=public on :8002 (service), as the
+#                   restricted role, with the settings a public pod has
+#   public-ready    /api/health/ready must answer 200 and stay so past a second
+#                   walk of the role's grants; outbound mode readonly; a store
+#                   route must not be a 5xx. A public api that exits fails this
+#                   at once, with its reason. Candidate only: the deployed
+#                   release runs no public pod yet.
 #   passed          the pod finishes; the services are stopped
 #
 # Production data stays in this pod: in the memory-backed emptyDir
@@ -318,6 +327,34 @@ template:
         terminationMessagePolicy: File
         securityContext: *app
         resources: *oneShot
+        volumeMounts: *appMounts
+      # Last, so every check above has run on a copy nothing here has touched.
+      - name: public-role
+        image: candidate
+        command: ["sh", "/rehearsal/rehearsal.sh", "public_role"]
+        terminationMessagePolicy: File
+        securityContext: *app
+        resources: *oneShot
+        volumeMounts: *appMounts
+      - name: public
+        image: candidate
+        restartPolicy: Always
+        command: ["sh", "/rehearsal/rehearsal.sh", "public", "8002"]
+        securityContext: *app
+        # As the real pod's (stockpile-staging's storefront-api).
+        resources:
+          requests:
+            cpu: 25m
+            memory: 192Mi
+          limits:
+            memory: 512Mi
+        volumeMounts: *appMounts
+      - name: public-ready
+        image: candidate
+        command: ["sh", "/rehearsal/rehearsal.sh", "public_ready", "8002"]
+        terminationMessagePolicy: File
+        securityContext: *app
+        resources: *probe
         volumeMounts: *appMounts
     containers:
       - name: passed

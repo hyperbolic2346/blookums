@@ -1319,12 +1319,14 @@ const REHEARSAL_STEPS = {
   reads: "reading the copy with the new build",
   "previous-ready": "waiting for the deployed release's api",
   "previous-reads": "reading the copy with the deployed release",
+  "public-role": "applying the public role's grants",
+  "public-ready": "waiting for the public api",
 };
 
 // The steps whose failure the change caused: they post "failure", which
 // sticks. Any other way a rehearsal ends badly is the rehearsal's own
 // trouble (copy, services, image pull, eviction, timeout): "error".
-const CHANGE_STEPS = ["migrate", "seed", "api-ready", "worker-ready", "reads", "previous-ready", "previous-reads"];
+const CHANGE_STEPS = ["migrate", "seed", "api-ready", "worker-ready", "reads", "previous-ready", "previous-reads", "public-role", "public-ready"];
 
 // { state: success | failure | error, description }
 function rehearsalOutcome(job, result, sum) {
@@ -1333,7 +1335,7 @@ function rehearsalOutcome(job, result, sum) {
     const migrate = (sum.steps.find((s) => s.name === "migrate") || {}).message || "";
     const m = /^Applied (\d+) new migration/.exec(migrate);
     const what = m ? m[1] + " new migration" + (m[1] === "1" ? "" : "s") + " applied" : "no new migrations";
-    return { state: "success", description: "Passed on a copy of production: " + what + "; new api, worker and the deployed release ready" + took };
+    return { state: "success", description: "Passed on a copy of production: " + what + "; new api, worker, public api and the deployed release ready" + took };
   }
   const failed = sum.steps.find((s) => !s.sidecar && s.exitCode != null && s.exitCode !== 0);
   if (failed && CHANGE_STEPS.includes(failed.name)) {
