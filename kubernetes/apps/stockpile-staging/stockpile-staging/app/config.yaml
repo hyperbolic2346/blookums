@@ -2,9 +2,12 @@
 # Staging's settings, in ONE place: every container that runs the Stockpile
 # api image here (the api, its init steps, the worker, the refresh's
 # migrate and scrub steps) loads this whole map through envFrom, so none
-# of them can run without OUTBOUND_MODE=readonly. The api and the worker
-# also refuse to start unless it reads exactly that (their commands, in
-# helmrelease.yaml), and the app refuses to boot in staging without it.
+# of them can run without OUTBOUND_MODE=readonly. The online store's public
+# api can't load all of it (it refuses to boot with a setting it doesn't
+# read), so it takes OUTBOUND_MODE and STOCKPILE_ENV from this map by name.
+# The api, the worker and the public api also refuse to start unless it reads
+# exactly that (their commands, in helmrelease.yaml), and the app refuses to
+# boot in staging without it.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -14,8 +17,13 @@ data:
   STOCKPILE_ENV: staging
   # stockpile#329: every outside write refused before it is sent.
   OUTBOUND_MODE: readonly
-  # No repeating jobs of staging's own (catalog syncs, sweeps): empty.
-  STAGING_SCHEDULES: ""
+  # Repeating jobs on top of the defaults, which touch staging's own database
+  # only (channel policy, housekeeping, the storefront listing: stockpile
+  # docs/staging.md). Only what a website checkout needs: its live rates and
+  # payment links, and the check of a payment whose return was lost. Both go out
+  # only to Authorize.net's sandbox and EasyPost with a test key, the two the
+  # guard lets a write reach. No catalog syncs, no GunBroker, no email.
+  STAGING_SCHEDULES: "storefront-checkout,payment-links"
   # Email to the capture inbox (mailpit in helmrelease.yaml), never a
   # recipient.
   OUTBOUND_MAIL_CAPTURE: "smtp://stockpile-staging-mailpit.stockpile-staging.svc.cluster.local:1025"

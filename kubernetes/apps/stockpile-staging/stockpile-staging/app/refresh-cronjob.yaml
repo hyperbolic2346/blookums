@@ -13,11 +13,13 @@
 #   scrub    (init)  staging's api image: dist/tools/staging-scrub.js on the
 #                    copy. Non-zero: nothing swapped, staging keeps
 #                    yesterday's.
-#   stop     (init)  staging's api and worker scaled to 0.
+#   stop     (init)  staging's api, worker and public api scaled to 0.
 #   swap     (init)  the copy handed to the app's role and renamed into
 #                    place, one transaction; yesterday's dropped. After any
 #                    earlier failure it drops the scratch copy instead.
-#   start    (main)  OUTBOUND_MODE checked, fresh Redis, api and worker up.
+#   start    (main)  OUTBOUND_MODE checked, fresh Redis, api and worker up
+#                    (the api's init chain grants the public role and puts the
+#                    sandbox shop back), then the public api.
 #
 # Until `stop`, staging runs on yesterday's copy throughout. From `stop` on,
 # `start` always brings it back (refresh.sh explains), unless the settings
@@ -219,7 +221,7 @@ kind: ServiceAccount
 metadata:
   name: stockpile-staging-refresh
 ---
-# Scale and restart this namespace's api, worker and Redis, see its pods,
+# Scale and restart this namespace's api, worker, public api and Redis, see its pods,
 # read staging's settings map. Nothing else, nowhere else.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -235,7 +237,7 @@ rules:
     verbs: ["patch"]
   - apiGroups: ["apps"]
     resources: ["deployments/scale"]
-    resourceNames: ["stockpile-staging-api", "stockpile-staging-worker"]
+    resourceNames: ["stockpile-staging-api", "stockpile-staging-worker", "stockpile-staging-storefront-api"]
     verbs: ["get", "patch", "update"]
   - apiGroups: ["apps"]
     resources: ["replicasets"]
