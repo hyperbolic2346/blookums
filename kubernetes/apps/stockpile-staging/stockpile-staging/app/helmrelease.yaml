@@ -249,7 +249,7 @@ spec:
           main:
             image:
               repository: ghcr.io/nerdbucketinc/stockpile-web
-              tag: main-ed0a427-b1241 # {"$imagepolicy": "flux-system:stockpile-web-staging:tag"}
+              tag: main-cdc0eb6-b1242 # {"$imagepolicy": "flux-system:stockpile-web-staging:tag"}
             env:
               PUBLIC_API_URL: "https://stockpile-staging.${SECRET_DOMAIN}"
               PORT: "3000"
@@ -363,7 +363,7 @@ spec:
             # Its own marker, so image automation moves it with the web pod.
             image:
               repository: ghcr.io/nerdbucketinc/stockpile-web
-              tag: main-ed0a427-b1241 # {"$imagepolicy": "flux-system:stockpile-web-staging:tag"}
+              tag: main-cdc0eb6-b1242 # {"$imagepolicy": "flux-system:stockpile-web-staging:tag"}
             command: ["node", "/repo/apps/storefront/build"]
             workingDir: /repo/apps/storefront
             env:
