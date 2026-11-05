@@ -24,6 +24,8 @@ WORK=/work
 SOCK=/var/run/postgresql
 APP_ROLE=stockpile
 APP_PASS=rehearsal
+PUBLIC_ROLE=storefront_public
+PUBLIC_DOWN=$WORK/public.down
 DB=$CI_REHEARSAL_DB
 
 say() {
@@ -202,6 +204,81 @@ ready() {
 reads() {
   app_env
   node /rehearsal/schema-reads.js "$1"
+}
+
+# ------------------------------------------------------------------ public
+# The candidate as the online store's api (stockpile API_MODE=public), on the
+# migrated copy, as its own restricted role (stockpile docs/storefront.md). A
+# candidate that can't boot this way fails here, before staging and production.
+
+# The grants, as blookums applies them after a migration. As the tables' owner,
+# so the role's statement_timeout is on its URL (public), as on staging.
+public_role() {
+  app_env
+  mkdir -p "$WORK"
+  rc=0
+  node dist/tools/apply-storefront-role.js --role "$PUBLIC_ROLE" --database "$DB" --no-role-settings \
+    > "$WORK/public-role.out" 2>&1 || rc=$?
+  redact < "$WORK/public-role.out"
+  if [ "$rc" -ne 0 ]; then
+    # Fixed words: its error could quote what the database said.
+    fail "The public role's grants could not be applied to the migrated copy (step public-role, exit $rc; see the log)"
+  fi
+  say "Applied the public role's grants to the migrated copy"
+}
+
+idle() {
+  while :; do sleep 3600; done
+}
+
+# Never app_env: the public api refuses any setting it doesn't read, so a staff
+# secret or REDIS_URL would stop it. CI_* is what only the rehearsal adds, so it
+# goes. Everything else the image and the pod give it stays, so a setting that
+# would stop a real public pod stops this one too. No cd in this script: OLDPWD
+# is refused as well.
+#
+# It never exits and never boots twice: when the api goes down, the reason is
+# left for public_ready, which fails at once. A sidecar that exited would be
+# restarted with backoff, and could come back ready and hide the crash.
+public() {
+  mkdir -p "$WORK"
+  if [ -e "$WORK/public.started" ]; then
+    # The whole container was killed (its memory limit, say) and restarted.
+    [ -e "$PUBLIC_DOWN" ] || echo "Public api was killed while it ran (out of memory?); see the log" > "$PUBLIC_DOWN"
+    idle
+  fi
+  : > "$WORK/public.started"
+
+  for name in $(env | sed -n -E 's/^(CI_[A-Za-z0-9_]*)=.*/\1/p'); do
+    unset "$name"
+  done
+  export API_MODE=public
+  export API_PORT="$1"
+  export OUTBOUND_MODE=readonly
+  export DATABASE_URL="postgresql://$PUBLIC_ROLE@127.0.0.1:5432/$DB?sslmode=disable&connection_limit=3&options=-c%20TimeZone%3DUTC%20-c%20statement_timeout%3D2s"
+
+  rc=0
+  node dist/main.js 2>&1 | redact_lines | tee "$WORK/public.out" || rc=$?
+
+  # The first error line, already redacted, without colors (NO_COLOR would be
+  # refused) or the logger's prefix. Boot refusals name settings, never values.
+  esc=$(printf '\033')
+  why=$(sed "s/$esc\[[0-9;]*m//g" "$WORK/public.out" | { grep -m1 -E 'ERROR|FATAL|[Ee]rror:' || true; } |
+    sed -E 's/^.*ERROR +(\[[^]]*\] +)?//' | tr -s ' \t' ' ' | cut -c1-240)
+  [ -n "$why" ] || why="see the log"
+  echo "Public api exited ($rc): $why" | tee "$PUBLIC_DOWN"
+  idle
+}
+
+# Ready, and still ready past the 60s the role's verdict is kept for, so that
+# readiness walks the role's grants twice; then its outbound mode and one store
+# route. Misses as its real pod's readiness probe allows (3 in a row fail): the
+# walk runs under the role's 2s statement_timeout, and a slow moment is not a
+# broken candidate. A refusal (role-too-broad, schema-behind) answers the same
+# every time, so it still fails.
+public_ready() {
+  PROBE_DOWN_FILE=$PUBLIC_DOWN PROBE_MISSES=2 PROBE_ROUTE="http://127.0.0.1:$1/api/storefront/shop" \
+    node /rehearsal/probe.js "public api" "http://127.0.0.1:$1/api/health/ready" 180 70 "http://127.0.0.1:$1/api/health"
 }
 
 passed() {

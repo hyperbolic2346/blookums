@@ -139,6 +139,7 @@ fs.writeFileSync(path.join(tmp, "config.json"), JSON.stringify({
   repos: {
     stockpile: { buildArgs: {}, images: [{ name: "api", dockerfile: "apps/api/Dockerfile", repository: "ghcr.io/x/stockpile-api" }] },
     sutler: { buildArgs: {}, images: [{ name: "api", dockerfile: "apps/api/Dockerfile", repository: "ghcr.io/x/sutler-api" }] },
+    rehearsed: { buildArgs: {}, images: [{ name: "api", dockerfile: "apps/api/Dockerfile", repository: "ghcr.io/x/rehearsed-api" }], rehearsal: { template: "t", image: "api" } },
   },
 }));
 Object.assign(process.env, {
@@ -520,4 +521,59 @@ test("schedule: the superseded head is dropped and the newest head starts", asyn
   assert.deepEqual(released(), [b.metadata.name]);
   const err = fake.statuses.filter((s) => s.state === "error");
   assert.deepEqual(err.map((s) => [s.sha, s.description]), [[sha(1), "Skipped: superseded by 2222222 before it started"]]);
+});
+
+// ---------------------------------------------------------------- rehearsal
+
+const rehearsalJobOf = (conditions = []) => ({ status: { conditions } });
+const step = (name, exitCode, message = "", sidecar = false) => ({ name, exitCode, message, sidecar, reason: "", ms: 1000 });
+
+test("rehearsal: a public api that can't boot is the change's failure, with its reason", () => {
+  const reason = "Public api exited (1): REFUSING TO START: API_MODE=public is given settings it doesn't use: remove VIPSHOME";
+  const out = d.rehearsalOutcome(rehearsalJobOf([{ type: "Failed", reason: "BackoffLimitExceeded" }]), "failure", {
+    ms: 60000,
+    steps: [step("reads", 0), step("public-role", 0), step("public", 137, "", true), step("public-ready", 1, reason)],
+  });
+  assert.deepEqual(out, { state: "failure", description: reason });
+  const role = d.rehearsalOutcome(rehearsalJobOf(), "failure", { ms: 60000, steps: [step("public-role", 1, "no grants")] });
+  assert.deepEqual(role, { state: "failure", description: "no grants" });
+});
+
+test("rehearsal: a run out of time waiting for the public api says so, as the rehearsal's own", () => {
+  const out = d.rehearsalOutcome(rehearsalJobOf([{ type: "Failed", reason: "DeadlineExceeded" }]), "failure", {
+    ms: 1800000,
+    steps: [step("reads", 0), step("public", null, "", true), step("public-ready", null)],
+  });
+  assert.equal(out.state, "error");
+  assert.match(out.description, /timed out waiting for the public api/);
+});
+
+test("rehearsal: the dispatcher adds only CI_* to a container, which is all the public step takes away", () => {
+  const spec = {
+    automountServiceAccountToken: false,
+    initContainers: [{ name: "public", image: "candidate", restartPolicy: "Always" }],
+    containers: [{ name: "passed", image: "x@sha256:" + "a".repeat(64) }],
+  };
+  const j = d.rehearsalJob({ repo: "rehearsed", sha: sha(1), suffix: "s", image: "ghcr.io/x/rehearsed-api:main-1-b1" },
+    { template: { metadata: {}, spec } }, "ghcr.io/x/rehearsed-api:main-0-b0");
+  const c = j.spec.template.spec.initContainers[0];
+  assert.equal(c.image, "ghcr.io/x/rehearsed-api:main-1-b1");
+  assert.ok(c.env.length > 0);
+  assert.deepEqual(c.env.filter((e) => !e.name.startsWith("CI_")), []);
+});
+
+test("rehearsal template: only the candidate boots as the public api, and after every other check", () => {
+  const text = fs.readFileSync(new URL("../app/podtemplate-rehearsal.yaml", import.meta.url), "utf8");
+  const steps = [...text.matchAll(/^ {6}- name: (\S+)\n {8}image: (\S+)(?:\n.*?)*?(?=^ {6}- name: |^ {4}\S)/gm)]
+    .map((m) => ({ name: m[1], image: m[2], block: m[0] }));
+  const publicSteps = steps.filter((x) => /rehearsal\.sh", "public/.test(x.block));
+  assert.deepEqual(publicSteps.map((x) => [x.name, x.image]),
+    [["public-role", "candidate"], ["public", "candidate"], ["public-ready", "candidate"]]);
+  const names = steps.map((x) => x.name);
+  assert.ok(names.indexOf("previous-reads") < names.indexOf("public-role"));
+  assert.ok(!/app_env/.test(text));
+  const sh = fs.readFileSync(new URL("../app/rehearsal/rehearsal.sh", import.meta.url), "utf8");
+  const body = /^public\(\) \{\n([\s\S]*?)^\}/m.exec(sh)[1];
+  assert.ok(!/app_env/.test(body), "the public api must not take the staff settings");
+  assert.ok(!/\bcd\b/.test(sh.replace(/^\s*#.*$/gm, "")), "a cd would set OLDPWD, which the public api refuses");
 });
