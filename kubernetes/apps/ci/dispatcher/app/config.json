@@ -18,7 +18,8 @@
       "buildArgs": { "BUILD_SHA": "sha7", "BUILD_NUMBER": "number", "BUILD_DATE": "date", "BUILD_REF": "ref" },
       "images": [
         { "name": "api", "dockerfile": "apps/api/Dockerfile", "repository": "ghcr.io/nerdbucketinc/stockpile-api" },
-        { "name": "web", "dockerfile": "apps/web/Dockerfile", "repository": "ghcr.io/nerdbucketinc/stockpile-web" }
+        { "name": "web", "dockerfile": "apps/web/Dockerfile", "repository": "ghcr.io/nerdbucketinc/stockpile-web" },
+        { "name": "fake-gunbroker", "dockerfile": "apps/fake-gunbroker/Dockerfile", "repository": "ghcr.io/nerdbucketinc/stockpile-fake-gunbroker" }
       ],
       "rehearsal": {
         "template": "rehearsal-stockpile",

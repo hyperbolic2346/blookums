@@ -32,3 +32,18 @@ spec:
   policy:
     numerical:
       order: asc
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: stockpile-fake-gunbroker-staging
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: stockpile-fake-gunbroker
+  filterTags:
+    pattern: '^main-[0-9a-f]+-b(?P<build>\d+)$'
+    extract: '$build'
+  policy:
+    numerical:
+      order: asc
