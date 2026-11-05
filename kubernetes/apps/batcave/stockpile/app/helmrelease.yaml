@@ -314,21 +314,3 @@ spec:
             backendRefs:
               - identifier: web
                 port: 3000
-      # Burntsheep -> Nerdbucket permanent redirect for the old hostname.
-      redirect:
-        hostnames: ["stockpile.${SECRET_DOMAIN}"]
-        parentRefs:
-          - name: external
-            namespace: kube-system
-            sectionName: https
-        rules:
-          - matches:
-              - path:
-                  type: PathPrefix
-                  value: /
-            filters:
-              - type: RequestRedirect
-                requestRedirect:
-                  scheme: https
-                  hostname: "stockpile.${SECRET_DOMAIN_SUTLER}"
-                  statusCode: 308
