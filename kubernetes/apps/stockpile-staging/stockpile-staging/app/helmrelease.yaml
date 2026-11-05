@@ -457,6 +457,39 @@ spec:
                 memory: 32Mi
               limits:
                 memory: 128Mi
+      # The fake GunBroker (stockpile#332): every answer invented, state in
+      # memory, so a restart starts it empty. It calls nothing.
+      fake-gunbroker:
+        containers:
+          main:
+            image:
+              repository: ghcr.io/nerdbucketinc/stockpile-fake-gunbroker
+              tag: FIRST_IMAGE_TAG # {"$imagepolicy": "flux-system:stockpile-fake-gunbroker-staging:tag"}
+            env:
+              FAKE_GUNBROKER_ADMIN_TOKEN:
+                valueFrom:
+                  secretKeyRef:
+                    name: stockpile-staging-fake-gunbroker
+                    key: FAKE_GUNBROKER_ADMIN_TOKEN
+            probes:
+              liveness: &fakeProbe
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: 8080
+                  initialDelaySeconds: 3
+                  periodSeconds: 20
+              readiness: *fakeProbe
+              startup:
+                enabled: false
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                memory: 128Mi
     service:
       api:
         controller: api
@@ -491,6 +524,11 @@ spec:
             port: 8025
           smtp:
             port: 1025
+      fake-gunbroker:
+        controller: fake-gunbroker
+        ports:
+          http:
+            port: 8080
     route:
       # INTERNAL gateway (home network) until the first scrubbed copy has
       # been checked. To publish it: parentRefs name external (sectionName
@@ -531,6 +569,18 @@ spec:
           - backendRefs:
               - identifier: storefront
                 port: 3000
+      # The fake GunBroker's admin door, for the end-to-end suite: internal gateway
+      # only, behind its own bearer token.
+      fake-gunbroker:
+        hostnames: ["stockpile-staging-fake-gb.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: internal
+            namespace: kube-system
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: fake-gunbroker
+                port: 8080
       # The capture inbox's page: internal gateway (home network) only,
       # behind Mailpit's own basic auth as well.
       mail:
