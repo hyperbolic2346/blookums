@@ -258,7 +258,7 @@ scrub() {
   skip_if_failed
   export HOME=/tmp
   rc=0
-  node dist/tools/staging-scrub.js --confirm-staging-scrub > "$WORK/scrub.out" 2>&1 || rc=$?
+  node dist/tools/staging-scrub.js --confirm-staging-scrub --main-shop bat-cave-ballistics > "$WORK/scrub.out" 2>&1 || rc=$?
   redact < "$WORK/scrub.out" | tail -n 60
   rm -f "$WORK/scrub.out"
   [ "$rc" -eq 0 ] || soft_fail "the scrub exited $rc. Nothing swapped: staging keeps yesterday's copy."
