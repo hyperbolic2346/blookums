@@ -21,6 +21,19 @@ spec:
   secretRef:
     name: ghcr-pull
 ---
+# Staging and tests only (stockpile#332, docs/fake-gunbroker.md). Production
+# never runs it.
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: stockpile-fake-gunbroker
+  namespace: flux-system
+spec:
+  image: ghcr.io/nerdbucketinc/stockpile-fake-gunbroker
+  interval: 10m
+  secretRef:
+    name: ghcr-pull
+---
 apiVersion: image.toolkit.fluxcd.io/v1
 kind: ImageRepository
 metadata:
