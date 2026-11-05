@@ -22,8 +22,9 @@ data:
   # docs/staging.md). Only what a website checkout needs: its live rates and
   # payment links, and the check of a payment whose return was lost. Both go out
   # only to Authorize.net's sandbox and EasyPost with a test key, the two the
-  # guard lets a write reach. No catalog syncs, no GunBroker, no email.
-  STAGING_SCHEDULES: "storefront-checkout,payment-links"
+  # guard lets a write reach. Plus GunBroker's listing and order polls, which
+  # only ever reach the fake below. No catalog syncs, no email.
+  STAGING_SCHEDULES: "storefront-checkout,payment-links,gunbroker"
   # Email to the capture inbox (mailpit in helmrelease.yaml), never a
   # recipient.
   OUTBOUND_MAIL_CAPTURE: "smtp://stockpile-staging-mailpit.stockpile-staging.svc.cluster.local:1025"
@@ -32,9 +33,13 @@ data:
   SECRETS_ENCRYPTION_PRIMARY_ID: staging
   # Auto-list off as well: its writes would be refused anyway.
   DROPSHIP_AUTOLIST: "off"
-  # The fake GunBroker (stockpile#332), once it exists in this namespace;
-  # the api's and worker's egress policy (networkpolicy.yaml) then needs it.
-  # GUNBROKER_API_BASE: "http://stockpile-staging-fake-gunbroker.stockpile-staging.svc.cluster.local:8080"
+  # The fake GunBroker (stockpile#332, docs/fake-gunbroker.md). Every GunBroker
+  # call goes here, whatever the account's sandbox switch says; a real
+  # gunbroker.com host is refused. The keys are invented: the fake only checks
+  # that one is sent.
+  GUNBROKER_API_BASE: "http://stockpile-staging-fake-gunbroker.stockpile-staging.svc.cluster.local:8080"
+  GB_DEV_KEY: "staging-invented-dev-key"
+  GB_SANDBOX_DEV_KEY: "staging-invented-dev-key"
   # Prisma's update check calls the internet, which egress refuses here.
   CHECKPOINT_DISABLE: "1"
   PRISMA_HIDE_UPDATE_MESSAGE: "1"
