@@ -67,6 +67,15 @@ spec:
         annotations:
           reloader.stakater.com/auto: "true"
         pod:
+          # CoreDNS autopath answers the first search-path lookup itself, so with
+          # ndots:5 Cilium files the address under <name>.<namespace>.svc.cluster.local
+          # and the toFQDNs rules in networkpolicy.yaml never match: every outside
+          # call times out, "Policy denied". ndots:1 asks for the real name first.
+          # Everything in the cluster is named here with a full *.svc.cluster.local.
+          dnsConfig: &fqdnDns
+            options:
+              - name: ndots
+                value: "1"
           terminationGracePeriodSeconds: 30
         initContainers:
           # Nothing runs, migrations included, on an image without staging
@@ -193,6 +202,7 @@ spec:
         # One worker runs every job family (staging's load is small).
         strategy: Recreate
         pod:
+          dnsConfig: *fqdnDns
           terminationGracePeriodSeconds: 30
         containers:
           main:
