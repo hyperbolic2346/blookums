@@ -123,7 +123,7 @@ spec:
           # mounted here and nowhere else.
           04-sandbox-setup:
             image: *apiImage
-            command: ["node", "dist/tools/staging-sandbox-setup.js", "--confirm-staging-sandbox"]
+            command: ["node", "dist/tools/staging-sandbox-setup.js", "--confirm-staging-sandbox", "--shop", "bat-cave-ballistics"]
             env:
               STAGING_SHOP_HOST: "stockpile-staging-shop.${SECRET_DOMAIN}"
             envFrom:
@@ -153,7 +153,7 @@ spec:
               AUTH_SECURE_COOKIES: "true"
               AUTH_REQUIRE_STRONG_SECRET: "true"
               AUTH_POST_LOGIN_REDIRECT: "/"
-              DEFAULT_TENANT: "demo"
+              DEFAULT_TENANT: "bat-cave-ballistics"
               SUPER_ADMIN_EMAILS: "mike@batcaveballistics.com"
             envFrom: *envFrom
             probes:
