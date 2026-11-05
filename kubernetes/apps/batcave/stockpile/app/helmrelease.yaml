@@ -82,7 +82,7 @@ spec:
               # The session secret was rotated to 44 chars (2026-10-08); a short one is now a boot error.
               AUTH_REQUIRE_STRONG_SECRET: "true"
               AUTH_POST_LOGIN_REDIRECT: "/"
-              DEFAULT_TENANT: "demo"
+              DEFAULT_TENANT: "bat-cave-ballistics"
               SUPER_ADMIN_EMAILS: "mike@batcaveballistics.com"
               # Settings › Printing shows the print helper card (pairing codes)
               # only when this is set. The releases page, not /releases/latest:
