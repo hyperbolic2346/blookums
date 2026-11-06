@@ -55,7 +55,7 @@ spec:
           02-migrate:
             image: &apiImage
               repository: ghcr.io/nerdbucketinc/stockpile-api
-              tag: 1.0.9 # {"$imagepolicy": "flux-system:stockpile-api:tag"}
+              tag: 1.0.10 # {"$imagepolicy": "flux-system:stockpile-api:tag"}
             command: ["npx", "prisma", "migrate", "deploy"]
             envFrom: &envFrom
               - secretRef:
@@ -218,7 +218,7 @@ spec:
           main:
             image:
               repository: ghcr.io/nerdbucketinc/stockpile-web
-              tag: 1.0.9 # {"$imagepolicy": "flux-system:stockpile-web:tag"}
+              tag: 1.0.10 # {"$imagepolicy": "flux-system:stockpile-web:tag"}
             env:
               PUBLIC_API_URL: "https://stockpile.${SECRET_DOMAIN_SUTLER}"
               PORT: "3000"
