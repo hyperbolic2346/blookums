@@ -1,9 +1,9 @@
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/kustomization-kustomize-v1.json
 #
-# Telemetry for Screwed and Teeter: POST https://telemetry.${SECRET_DOMAIN_SUTLER}/v2/batch.
+# Telemetry for Screwed and Teeter, plus App Store download reports: POST https://telemetry.${SECRET_DOMAIN_SUTLER}/v2/batch.
 # Plan: hyperbolic2346/teeter docs/telemetry.md (issue #48). Source and image:
-# hyperbolic2346/nerdbucket-telemetry.
+# NerdbucketInc/nerdbucket-telemetry.
 #
 #   - dependsOn cloudnative-pg-cluster: the init containers create the telemetry database
 #     and its two roles on the shared cluster (and its pg_hba lines confine those roles);

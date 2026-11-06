@@ -81,3 +81,40 @@ spec:
         - ports:
             - port: "5432"
               protocol: TCP
+---
+# The store import listens on nothing; only the node is admitted. Its egress: DNS (through
+# Cilium's DNS proxy, so the toFQDNs rule learns Apple's address), the database primary, and
+# App Store Connect's API on 443. The shared telemetry-egress policy above also applies.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: telemetry-storeimport
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: telemetry
+      app.kubernetes.io/controller: storeimport
+  ingress:
+    - fromEntities:
+        - host
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toFQDNs:
+        - matchName: api.appstoreconnect.apple.com
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP

@@ -1,10 +1,12 @@
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/helmrelease-helm-v2.json
 #
-# The telemetry server (ingest only) and its nightly job. One image, three commands:
-#   src/main.ts      the server, POST /v2/batch on :8080 (/healthz, /metrics for the cluster)
-#   src/migrate.ts   schema migrations, then SELECT grants for telemetry_reader
-#   src/maintain.ts  daily rollup, then deletes raw events older than 13 months
+# The telemetry server (ingest only) and its two daily jobs. One image, four commands:
+#   src/main.ts         the server, POST /v2/batch on :8080 (/healthz, /metrics for the cluster)
+#   src/migrate.ts      schema migrations, then SELECT grants for telemetry_reader
+#   src/maintain.ts     daily rollup, then deletes raw events older than 13 months
+#   src/storeimport.ts  App Store Connect's daily Sales reports into store_daily (the
+#                       "Store downloads" board): Apple's aggregate counts, not player data
 #
 # Privacy: the server never reads the client address or forwarding headers and logs nothing
 # per request (see httproute.yaml for the whole path, which also strips those headers).
@@ -102,8 +104,8 @@ spec:
           # 3) schema migrations as the owner, then SELECT grants for the reader
           03-migrate:
             image: &image
-              repository: ghcr.io/hyperbolic2346/nerdbucket-telemetry
-              tag: main-efb9b20-b6 # {"$imagepolicy": "flux-system:nerdbucket-telemetry:tag"}
+              repository: ghcr.io/nerdbucketinc/nerdbucket-telemetry
+              tag: main-5a178e4-b9 # {"$imagepolicy": "flux-system:nerdbucket-telemetry:tag"}
             args: ["src/migrate.ts"]
             env: &dbEnv
               PGHOST: postgres-rw.databases.svc.cluster.local
@@ -173,6 +175,49 @@ spec:
             image: *image
             args: ["src/maintain.ts"]
             env: *dbEnv
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 256Mi
+            securityContext: *hardened
+      # Daily at 14:30 UTC, after Apple publishes yesterday (early morning Pacific): re-read the
+      # last 7 days of App Store Connect Sales reports into store_daily. Backfill a year with:
+      #   kubectl -n telemetry create job --from=cronjob/telemetry-storeimport storeimport-year -o json --dry-run=client \
+      #     | jq '.spec.template.spec.containers[0].env += [{"name":"STORE_DAYS","value":"365"}]' | kubectl apply -f -
+      storeimport:
+        type: cronjob
+        cronjob:
+          # Off until ASC_VENDOR_NUMBER below is filled in.
+          suspend: true
+          schedule: "30 14 * * *"
+          timeZone: Etc/UTC
+          concurrencyPolicy: Forbid
+          backoffLimit: 2
+          activeDeadlineSeconds: 1800
+          ttlSecondsAfterFinished: 86400
+          successfulJobsHistory: 1
+          failedJobsHistory: 2
+        pod:
+          # toFQDNs (networkpolicy.yaml) only matches the real name: with the default ndots:5,
+          # CoreDNS autopath answers a search-path name and the rule never sees it.
+          dnsConfig:
+            options:
+              - name: ndots
+                value: "1"
+        containers:
+          app:
+            image: *image
+            args: ["src/storeimport.ts"]
+            env:
+              !!merge <<: *dbEnv
+              ASC_VENDOR_NUMBER: "VENDOR_NUMBER_HERE"
+            envFrom:
+              # ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY: the team's App Store Connect API
+              # key (secret.sops.yaml), the one the build scripts use.
+              - secretRef:
+                  name: telemetry-asc
             resources:
               requests:
                 cpu: 10m

@@ -84,7 +84,7 @@ metadata:
   name: nerdbucket-telemetry
   namespace: flux-system
 spec:
-  image: ghcr.io/hyperbolic2346/nerdbucket-telemetry
+  image: ghcr.io/nerdbucketinc/nerdbucket-telemetry
   interval: 10m
   secretRef:
     name: ghcr-pull
