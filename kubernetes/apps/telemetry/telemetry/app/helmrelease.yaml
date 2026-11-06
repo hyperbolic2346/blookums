@@ -189,8 +189,6 @@ spec:
       storeimport:
         type: cronjob
         cronjob:
-          # Off until ASC_VENDOR_NUMBER below is filled in.
-          suspend: true
           schedule: "30 14 * * *"
           timeZone: Etc/UTC
           concurrencyPolicy: Forbid
@@ -212,7 +210,7 @@ spec:
             args: ["src/storeimport.ts"]
             env:
               !!merge <<: *dbEnv
-              ASC_VENDOR_NUMBER: "VENDOR_NUMBER_HERE"
+              ASC_VENDOR_NUMBER: "94710414"
             envFrom:
               # ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY: the team's App Store Connect API
               # key (secret.sops.yaml), the one the build scripts use.
