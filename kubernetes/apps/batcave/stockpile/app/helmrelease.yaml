@@ -77,7 +77,7 @@ spec:
               API_MODE: "staff"
               API_PORT: "8000"
               REDIS_URL: "redis://stockpile-redis.batcave.svc.cluster.local:6379"
-              AUTH_CALLBACK_URL: "https://stockpile.${SECRET_DOMAIN}/api/auth/google/callback"
+              AUTH_CALLBACK_URL: "https://stockpile.${SECRET_DOMAIN_SUTLER}/api/auth/google/callback"
               AUTH_SECURE_COOKIES: "true"
               # The session secret was rotated to 44 chars (2026-10-08); a short one is now a boot error.
               AUTH_REQUIRE_STRONG_SECRET: "true"
@@ -220,7 +220,7 @@ spec:
               repository: ghcr.io/nerdbucketinc/stockpile-web
               tag: 1.0.9 # {"$imagepolicy": "flux-system:stockpile-web:tag"}
             env:
-              PUBLIC_API_URL: "https://stockpile.${SECRET_DOMAIN}"
+              PUBLIC_API_URL: "https://stockpile.${SECRET_DOMAIN_SUTLER}"
               PORT: "3000"
               # Umami analytics (observability namespace) — the web app's
               # tracking snippet is inert without both of these.
@@ -292,11 +292,11 @@ spec:
             port: 6379
     route:
       app:
-        hostnames: ["stockpile.${SECRET_DOMAIN}"]
+        hostnames: ["stockpile.${SECRET_DOMAIN_SUTLER}"]
         parentRefs:
           - name: external
             namespace: kube-system
-            sectionName: https
+            sectionName: https-sutler
         rules:
           # /api -> NestJS backend (more specific prefix wins per Gateway API)
           - matches:

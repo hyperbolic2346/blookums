@@ -12,6 +12,7 @@ resources:
   - ./prometheusrule.yaml
   - ./rbac-ci.yaml
   - ./rehearsal-grants.yaml
+  - ./httproute-redirect.yaml
 configMapGenerator:
   - name: stockpile-rehearsal-grants
     files:
