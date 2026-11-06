@@ -14,7 +14,9 @@ spec:
   rules:
     - filters:
         - type: RequestRedirect
+          # No `scheme:` — Cilium turns it into an http→https rule that only
+          # matches X-Forwarded-Proto != https, so on this https listener
+          # nothing matched and every request got a 404.
           requestRedirect:
-            scheme: https
             hostname: "stockpile.${SECRET_DOMAIN_SUTLER}"
             statusCode: 301
