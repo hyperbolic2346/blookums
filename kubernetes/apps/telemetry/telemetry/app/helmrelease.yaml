@@ -212,8 +212,8 @@ spec:
               !!merge <<: *dbEnv
               ASC_VENDOR_NUMBER: "94710414"
             envFrom:
-              # ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY: the team's App Store Connect API
-              # key (secret.sops.yaml), the one the build scripts use.
+              # ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY: a Sales-role App Store Connect API
+              # key from 1Password (externalsecret.yaml).
               - secretRef:
                   name: telemetry-asc
             resources:

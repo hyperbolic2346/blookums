@@ -5,7 +5,6 @@ kind: Kustomization
 namespace: telemetry
 resources:
   - ./externalsecret.yaml
-  - ./secret.sops.yaml
   - ./ocirepository.yaml
   - ./helmrelease.yaml
   - ./httproute.yaml
