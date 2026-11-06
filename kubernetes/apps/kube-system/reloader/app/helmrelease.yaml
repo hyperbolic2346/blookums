@@ -19,6 +19,10 @@ spec:
   values:
     fullnameOverride: reloader
     reloader:
+      # Restart by pod-template annotation, not an injected STAKATER_* env
+      # var: stockpile's public storefront-api refuses to boot on any env var
+      # outside its allowlist.
+      reloadStrategy: annotations
       readOnlyRootFileSystem: true
       podMonitor:
         enabled: true
