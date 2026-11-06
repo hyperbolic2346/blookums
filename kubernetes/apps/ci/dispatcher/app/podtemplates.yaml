@@ -172,7 +172,7 @@ template:
             memory: 512Mi
             ephemeral-storage: 256Mi
       - name: test
-        image: docker.io/library/node:22.23.3-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402
+        image: docker.io/library/node:26.13.0-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216
         command: ["sh", "-c"]
         args:
           - |
@@ -530,7 +530,7 @@ template:
             memory: 512Mi
             ephemeral-storage: 256Mi
       - name: test
-        image: docker.io/library/node:22.23.3-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402
+        image: docker.io/library/node:26.13.0-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216
         command: ["sh", "-c"]
         args:
           - |

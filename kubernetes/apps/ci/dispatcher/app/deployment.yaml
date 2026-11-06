@@ -43,7 +43,7 @@ spec:
       containers:
         - name: dispatcher
           # The full image, for git and ssh.
-          image: docker.io/library/node:22.23.3-bookworm@sha256:69a5713e7f4997e96d579aafd78734810e0dac0dd5ee4621d72c27a2891a4088
+          image: docker.io/library/node:26.13.0-bookworm@sha256:a546d3f8acd2af4382668a7e6acd3bc4418e6a27478373e3246f8162f5181509
           command: ["node", "/app/dispatcher.mjs"]
           env:
             - name: CONFIG_PATH
