@@ -246,8 +246,8 @@
     },
     {
       "type": "stat",
-      "title": "Newest report",
-      "description": "Apple publishes a day the next morning, Pacific time; the import runs daily and re-reads the last week.",
+      "title": "Last day with a sale",
+      "description": "The newest day Apple reported any units for. Apple publishes a day the next morning, Pacific time, and only for days with sales; the import runs daily at 14:30 UTC and re-reads the last week.",
       "options": {
         "reduceOptions": {
           "calcs": [
@@ -355,9 +355,12 @@
           "showAttribution": true
         },
         "basemap": {
-          "type": "default",
+          "type": "xyz",
           "name": "Basemap",
-          "config": {}
+          "config": {
+            "url": "https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+            "attribution": "Tiles &copy; Esri"
+          }
         },
         "layers": [
           {
