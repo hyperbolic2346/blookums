@@ -150,7 +150,7 @@ template:
             subPath: init.sql
             readOnly: true
       - name: redis
-        image: docker.io/library/redis:8.10.2-alpine@sha256:9f8d2d789b9a1d1e3f283f979aa9cbf393373806472e1ccd460e2f9c869b833b
+        image: docker.io/library/redis:8.10.3-alpine@sha256:71885d8cc6e42f2bc0aa2eb853bfc4be200b5108a46ac50e117ae1df0531fb80
         restartPolicy: Always
         args: ["redis-server", "--bind", "127.0.0.1", "--save", "", "--appendonly", "no"]
         securityContext:
@@ -508,7 +508,7 @@ template:
             subPath: init.sql
             readOnly: true
       - name: redis
-        image: docker.io/library/redis:8.10.2-alpine@sha256:9f8d2d789b9a1d1e3f283f979aa9cbf393373806472e1ccd460e2f9c869b833b
+        image: docker.io/library/redis:8.10.3-alpine@sha256:71885d8cc6e42f2bc0aa2eb853bfc4be200b5108a46ac50e117ae1df0531fb80
         restartPolicy: Always
         args: ["redis-server", "--bind", "127.0.0.1", "--save", "", "--appendonly", "no"]
         securityContext:
