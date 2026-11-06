@@ -190,6 +190,10 @@ template:
             value: postgresql://ci:ci@127.0.0.1:5432/ci_test?schema=public
           - name: REDIS_URL
             value: redis://127.0.0.1:6379
+          # stockpile's storefront-role test must run, not skip: this sidecar's
+          # `ci` role has CREATEROLE (init.sql). Other repos ignore it.
+          - name: REQUIRE_ROLE_TEST
+            value: "1"
           - name: npm_config_cache
             value: /cache/npm
           - name: npm_config_update_notifier
@@ -548,6 +552,10 @@ template:
             value: postgresql://ci:ci@127.0.0.1:5432/ci_test?schema=public
           - name: REDIS_URL
             value: redis://127.0.0.1:6379
+          # stockpile's storefront-role test must run, not skip: this sidecar's
+          # `ci` role has CREATEROLE (init.sql). Other repos ignore it.
+          - name: REQUIRE_ROLE_TEST
+            value: "1"
           - name: npm_config_cache
             value: /cache/npm
           - name: npm_config_update_notifier
