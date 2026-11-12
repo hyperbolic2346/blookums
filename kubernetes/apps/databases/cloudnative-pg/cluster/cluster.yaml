@@ -43,6 +43,12 @@ spec:
     parameters:
       max_connections: "600"
       shared_buffers: 512MB
+      # Replicas tell the primary which rows their open reads still need, so
+      # a long read there isn't cancelled "due to conflict with recovery".
+      # The rehearsal's pg_dump of stockpile (ProductImage alone ~1 GB) lost
+      # all three tries to that on 2026-11-10/11. Cost: the primary's vacuum
+      # waits for those reads (minutes).
+      hot_standby_feedback: "on"
     # stockpile_rehearsal (managed.roles below) may connect to the stockpile
     # database only, and only from a pod address (the cluster's pod CIDR;
     # the ci namespace's network policy further limits it to the replicas).
