@@ -101,7 +101,7 @@ template:
             mountPath: /deploy-key
             readOnly: true
       - name: postgres
-        image: docker.io/library/postgres:16.15-alpine@sha256:aa6cb33cf4c19c765cefcf48d96176258800870a9a1e930ad126200f9d825139
+        image: docker.io/library/postgres:18.7-alpine@sha256:75dcac3dfb1cd01ca3536910bbc84128759362f8b118bf8c55b38a94f68f3b73
         restartPolicy: Always
         args:
           - -c
@@ -461,7 +461,7 @@ template:
             mountPath: /deploy-key
             readOnly: true
       - name: postgres
-        image: docker.io/library/postgres:16.15-alpine@sha256:aa6cb33cf4c19c765cefcf48d96176258800870a9a1e930ad126200f9d825139
+        image: docker.io/library/postgres:18.7-alpine@sha256:75dcac3dfb1cd01ca3536910bbc84128759362f8b118bf8c55b38a94f68f3b73
         restartPolicy: Always
         args:
           - -c
