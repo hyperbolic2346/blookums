@@ -105,7 +105,11 @@ spec:
       # with "no space left on device" on /cache. This PVC is 1.6M files /
       # 13.7GB (dynmap tiles again), so the default 1Gi restic cache can't hold
       # the pack files. Sized to match scorpion.
-      VOLSYNC_CACHE_CAPACITY: 20Gi
+      # 2026-11-15: the 20Gi cache filled to 100% with leftovers from failed
+      # runs (restic never cleans up when every run dies), so syncs failed at
+      # ~59% again. Cache PVC was deleted and recreated at 40Gi for headroom.
+      # Long-term fix: move dynmap tiles to their own non-backed-up PVC.
+      VOLSYNC_CACHE_CAPACITY: 40Gi
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
