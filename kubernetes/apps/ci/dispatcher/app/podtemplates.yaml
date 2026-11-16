@@ -50,10 +50,11 @@ template:
             - matchExpressions:
                 - key: node-role.kubernetes.io/control-plane
                   operator: DoesNotExist
-                # limited image storage
+                # wally: limited image storage. catbert: 8 cores, too few
+                # for the test step's 10-CPU limit next to its own work.
                 - key: kubernetes.io/hostname
                   operator: NotIn
-                  values: ["wally"]
+                  values: ["wally", "catbert"]
         preferredDuringSchedulingIgnoredDuringExecution:
           - weight: 100
             preference:
@@ -114,6 +115,10 @@ template:
           - synchronous_commit=off
           - -c
           - full_page_writes=off
+          # Test workers each hold a Prisma pool sized from the node's core
+          # count, not the container's; the default 100 is too tight for 8.
+          - -c
+          - max_connections=400
         env:
           # The generated pg_hba.conf is replaced by hba_file above, which
           # admits the superuser on the container-local socket only.
@@ -137,7 +142,7 @@ template:
             cpu: 100m
             memory: 256Mi
           limits:
-            memory: 1Gi
+            memory: 2Gi
             ephemeral-storage: 1Gi
         volumeMounts:
           - name: pgdata
@@ -200,14 +205,16 @@ template:
           allowPrivilegeEscalation: false
           capabilities:
             drop: ["ALL"]
+        # Room for 8 test workers plus the type checks running beside them
+        # (stockpile .ci/test.sh). The nodes it lands on have 16+ cores.
         resources:
           requests:
-            cpu: "1"
-            memory: 2Gi
+            cpu: "4"
+            memory: 4Gi
             ephemeral-storage: 2Gi
           limits:
-            cpu: "4"
-            memory: 6Gi
+            cpu: "10"
+            memory: 14Gi
             ephemeral-storage: 10Gi
         volumeMounts:
           - name: workspace
@@ -410,10 +417,11 @@ template:
             - matchExpressions:
                 - key: node-role.kubernetes.io/control-plane
                   operator: DoesNotExist
-                # limited image storage
+                # wally: limited image storage. catbert: 8 cores, too few
+                # for the test step's 10-CPU limit next to its own work.
                 - key: kubernetes.io/hostname
                   operator: NotIn
-                  values: ["wally"]
+                  values: ["wally", "catbert"]
         preferredDuringSchedulingIgnoredDuringExecution:
           - weight: 100
             preference:
@@ -474,6 +482,10 @@ template:
           - synchronous_commit=off
           - -c
           - full_page_writes=off
+          # Test workers each hold a Prisma pool sized from the node's core
+          # count, not the container's; the default 100 is too tight for 8.
+          - -c
+          - max_connections=400
         env:
           - name: POSTGRES_HOST_AUTH_METHOD
             value: trust
@@ -495,7 +507,7 @@ template:
             cpu: 100m
             memory: 256Mi
           limits:
-            memory: 1Gi
+            memory: 2Gi
             ephemeral-storage: 1Gi
         volumeMounts:
           - name: pgdata
@@ -558,14 +570,16 @@ template:
           allowPrivilegeEscalation: false
           capabilities:
             drop: ["ALL"]
+        # Room for 8 test workers plus the type checks running beside them
+        # (stockpile .ci/test.sh). The nodes it lands on have 16+ cores.
         resources:
           requests:
-            cpu: "1"
-            memory: 2Gi
+            cpu: "4"
+            memory: 4Gi
             ephemeral-storage: 2Gi
           limits:
-            cpu: "4"
-            memory: 6Gi
+            cpu: "10"
+            memory: 14Gi
             ephemeral-storage: 10Gi
         volumeMounts:
           - name: workspace
