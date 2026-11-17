@@ -207,9 +207,13 @@ template:
             drop: ["ALL"]
         # Room for 8 test workers plus the type checks running beside them
         # (stockpile .ci/test.sh). The nodes it lands on have 16+ cores.
+        # Request lowered 4 -> 2 (2026-11-16): idle game servers hold most of
+        # the reservable CPU on dogbert/phil, so a 4-CPU request left runs
+        # Pending. Real usage there is ~15-20%; the 10-CPU limit still lets
+        # tests burst.
         resources:
           requests:
-            cpu: "4"
+            cpu: "2"
             memory: 4Gi
             ephemeral-storage: 2Gi
           limits:
@@ -572,9 +576,13 @@ template:
             drop: ["ALL"]
         # Room for 8 test workers plus the type checks running beside them
         # (stockpile .ci/test.sh). The nodes it lands on have 16+ cores.
+        # Request lowered 4 -> 2 (2026-11-16): idle game servers hold most of
+        # the reservable CPU on dogbert/phil, so a 4-CPU request left runs
+        # Pending. Real usage there is ~15-20%; the 10-CPU limit still lets
+        # tests burst.
         resources:
           requests:
-            cpu: "4"
+            cpu: "2"
             memory: 4Gi
             ephemeral-storage: 2Gi
           limits:
