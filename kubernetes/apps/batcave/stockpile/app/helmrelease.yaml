@@ -206,8 +206,10 @@ spec:
                 cpu: 10m
                 memory: 256Mi
               limits:
-                # The RSR/Lipsey's catalog loads are what needed 768Mi.
-                memory: 768Mi
+                # The RSR/Lipsey's catalog loads are what needed 768Mi (a
+                # 608Mi peak over the week before 2026-11-17). Stockpile #885
+                # keeps distributor descriptions with the RSR load, so 1Gi.
+                memory: 1Gi
       web:
         # Stateless: surge the new pod first, like the api.
         strategy: RollingUpdate
