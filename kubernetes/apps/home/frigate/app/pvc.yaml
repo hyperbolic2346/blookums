@@ -13,3 +13,44 @@ spec:
     requests:
       storage: 20Ti
   storageClassName: ${CLUSTER_STORAGE_BLOCK_SSD_3_REPLICA}
+---
+# 2026-11-17: Frigate recordings/clips moved to fileserv NFS. The RBD volume above
+# had grown to ~2.5TiB in Ceph (from 308GB of real files, no discard) and filled the SSD pool.
+# Keep frigate-media until the old footage is copied over, then remove it.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: frigate-media-nfs
+spec:
+  storageClassName: ''
+  capacity:
+    storage: 20Ti
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: ${SECRET_FILESERV_BASE_PATH}/frigate
+    server: ${SECRET_FILESERV_IP}
+  mountOptions:
+    - nfsvers=4.1
+    - nconnect=8
+    - hard
+    - noatime
+    - rsize=131072
+    - wsize=131072
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: frigate-media-nfs
+  namespace: home
+  labels:
+    app.kubernetes.io/name: frigate
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Ti
+  storageClassName: ''
+  volumeName: frigate-media-nfs

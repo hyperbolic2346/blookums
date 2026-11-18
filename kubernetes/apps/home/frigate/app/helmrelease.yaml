@@ -91,7 +91,7 @@ spec:
         existingClaim: frigate-data
       media:
         enabled: true
-        existingClaim: frigate-media
+        existingClaim: frigate-media-nfs
       usb:
         enabled: true
         type: hostPath
