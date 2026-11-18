@@ -474,7 +474,7 @@ spec:
           main:
             image:
               repository: ghcr.io/nerdbucketinc/stockpile-fake-gunbroker
-              tag: main-9dfa32e-b1285 # {"$imagepolicy": "flux-system:stockpile-fake-gunbroker-staging:tag"}
+              tag: main-a64c36a-b1286 # {"$imagepolicy": "flux-system:stockpile-fake-gunbroker-staging:tag"}
             env:
               FAKE_GUNBROKER_ADMIN_TOKEN:
                 valueFrom:
