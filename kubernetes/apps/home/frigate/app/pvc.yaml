@@ -1,22 +1,7 @@
 ---
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: frigate-media
-  namespace: home
-  labels:
-    app.kubernetes.io/name: frigate
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 20Ti
-  storageClassName: ${CLUSTER_STORAGE_BLOCK_SSD_3_REPLICA}
----
-# 2026-11-17: Frigate recordings/clips moved to fileserv NFS. The RBD volume above
+# 2026-11-17: Frigate recordings/clips moved to fileserv NFS. The old RBD volume
 # had grown to ~2.5TiB in Ceph (from 308GB of real files, no discard) and filled the SSD pool.
-# Keep frigate-media until the old footage is copied over, then remove it.
+# Old footage copied 2026-11-18 and the RBD frigate-media volume removed.
 apiVersion: v1
 kind: PersistentVolume
 metadata:
