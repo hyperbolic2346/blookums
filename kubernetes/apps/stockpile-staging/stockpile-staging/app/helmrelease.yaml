@@ -84,7 +84,7 @@ spec:
           00-staging-image:
             image: &apiImage
               repository: ghcr.io/nerdbucketinc/stockpile-api
-              tag: main-ca5e65b-b1290 # {"$imagepolicy": "flux-system:stockpile-api-staging:tag"}
+              tag: main-52d20a8-b1291 # {"$imagepolicy": "flux-system:stockpile-api-staging:tag"}
             command:
               - sh
               - -c
