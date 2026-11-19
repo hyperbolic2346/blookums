@@ -55,8 +55,8 @@ spec:
           main:
             image: *apiImage
             env:
-              QM_CANONICAL_HOST: "qm.batcaveballistics.com"
-              # The burntsheep names 301 at the gateway (httproute.yaml) first.
+              QM_CANONICAL_HOST: "quartermaster.batcaveballistics.com"
+              # qm. and the burntsheep names 301 at the gateway (httproute.yaml) first.
               QM_REDIRECT_HOSTS: ""
               QM_SECURE_COOKIES: "true"
               QM_CORS_ORIGINS: ""
@@ -135,7 +135,7 @@ spec:
 
     route:
       app:
-        hostnames: ["qm.batcaveballistics.com"]
+        hostnames: ["quartermaster.batcaveballistics.com"]
         parentRefs:
           - name: external
             namespace: kube-system

@@ -62,9 +62,14 @@ ingress:
     service: *svc-external
     originRequest:
       originServerName: "www.maison-flacon.com"
-  - hostname: "qm.batcaveballistics.com"
+  - hostname: "quartermaster.batcaveballistics.com"
     service: *svc-external
     originRequest:
       # SNI must match the https-batcaveballistics listener's wildcard cert.
+      originServerName: "quartermaster.batcaveballistics.com"
+  # Short name; the gateway 301s it to quartermaster.batcaveballistics.com.
+  - hostname: "qm.batcaveballistics.com"
+    service: *svc-external
+    originRequest:
       originServerName: "qm.batcaveballistics.com"
   - service: http_status:404

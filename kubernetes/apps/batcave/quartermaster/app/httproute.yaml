@@ -1,5 +1,6 @@
 ---
-# 301 the legacy burntsheep hostnames to the canonical qm.batcaveballistics.com.
+# 301 the short name (qm.batcaveballistics.com) and the legacy burntsheep names
+# to the canonical quartermaster.batcaveballistics.com, path preserved.
 # Done at the gateway rather than via QM_REDIRECT_HOSTS: the app's own redirect
 # rebuilds request.url, which is http:// behind TLS termination.
 apiVersion: gateway.networking.k8s.io/v1
@@ -8,11 +9,18 @@ metadata:
   name: quartermaster-redirect
   namespace: batcave
 spec:
+  # Each listener only accepts the hostnames that match its own wildcard.
   parentRefs:
     - name: external
       namespace: kube-system
       sectionName: https
-  hostnames: ["quartermaster.${SECRET_DOMAIN}", "qm.${SECRET_DOMAIN}"]
+    - name: external
+      namespace: kube-system
+      sectionName: https-batcaveballistics
+  hostnames:
+    - "qm.batcaveballistics.com"
+    - "quartermaster.${SECRET_DOMAIN}"
+    - "qm.${SECRET_DOMAIN}"
   rules:
     - filters:
         - type: RequestRedirect
@@ -20,5 +28,5 @@ spec:
           # matches X-Forwarded-Proto != https, so on this https listener
           # nothing matches and every request 404s (see stockpile-redirect).
           requestRedirect:
-            hostname: "qm.batcaveballistics.com"
+            hostname: "quartermaster.batcaveballistics.com"
             statusCode: 301
