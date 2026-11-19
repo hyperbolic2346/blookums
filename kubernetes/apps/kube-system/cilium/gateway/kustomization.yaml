@@ -9,5 +9,6 @@ resources:
   - ./certificate-maison-flacon.yaml
   - ./certificate-sutler.yaml
   - ./external.yaml
+  - ./https-redirect.yaml
   - ./internal.yaml
   - ./volition.yaml
