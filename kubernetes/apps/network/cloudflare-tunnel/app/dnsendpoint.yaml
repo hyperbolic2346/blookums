@@ -101,13 +101,13 @@ spec:
       providerSpecific:
         - name: external-dns.kubernetes.io/cloudflare-proxied
           value: "true"
-    - dnsName: "quartermaster.batcaveballistics.com"
+    - dnsName: "quartermaster.${SECRET_DOMAIN_QM}"
       recordType: CNAME
       targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
       providerSpecific:
         - name: external-dns.kubernetes.io/cloudflare-proxied
           value: "true"
-    - dnsName: "qm.batcaveballistics.com"
+    - dnsName: "qm.${SECRET_DOMAIN_QM}"
       recordType: CNAME
       targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
       providerSpecific:

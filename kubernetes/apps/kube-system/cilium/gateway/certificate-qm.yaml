@@ -3,11 +3,11 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: batcaveballistics-com-production
+  name: "${SECRET_DOMAIN_QM/./-}-production"
 spec:
-  secretName: batcaveballistics-com-production-tls
+  secretName: "${SECRET_DOMAIN_QM/./-}-production-tls"
   issuerRef:
     name: letsencrypt-production
     kind: ClusterIssuer
-  commonName: batcaveballistics.com
-  dnsNames: ["batcaveballistics.com", "*.batcaveballistics.com"]
+  commonName: "${SECRET_DOMAIN_QM}"
+  dnsNames: ["${SECRET_DOMAIN_QM}", "*.${SECRET_DOMAIN_QM}"]

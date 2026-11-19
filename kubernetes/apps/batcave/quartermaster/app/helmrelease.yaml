@@ -55,7 +55,7 @@ spec:
           main:
             image: *apiImage
             env:
-              QM_CANONICAL_HOST: "quartermaster.batcaveballistics.com"
+              QM_CANONICAL_HOST: "quartermaster.${SECRET_DOMAIN_QM}"
               # qm. and the burntsheep names 301 at the gateway (httproute.yaml) first.
               QM_REDIRECT_HOSTS: ""
               QM_SECURE_COOKIES: "true"
@@ -135,11 +135,11 @@ spec:
 
     route:
       app:
-        hostnames: ["quartermaster.batcaveballistics.com"]
+        hostnames: ["quartermaster.${SECRET_DOMAIN_QM}"]
         parentRefs:
           - name: external
             namespace: kube-system
-            sectionName: https-batcaveballistics
+            sectionName: https-qm
         rules:
           # /api -> FastAPI backend (more specific prefix wins per Gateway API)
           - matches:

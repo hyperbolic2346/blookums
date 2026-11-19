@@ -1,6 +1,6 @@
 ---
-# 301 the short name (qm.batcaveballistics.com) and the legacy burntsheep names
-# to the canonical quartermaster.batcaveballistics.com, path preserved.
+# 301 the short name (qm.${SECRET_DOMAIN_QM}) and the legacy burntsheep names
+# to the canonical quartermaster.${SECRET_DOMAIN_QM}, path preserved.
 # Done at the gateway rather than via QM_REDIRECT_HOSTS: the app's own redirect
 # rebuilds request.url, which is http:// behind TLS termination.
 apiVersion: gateway.networking.k8s.io/v1
@@ -16,9 +16,9 @@ spec:
       sectionName: https
     - name: external
       namespace: kube-system
-      sectionName: https-batcaveballistics
+      sectionName: https-qm
   hostnames:
-    - "qm.batcaveballistics.com"
+    - "qm.${SECRET_DOMAIN_QM}"
     - "quartermaster.${SECRET_DOMAIN}"
     - "qm.${SECRET_DOMAIN}"
   rules:
@@ -28,5 +28,5 @@ spec:
           # matches X-Forwarded-Proto != https, so on this https listener
           # nothing matches and every request 404s (see stockpile-redirect).
           requestRedirect:
-            hostname: "quartermaster.batcaveballistics.com"
+            hostname: "quartermaster.${SECRET_DOMAIN_QM}"
             statusCode: 301

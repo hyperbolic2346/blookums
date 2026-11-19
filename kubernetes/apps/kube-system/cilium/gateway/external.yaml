@@ -72,16 +72,16 @@ spec:
         certificateRefs:
           - kind: Secret
             name: maison-flacon-com-production-tls
-    # Only subdomains (quartermaster., qm.) live here; the apex and www are the Batcave Ballistics
-    # website, hosted elsewhere and DNS-only in Cloudflare.
-    - name: https-batcaveballistics
+    # Only subdomains (quartermaster., qm.) live here; the apex and www are the
+    # business website, hosted elsewhere and DNS-only in Cloudflare.
+    - name: https-qm
       protocol: HTTPS
       port: 443
-      hostname: "*.batcaveballistics.com"
+      hostname: "*.${SECRET_DOMAIN_QM}"
       allowedRoutes:
         namespaces:
           from: All
       tls:
         certificateRefs:
           - kind: Secret
-            name: batcaveballistics-com-production-tls
+            name: ${SECRET_DOMAIN_QM/./-}-production-tls
