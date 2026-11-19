@@ -1,5 +1,7 @@
 ---
-# 301 the short hostname (qm) to the canonical one (quartermaster).
+# 301 the legacy burntsheep hostnames to the canonical qm.batcaveballistics.com.
+# Done at the gateway rather than via QM_REDIRECT_HOSTS: the app's own redirect
+# rebuilds request.url, which is http:// behind TLS termination.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -10,10 +12,13 @@ spec:
     - name: external
       namespace: kube-system
       sectionName: https
-  hostnames: ["qm.${SECRET_DOMAIN}"]
+  hostnames: ["quartermaster.${SECRET_DOMAIN}", "qm.${SECRET_DOMAIN}"]
   rules:
     - filters:
         - type: RequestRedirect
+          # No `scheme:` — Cilium turns it into an http→https rule that only
+          # matches X-Forwarded-Proto != https, so on this https listener
+          # nothing matches and every request 404s (see stockpile-redirect).
           requestRedirect:
-            hostname: "quartermaster.${SECRET_DOMAIN}"
+            hostname: "qm.batcaveballistics.com"
             statusCode: 301

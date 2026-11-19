@@ -101,3 +101,9 @@ spec:
       providerSpecific:
         - name: external-dns.kubernetes.io/cloudflare-proxied
           value: "true"
+    - dnsName: "qm.batcaveballistics.com"
+      recordType: CNAME
+      targets: ["9eb7347a-a83a-43d4-bf3c-142eff3f177e.cfargotunnel.com"]
+      providerSpecific:
+        - name: external-dns.kubernetes.io/cloudflare-proxied
+          value: "true"
