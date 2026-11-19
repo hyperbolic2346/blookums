@@ -25,8 +25,8 @@
 # `start` always brings it back (refresh.sh explains), unless the settings
 # no longer say readonly.
 #
-# Ships SUSPENDED: the first copy is run by hand and its scrubbed output
-# checked; then set suspend: false here (a PR) to make it nightly.
+# Shipped suspended; nightly since the first copy was run by hand. To pause
+# it, set suspend: true here (a PR).
 #
 # Run it now:
 #   kubectl -n stockpile-staging create job --from=cronjob/stockpile-staging-refresh refresh-now
@@ -42,7 +42,7 @@ spec:
   # production's 00/06/12/18 UTC catalog syncs and the 05:10 drop-ship sweep.
   # The dump reads a replica, never the primary.
   schedule: "40 3 * * *"
-  suspend: true
+  suspend: false
   timeZone: America/New_York
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 2
