@@ -62,4 +62,14 @@ ingress:
     service: *svc-external
     originRequest:
       originServerName: "www.maison-flacon.com"
+  - hostname: "quartermaster.${SECRET_DOMAIN_QM}"
+    service: *svc-external
+    originRequest:
+      # SNI must match the https-qm listener's wildcard cert.
+      originServerName: "quartermaster.${SECRET_DOMAIN_QM}"
+  # Short name; the gateway 301s it to quartermaster.${SECRET_DOMAIN_QM}.
+  - hostname: "qm.${SECRET_DOMAIN_QM}"
+    service: *svc-external
+    originRequest:
+      originServerName: "qm.${SECRET_DOMAIN_QM}"
   - service: http_status:404
