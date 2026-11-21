@@ -42,7 +42,7 @@ spec:
       initContainers:
         # 1) create the tally database + role on the shared cluster
         - name: 01-init-db
-          image: ghcr.io/home-operations/postgres-init:18.6
+          image: ghcr.io/home-operations/postgres-init:18.7
           # Database init credentials are mounted here and nowhere else.
           envFrom:
             - secretRef:
