@@ -54,7 +54,7 @@ spec:
             init-flux-cli:
               image:
                 repository: ghcr.io/fluxcd/flux-cli
-                tag: v2.10.0
+                tag: v2.10.1
               command:
                 - sh
                 - -c
