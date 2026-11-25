@@ -89,7 +89,7 @@ template:
     initContainers:
       - name: postgres
         # The major version production runs (CNPG cluster `postgres`).
-        image: docker.io/library/postgres:16.16-alpine@sha256:f2f98726820d0342055351c6e9d36e705f5bfffb3dd53ff556325114b08afb6d
+        image: docker.io/library/postgres:19.0-alpine@sha256:cac45fb483caee3668946088a1c0532db89d5285c28dbfeac889b4068296e06f
         restartPolicy: Always
         args:
           - -c
@@ -175,7 +175,7 @@ template:
           limits:
             memory: 256Mi
       - name: copy
-        image: docker.io/library/postgres:16.16-alpine@sha256:f2f98726820d0342055351c6e9d36e705f5bfffb3dd53ff556325114b08afb6d
+        image: docker.io/library/postgres:19.0-alpine@sha256:cac45fb483caee3668946088a1c0532db89d5285c28dbfeac889b4068296e06f
         command: ["sh", "/rehearsal/rehearsal.sh", "copy"]
         terminationMessagePolicy: File
         env:
