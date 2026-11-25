@@ -1,0 +1,93 @@
+---
+# The sales page: plain files served by a no-dependency node script that
+# ships inside the web image (stockpile apps/web/Dockerfile copies apps/site;
+# no image of its own). It follows main builds, as staging's web does. No
+# database, no secret, no api: it only answers GETs for its own files.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stockpile-site
+  labels: &labels
+    app.kubernetes.io/name: stockpile-site
+    app.kubernetes.io/component: site
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels: *labels
+  template:
+    metadata:
+      labels: *labels
+    spec:
+      imagePullSecrets:
+        - name: stockpile-staging-ghcr-pull
+      enableServiceLinks: false
+      automountServiceAccountToken: false
+      containers:
+        - name: site
+          image: ghcr.io/nerdbucketinc/stockpile-web:main-ad4d83c-b1307 # {"$imagepolicy": "flux-system:stockpile-web-staging"}
+          command: ["node", "/repo/apps/site/serve.mjs"]
+          env:
+            - name: PORT
+              value: "8080"
+          ports:
+            - name: http
+              containerPort: 8080
+          livenessProbe: &probe
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 30
+            timeoutSeconds: 2
+          readinessProbe: *probe
+          resources:
+            requests:
+              cpu: 5m
+              memory: 32Mi
+            limits:
+              memory: 96Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stockpile-site
+spec:
+  selector:
+    app.kubernetes.io/name: stockpile-site
+    app.kubernetes.io/component: site
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+# INTERNAL gateway only (home network). The name is on the sutler domain,
+# which the internal gateway serves through its https-sutler listener
+# (kube-system/cilium/gateway/internal.yaml). Nothing on the external gateway
+# or the Cloudflare tunnel names this host, so it has no public path.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: stockpile-site
+spec:
+  parentRefs:
+    - name: internal
+      namespace: kube-system
+      sectionName: https-sutler
+  hostnames: ["stockpile-info.${SECRET_DOMAIN_SUTLER}"]
+  rules:
+    - backendRefs:
+        - name: stockpile-site
+          port: 80

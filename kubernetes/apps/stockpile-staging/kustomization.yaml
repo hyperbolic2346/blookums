@@ -9,3 +9,4 @@ components:
 
 resources:
   - ./stockpile-staging/ks.yaml
+  - ./stockpile-site/ks.yaml

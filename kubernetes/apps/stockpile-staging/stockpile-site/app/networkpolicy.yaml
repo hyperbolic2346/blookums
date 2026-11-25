@@ -1,0 +1,23 @@
+---
+# The sales page's pod: reached only by the kubelet's probes and the Gateway
+# API proxies, as staging's web pod is. It holds no secret and no database
+# login, and its code calls nothing.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: stockpile-site
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: stockpile-site
+      app.kubernetes.io/component: site
+  ingress:
+    - fromEntities:
+        - host
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
