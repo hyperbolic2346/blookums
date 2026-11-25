@@ -260,7 +260,7 @@ spec:
           main:
             image:
               repository: ghcr.io/nerdbucketinc/maison-flacon-storefront
-              tag: main-0191a2d-b115 # {"$imagepolicy": "flux-system:maison-flacon-storefront:tag"}
+              tag: main-5b58453-b118 # {"$imagepolicy": "flux-system:maison-flacon-storefront:tag"}
             lifecycle: *gracefulStop
             env:
               # Server-side rendering talks to the backend in-cluster...
