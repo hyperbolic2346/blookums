@@ -1,7 +1,7 @@
 ---
-# The sales page: plain files served by a no-dependency node script that
-# ships inside the web image (stockpile apps/web/Dockerfile copies apps/site;
-# no image of its own). It follows main builds, as staging's web does. No
+# The sales page: static files behind nginx, its own image
+# (ghcr.io/nerdbucketinc/stockpile-site, stockpile apps/site/Dockerfile, built
+# by the cluster build with the app's images). It follows main builds. No
 # database, no secret, no api: it only answers GETs for its own files.
 apiVersion: apps/v1
 kind: Deployment
@@ -28,12 +28,11 @@ spec:
       enableServiceLinks: false
       automountServiceAccountToken: false
       containers:
-        - name: site
-          image: ghcr.io/nerdbucketinc/stockpile-web:main-ad4d83c-b1307 # {"$imagepolicy": "flux-system:stockpile-web-staging"}
-          command: ["node", "/repo/apps/site/serve.mjs"]
-          env:
-            - name: PORT
-              value: "8080"
+        - name: nginx
+          # The tag below is a placeholder until the first stockpile-site image
+          # is built: image automation writes the real one. Until then the pod
+          # can't pull, and only this app's Kustomization shows it.
+          image: ghcr.io/nerdbucketinc/stockpile-site:main-0000000-b0 # {"$imagepolicy": "flux-system:stockpile-site-staging"}
           ports:
             - name: http
               containerPort: 8080
@@ -48,17 +47,27 @@ spec:
           resources:
             requests:
               cpu: 5m
-              memory: 32Mi
+              memory: 16Mi
             limits:
-              memory: 96Mi
+              memory: 64Mi
           securityContext:
+            # nginx-unprivileged: uid 101 from the start, nothing to drop to.
             runAsNonRoot: true
-            runAsUser: 1000
-            runAsGroup: 1000
+            runAsUser: 101
+            runAsGroup: 101
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
+          volumeMounts:
+            # nginx's pid file and temp files.
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Mi
 ---
 apiVersion: v1
 kind: Service

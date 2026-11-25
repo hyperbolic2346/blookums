@@ -47,3 +47,21 @@ spec:
   policy:
     numerical:
       order: asc
+---
+# The sales page's test copy (apps/stockpile-staging/stockpile-site) follows
+# main builds too. When the page gets its real home, that copy gets a policy
+# of its own on release tags.
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: stockpile-site-staging
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: stockpile-site
+  filterTags:
+    pattern: '^main-[0-9a-f]+-b(?P<build>\d+)$'
+    extract: '$build'
+  policy:
+    numerical:
+      order: asc

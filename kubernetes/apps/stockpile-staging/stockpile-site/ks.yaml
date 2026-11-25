@@ -4,7 +4,7 @@
 # stockpile-info.${SECRET_DOMAIN_SUTLER}, until it has a real home.
 #
 # Its own Kustomization, in staging's namespace for the GHCR pull secret: if
-# the page is broken or its image predates apps/site, staging's own
+# the page is broken or its image isn't built yet, staging's own
 # Kustomization stays healthy.
 # yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/kustomization-kustomize-v1.json
 apiVersion: kustomize.toolkit.fluxcd.io/v1
