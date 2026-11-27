@@ -118,3 +118,66 @@ spec:
     - backendRefs:
         - name: tally-api
           port: 80
+---
+# Retention purge, nightly. Rules and floors live in the server (tally-server
+# src/common/retention.ts): a student idle 13 months loses their save, history and picture
+# (the roster name stays); a class nobody has played in for 18 months is deleted, after the
+# dashboard has shown its teacher a warning for 60 days; daily rows older than a year go.
+#
+# REPORT ONLY: it deletes nothing. Each night it writes what it would delete to the job log:
+#   kubectl -n tally logs job/<name>
+# To make it actually delete, add "--apply" to the command below. Nothing can come due before
+# autumn 2027 (the oldest class dates from September 2026).
+#
+# The image must be the API's: it shares the database schema. It is the same string as
+# &apiImage above, so a tag bump that replaces the tag everywhere in this file keeps them in
+# step (YAML anchors do not reach across documents).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: tally-purge
+  namespace: tally
+  labels:
+    app.kubernetes.io/name: tally
+    app.kubernetes.io/component: purge
+spec:
+  schedule: "17 8 * * *" # 08:17 UTC: the small hours across US time zones
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 7
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      ttlSecondsAfterFinished: 1209600 # keep each night's log for two weeks
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: tally
+            app.kubernetes.io/component: purge
+        spec:
+          restartPolicy: Never
+          imagePullSecrets:
+            - name: tally-ghcr-pull
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+          containers:
+            - name: purge
+              image: ghcr.io/hyperbolic2346/tally-server:0.4.0
+              command: ["node", "dist/admin/cli.js", "purge"]
+              envFrom:
+                - secretRef:
+                    name: tally-secret
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 128Mi
+                limits:
+                  memory: 384Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
