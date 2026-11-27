@@ -54,7 +54,7 @@ spec:
               drop: ["ALL"]
         # 2) apply the Prisma migrations before anything serves
         - name: 02-migrate
-          image: &apiImage ghcr.io/hyperbolic2346/tally-server:0.4.0
+          image: &apiImage ghcr.io/hyperbolic2346/tally-server:0.4.1
           command: ["npx", "prisma", "migrate", "deploy"]
           envFrom: &envFrom
             - secretRef:
@@ -119,15 +119,20 @@ spec:
         - name: tally-api
           port: 80
 ---
-# Retention purge, nightly. Rules and floors live in the server (tally-server
+# Retention purge report, weekly. Rules and floors live in the server (tally-server
 # src/common/retention.ts): a student idle 13 months loses their save, history and picture
 # (the roster name stays); a class nobody has played in for 18 months is deleted, after the
 # dashboard has shown its teacher a warning for 60 days; daily rows older than a year go.
 #
-# REPORT ONLY: it deletes nothing. Each night it writes what it would delete to the job log:
+# REPORT ONLY: it deletes nothing. Every Monday morning (US time) it works out what is old
+# enough to delete and, when there is anything, sends it to the phone through Alertmanager
+# (--notify posts a 30-minute warning alert "TallyRetentionReport"; the cluster's Pushover
+# routing delivers it; Tally holds no notification token). The same report is in the job log:
 #   kubectl -n tally logs job/<name>
-# To make it actually delete, add "--apply" to the command below. Nothing can come due before
-# autumn 2027 (the oldest class dates from September 2026).
+# To act on a report:
+#   kubectl -n tally exec deploy/tally-api -c api -- node dist/admin/cli.js purge --apply
+# or add "--apply" to the command below to delete every week without asking. Nothing can come
+# due before autumn 2027 (the oldest class dates from September 2026).
 #
 # The image must be the API's: it shares the database schema. It is the same string as
 # &apiImage above, so a tag bump that replaces the tag everywhere in this file keeps them in
@@ -141,7 +146,7 @@ metadata:
     app.kubernetes.io/name: tally
     app.kubernetes.io/component: purge
 spec:
-  schedule: "17 8 * * *" # 08:17 UTC: the small hours across US time zones
+  schedule: "17 15 * * 1" # Mondays 15:17 UTC: mid-morning Eastern, since it can page a phone
   concurrencyPolicy: Forbid
   startingDeadlineSeconds: 3600
   successfulJobsHistoryLimit: 7
@@ -149,7 +154,7 @@ spec:
   jobTemplate:
     spec:
       backoffLimit: 0
-      ttlSecondsAfterFinished: 1209600 # keep each night's log for two weeks
+      ttlSecondsAfterFinished: 2419200 # keep each week's log for four weeks
       template:
         metadata:
           labels:
@@ -165,8 +170,11 @@ spec:
             runAsGroup: 1000
           containers:
             - name: purge
-              image: ghcr.io/hyperbolic2346/tally-server:0.4.0
-              command: ["node", "dist/admin/cli.js", "purge"]
+              image: ghcr.io/hyperbolic2346/tally-server:0.4.1
+              command: ["node", "dist/admin/cli.js", "purge", "--notify"]
+              env:
+                - name: ALERTMANAGER_URL
+                  value: http://kube-prometheus-stack-alertmanager.observability.svc.cluster.local:9093
               envFrom:
                 - secretRef:
                     name: tally-secret
