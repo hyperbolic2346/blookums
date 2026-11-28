@@ -46,12 +46,14 @@ spec:
               tag: 3.1.0.5799@sha256:15b68a6e69f893a3ede6fed405594d3f5d9e9d13648246a0fefbafe4fd7f595b
             env:
               TZ: ${TIMEZONE}
-              PROWLARR__AUTHENTICATION_METHOD: External
-              PROWLARR__AUTHENTICATION_REQUIRED: DisabledForLocalAddresses
-              PROWLARR__INSTANCE_NAME: Prowlarr
-              PROWLARR__PORT: &port 9696
-              PROWLARR__LOG_LEVEL: info
-              PROWLARR__THEME: dark
+              # Prowlarr reads PROWLARR__<SECTION>__<KEY>; the older
+              # single-underscore names were silently ignored.
+              PROWLARR__APP__INSTANCENAME: Prowlarr
+              PROWLARR__APP__THEME: dark
+              PROWLARR__AUTH__METHOD: External
+              PROWLARR__AUTH__REQUIRED: DisabledForLocalAddresses
+              PROWLARR__LOG__LEVEL: info
+              PROWLARR__SERVER__PORT: &port 9696
             envFrom:
               - secretRef:
                   name: prowlarr-secret
