@@ -1,0 +1,70 @@
+---
+# Object stores for the Barman Cloud Plugin. Same buckets, paths and
+# credentials the in-tree barmanObjectStore used, so the existing base
+# backups and WAL archive carry over.
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: postgres
+spec:
+  retentionPolicy: 14d
+  configuration:
+    data:
+      compression: bzip2
+    wal:
+      compression: bzip2
+      maxParallel: 8
+    destinationPath: s3://blookums-databases/postgres
+    endpointURL: ${SECRET_DATABASE_S3}
+    s3Credentials:
+      accessKeyId:
+        key: AWS_ACCESS_KEY_ID
+        name: cloudnative-pg-secret
+      secretAccessKey:
+        key: AWS_SECRET_ACCESS_KEY
+        name: cloudnative-pg-secret
+---
+# Bootstrap source for the postgres cluster (the Oct 2025 bucket).
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: postgres-recovery
+spec:
+  configuration:
+    data:
+      compression: bzip2
+    wal:
+      compression: bzip2
+      maxParallel: 8
+    destinationPath: s3://blookums-databases-oct-25/postgres
+    endpointURL: ${SECRET_DATABASE_S3}
+    s3Credentials:
+      accessKeyId:
+        key: AWS_BACKUP_ACCESS_KEY_ID
+        name: cloudnative-pg-secret
+      secretAccessKey:
+        key: AWS_BACKUP_SECRET_ACCESS_KEY
+        name: cloudnative-pg-secret
+---
+# pgvector: backup target and bootstrap source are the same store.
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: pgvector
+spec:
+  retentionPolicy: 14d
+  configuration:
+    data:
+      compression: bzip2
+    wal:
+      compression: bzip2
+      maxParallel: 8
+    destinationPath: s3://blookums-databases/pgvector
+    endpointURL: ${SECRET_DATABASE_S3}
+    s3Credentials:
+      accessKeyId:
+        key: AWS_ACCESS_KEY_ID
+        name: cloudnative-pg-secret
+      secretAccessKey:
+        key: AWS_SECRET_ACCESS_KEY
+        name: cloudnative-pg-secret

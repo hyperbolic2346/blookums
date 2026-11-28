@@ -15,22 +15,11 @@ spec:
       source: postgres
   externalClusters:
     - name: postgres
-      barmanObjectStore:
-        destinationPath: s3://blookums-databases-oct-25/postgres
-        endpointURL: ${SECRET_DATABASE_S3}
-        serverName: postgres
-        s3Credentials:
-          accessKeyId:
-            key: AWS_BACKUP_ACCESS_KEY_ID
-            name: cloudnative-pg-secret
-          secretAccessKey:
-            key: AWS_BACKUP_SECRET_ACCESS_KEY
-            name: cloudnative-pg-secret
-        data:
-          compression: bzip2
-        wal:
-          compression: bzip2
-          maxParallel: 8
+      plugin:
+        name: barman-cloud.cloudnative-pg.io
+        parameters:
+          barmanObjectName: postgres-recovery
+          serverName: postgres
   env:
     - name: TZ
       value: ${TIMEZONE}
@@ -155,24 +144,14 @@ spec:
         connectionLimit: 8
         passwordSecret:
           name: stockpile-staging-public-db
-  backup:
-    retentionPolicy: 14d
-    barmanObjectStore:
-      data:
-        compression: bzip2
-      wal:
-        compression: bzip2
-        maxParallel: 8
-      destinationPath: s3://blookums-databases/postgres
-      endpointURL: ${SECRET_DATABASE_S3}
-      serverName: postgres
-      s3Credentials:
-        accessKeyId:
-          key: AWS_ACCESS_KEY_ID
-          name: cloudnative-pg-secret
-        secretAccessKey:
-          key: AWS_SECRET_ACCESS_KEY
-          name: cloudnative-pg-secret
+  # Backups and WAL archiving go through the Barman Cloud Plugin; the bucket,
+  # credentials and retention live in the ObjectStore (objectstore.yaml).
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: postgres
+        serverName: postgres
   monitoring:
     enablePodMonitor: true
   resources:

@@ -14,22 +14,11 @@ spec:
       source: pgvector-recovery
   externalClusters:
     - name: pgvector-recovery
-      barmanObjectStore:
-        data:
-          compression: bzip2
-        wal:
-          compression: bzip2
-          maxParallel: 8
-        destinationPath: s3://blookums-databases/pgvector
-        endpointURL: ${SECRET_DATABASE_S3}
-        serverName: pgvector-v2
-        s3Credentials:
-          accessKeyId:
-            key: AWS_ACCESS_KEY_ID
-            name: cloudnative-pg-secret
-          secretAccessKey:
-            key: AWS_SECRET_ACCESS_KEY
-            name: cloudnative-pg-secret
+      plugin:
+        name: barman-cloud.cloudnative-pg.io
+        parameters:
+          barmanObjectName: pgvector
+          serverName: pgvector-v2
   env:
   - name: TZ
     value: ${TIMEZONE}
@@ -44,24 +33,12 @@ spec:
     parameters:
       max_connections: "600"
       shared_buffers: 512MB
-  backup:
-    retentionPolicy: 14d
-    barmanObjectStore:
-      data:
-        compression: bzip2
-      wal:
-        compression: bzip2
-        maxParallel: 8
-      destinationPath: s3://blookums-databases/pgvector
-      endpointURL: ${SECRET_DATABASE_S3}
-      serverName: pgvector-v2
-      s3Credentials:
-        accessKeyId:
-          key: AWS_ACCESS_KEY_ID
-          name: cloudnative-pg-secret
-        secretAccessKey:
-          key: AWS_SECRET_ACCESS_KEY
-          name: cloudnative-pg-secret
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: pgvector
+        serverName: pgvector-v2
   monitoring:
     enablePodMonitor: true
     # Ref: https://github.com/cloudnative-pg/cloudnative-pg/issues/2501

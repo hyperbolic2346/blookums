@@ -1,0 +1,27 @@
+---
+# Barman Cloud Plugin (CNPG-I): replaces the in-tree barmanObjectStore backup
+# support, which CloudNativePG removes in 1.32. Must run in the operator's
+# namespace. Needs cert-manager for its mTLS certificates.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: plugin-barman-cloud
+  namespace: databases
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: plugin-barman-cloud
+  maxHistory: 2
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  uninstall:
+    keepHistory: false
+  values:
+    crds:
+      create: true
