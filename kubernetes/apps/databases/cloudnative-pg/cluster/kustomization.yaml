@@ -6,6 +6,7 @@ resources:
   - ./externalsecret.yaml
   - ./objectstore.yaml
   - ./cluster.yaml
+  - ./networkpolicy.yaml
   - ./prometheusrule.yaml
   - ./scheduledbackup.yaml
   - ./vector.yaml

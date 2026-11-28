@@ -1,0 +1,123 @@
+---
+# Ingress rules for the CloudNativePG instance pods of the `postgres` and
+# `pgvector` clusters. Ingress only; egress (WAL archiving and base backups
+# to object storage) is unchanged.
+#
+# Sources, per cluster:
+#   host                  - kubelet probes on the instance manager (8000)
+#   same cluster          - streaming replication (5432) and the instance
+#                           manager status API (8000); matches instances
+#                           and CNPG join/initdb job pods of that cluster
+#   cloudnative-pg        - the operator (instance manager API on 8000,
+#                           and 5432)
+#   prometheus            - observability/kube-prometheus-stack via the
+#                           cluster PodMonitor (9187)
+#   client namespaces     - 5432 only
+#
+# Adding a database client in a namespace not listed below needs an entry
+# here as well.
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: postgres
+spec:
+  endpointSelector:
+    matchLabels:
+      cnpg.io/cluster: postgres
+      cnpg.io/podRole: instance
+  ingress:
+    - fromEntities:
+        - host
+    - fromEndpoints:
+        - matchLabels:
+            cnpg.io/cluster: postgres
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+            - port: "8000"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: cloudnative-pg
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+            - port: "8000"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: observability
+            app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "9187"
+              protocol: TCP
+    - fromEndpoints:
+        - matchExpressions:
+            - key: k8s:io.kubernetes.pod.namespace
+              operator: In
+              values:
+                - batcave
+                - home
+                - media
+                - observability
+                - pixy
+                - sutler-staging
+                - tally
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: pgvector
+spec:
+  endpointSelector:
+    matchLabels:
+      cnpg.io/cluster: pgvector
+      cnpg.io/podRole: instance
+  ingress:
+    - fromEntities:
+        - host
+    - fromEndpoints:
+        - matchLabels:
+            cnpg.io/cluster: pgvector
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+            - port: "8000"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: cloudnative-pg
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+            - port: "8000"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: observability
+            app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "9187"
+              protocol: TCP
+    - fromEndpoints:
+        - matchExpressions:
+            - key: k8s:io.kubernetes.pod.namespace
+              operator: In
+              values:
+                - media
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
