@@ -34,6 +34,19 @@ spec:
   secretRef:
     name: ghcr-pull
 ---
+# The sales page (stockpile apps/site): static files behind nginx, its own
+# image so it never rides on the app's deploys.
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: stockpile-site
+  namespace: flux-system
+spec:
+  image: ghcr.io/nerdbucketinc/stockpile-site
+  interval: 10m
+  secretRef:
+    name: ghcr-pull
+---
 apiVersion: image.toolkit.fluxcd.io/v1
 kind: ImageRepository
 metadata:

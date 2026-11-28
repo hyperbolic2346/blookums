@@ -1,0 +1,102 @@
+---
+# The sales page: static files behind nginx, its own image
+# (ghcr.io/nerdbucketinc/stockpile-site, stockpile apps/site/Dockerfile, built
+# by the cluster build with the app's images). It follows main builds. No
+# database, no secret, no api: it only answers GETs for its own files.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stockpile-site
+  labels: &labels
+    app.kubernetes.io/name: stockpile-site
+    app.kubernetes.io/component: site
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels: *labels
+  template:
+    metadata:
+      labels: *labels
+    spec:
+      imagePullSecrets:
+        - name: stockpile-staging-ghcr-pull
+      enableServiceLinks: false
+      automountServiceAccountToken: false
+      containers:
+        - name: nginx
+          # The tag below is a placeholder until the first stockpile-site image
+          # is built: image automation writes the real one. Until then the pod
+          # can't pull, and only this app's Kustomization shows it.
+          image: ghcr.io/nerdbucketinc/stockpile-site:main-0000000-b0 # {"$imagepolicy": "flux-system:stockpile-site-staging"}
+          ports:
+            - name: http
+              containerPort: 8080
+          livenessProbe: &probe
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 30
+            timeoutSeconds: 2
+          readinessProbe: *probe
+          resources:
+            requests:
+              cpu: 5m
+              memory: 16Mi
+            limits:
+              memory: 64Mi
+          securityContext:
+            # nginx-unprivileged: uid 101 from the start, nothing to drop to.
+            runAsNonRoot: true
+            runAsUser: 101
+            runAsGroup: 101
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            # nginx's pid file and temp files.
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stockpile-site
+spec:
+  selector:
+    app.kubernetes.io/name: stockpile-site
+    app.kubernetes.io/component: site
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+# INTERNAL gateway only (home network). The name is on the sutler domain,
+# which the internal gateway serves through its https-sutler listener
+# (kube-system/cilium/gateway/internal.yaml). Nothing on the external gateway
+# or the Cloudflare tunnel names this host, so it has no public path.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: stockpile-site
+spec:
+  parentRefs:
+    - name: internal
+      namespace: kube-system
+      sectionName: https-sutler
+  hostnames: ["stockpile-info.${SECRET_DOMAIN_SUTLER}"]
+  rules:
+    - backendRefs:
+        - name: stockpile-site
+          port: 80

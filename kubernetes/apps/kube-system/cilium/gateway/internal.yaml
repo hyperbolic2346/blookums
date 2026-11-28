@@ -33,6 +33,22 @@ spec:
         certificateRefs:
           - kind: Secret
             name: ${SECRET_DOMAIN/./-}-production-tls
+    # The sutler domain on the home network only: names that must not be
+    # public (stockpile-info, the sales page's test copy). The same wildcard
+    # certificate as the external gateway's https-sutler listener. Such a name
+    # needs its own DNS record (a DNSEndpoint beside its route): k8s-gateway
+    # only answers for ${SECRET_DOMAIN}.
+    - name: https-sutler
+      protocol: HTTPS
+      port: 443
+      hostname: "*.${SECRET_DOMAIN_SUTLER}"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        certificateRefs:
+          - kind: Secret
+            name: ${SECRET_DOMAIN_SUTLER/./-}-production-tls
     - name: https-fierypyropixy
       protocol: HTTPS
       port: 443

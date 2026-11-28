@@ -1,0 +1,35 @@
+---
+# Stockpile's sales page, a TEST COPY (stockpile apps/site): what Stockpile is,
+# why it's different, what it costs, and a Log in link. Internal only, at
+# stockpile-info.${SECRET_DOMAIN_SUTLER}, until it has a real home.
+#
+# Its own Kustomization, in staging's namespace for the GHCR pull secret: if
+# the page is broken or its image isn't built yet, staging's own
+# Kustomization stays healthy.
+# yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/kustomization-kustomize-v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: stockpile-site
+  namespace: stockpile-staging
+spec:
+  dependsOn:
+    # stockpile-staging-ghcr-pull (its externalsecret.yaml)
+    - name: stockpile-staging
+      namespace: stockpile-staging
+  path: ./kubernetes/apps/stockpile-staging/stockpile-site/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  wait: true
+  interval: 30m
+  retryInterval: 1m
+  timeout: 5m
+  postBuild:
+    substituteFrom:
+      - name: cluster-secrets
+        kind: Secret
+      - name: cluster-settings
+        kind: ConfigMap

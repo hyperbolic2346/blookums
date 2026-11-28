@@ -1,0 +1,27 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/externaldns.k8s.io/dnsendpoint_v1alpha1.json
+#
+# The page's name, pointing at the INTERNAL gateway's home-network address
+# (kube-system/cilium/gateway/internal.yaml). The home resolver (k8s-gateway)
+# only answers for ${SECRET_DOMAIN}, and cloudflare-dns only makes records for
+# routes on the external gateway, so this name needs its own record.
+#
+# It is a public record of a private address: anyone can look the name up, but
+# it only connects from the home network. Must stay unproxied (Cloudflare
+# cannot proxy to a private address). A resolver that drops private answers
+# (DNS rebind protection) needs this name allowed.
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: stockpile-site
+  annotations:
+    external-dns.kubernetes.io/cloudflare-proxied: "false"
+spec:
+  endpoints:
+    - dnsName: "stockpile-info.${SECRET_DOMAIN_SUTLER}"
+      recordType: A
+      recordTTL: 300
+      targets: ["192.168.14.52"]
+      providerSpecific:
+        - name: external-dns.kubernetes.io/cloudflare-proxied
+          value: "false"
